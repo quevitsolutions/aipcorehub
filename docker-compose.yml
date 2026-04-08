@@ -1,0 +1,60 @@
+services:
+  # Frontend & Reverse Proxy
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aipcore-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # Node.js API
+  api:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: aipcore-api
+    environment:
+      - PORT=3001
+      - DB_HOST=db
+      - DB_USER=postgres
+      - DB_PASSWORD=aipcore_pass
+      - DB_NAME=aipcore_game
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: always
+
+  # PostgreSQL Database
+  db:
+    image: postgres:16-alpine
+    container_name: aipcore-db
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=aipcore_pass
+      - POSTGRES_DB=aipcore_game
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - aipcore_db_data:/var/lib/postgresql/data
+      - ./server/init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: always
+
+volumes:
+  aipcore_db_data:

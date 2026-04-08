@@ -1,0 +1,11 @@
+node_modules
+.env
+.env.*
+! .env.example
+dist
+.DS_Store
+*.local
+.gemini
+aipcore_db_data
+tests/
+server/node_modules

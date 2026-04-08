@@ -1,0 +1,188 @@
+import { useState, useEffect } from 'react';
+import { useGameStore } from '../store/gameStore.js';
+import { useContract } from '../hooks/useContract.js';
+import { shortAddr } from '../utils/format.js';
+
+export default function TeamScreen() {
+  const { isConnected, nodeId, directRefs, teamSize } = useGameStore();
+  const { fetchTeamCounts, fetchTeamLevelMembers } = useContract();
+
+  const [levelCounts, setLevelCounts] = useState([]);
+  const [loadingCounts, setLoadingCounts] = useState(false);
+  const [expandedLevel, setExpandedLevel] = useState(null);
+  const [levelMembers, setLevelMembers] = useState([]);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+
+  useEffect(() => {
+    if (isConnected && nodeId) {
+      setLoadingCounts(true);
+      fetchTeamCounts(nodeId).then((counts) => {
+        setLevelCounts(counts);
+        setLoadingCounts(false);
+      });
+    }
+  }, [isConnected, nodeId]);
+
+  const toggleLevel = async (levelIndex) => {
+    if (expandedLevel === levelIndex) {
+      setExpandedLevel(null);
+      return;
+    }
+
+    setExpandedLevel(levelIndex);
+    setLevelMembers([]);
+    
+    if (levelCounts[levelIndex] > 0) {
+      setLoadingMembers(true);
+      const members = await fetchTeamLevelMembers(nodeId, levelIndex, 50);
+      setLevelMembers(members);
+      setLoadingMembers(false);
+    }
+  };
+
+  const formatDate = (ts) => {
+    if (!ts) return '';
+    const date = new Date(ts * 1000);
+    return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
+  };
+
+  if (!isConnected || !nodeId) {
+    return (
+      <div className="page" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <h2 style={{ fontSize: '24px', fontWeight: 900, marginBottom: '8px' }}>MY NETWORK</h2>
+        <p style={{ color: 'var(--text-dim)', fontSize: '13px', fontWeight: 600 }}>Please connect an active Node to view your team.</p>
+      </div>
+    );
+  }
+
+  // Calculate totals locally from the level data we fetched to ensure 100% accuracy
+  const calculatedDirects = levelCounts.length > 0 ? levelCounts[0] : (directRefs || 0);
+  const calculatedTotal = levelCounts.length > 0 
+    ? levelCounts.reduce((acc, curr) => acc + curr, 0) 
+    : (teamSize || 0);
+
+  return (
+    <div className="page page-team" style={{ paddingBottom: '100px' }}>
+      <div style={{ textAlign: 'center', padding: '10px 0 30px' }}>
+        <h2 style={{ fontSize: '24px', fontWeight: 900, marginBottom: '8px' }}>MY NETWORK</h2>
+        <p style={{ fontSize: '12px', color: 'var(--text-dim)', fontWeight: 700, letterSpacing: '0.05em' }}>
+          LEVEL WISE TEAM BREAKDOWN
+        </p>
+      </div>
+
+      {/* Network Overview Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px' }}>
+        <div className="booster-card" style={{ margin: 0, padding: '16px', alignItems: 'center', border: '1px solid rgba(203, 255, 1, 0.1)' }}>
+          <span style={{ fontSize: '24px', fontWeight: 900, color: 'var(--neon-lime)' }}>{calculatedDirects}</span>
+          <span style={{ fontSize: '10px', color: 'var(--text-dim)', fontWeight: 800, marginTop: '4px' }}>DIRECT COUNT</span>
+        </div>
+        <div className="booster-card" style={{ margin: 0, padding: '16px', alignItems: 'center', border: '1px solid rgba(203, 255, 1, 0.1)' }}>
+          <span style={{ fontSize: '24px', fontWeight: 900, color: 'var(--neon-lime)' }}>{calculatedTotal}</span>
+          <span style={{ fontSize: '10px', color: 'var(--text-dim)', fontWeight: 800, marginTop: '4px' }}>TEAM MATRIX COUNT</span>
+        </div>
+      </div>
+
+      {/* Level List */}
+      <h3 style={{ fontSize: '13px', fontWeight: 900, color: 'var(--text-dim)', marginBottom: '16px', paddingLeft: '4px' }}>TEAM BY LEVEL</h3>
+      
+      {loadingCounts ? (
+        <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-dim)', fontSize: '12px', fontWeight: 700 }}>
+          LOADING NETWORK DATA...
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {levelCounts.map((count, index) => {
+            const level = index + 1;
+            const isExpanded = expandedLevel === index;
+            
+            // Allow clicking if count > 0 OR if it's currently expanded (to close it)
+            const canClick = count > 0 || isExpanded;
+
+            return (
+              <div 
+                key={level} 
+                className="booster-card"
+                style={{ 
+                  margin: 0, 
+                  padding: '0', 
+                  flexDirection: 'column',
+                  cursor: canClick ? 'pointer' : 'default',
+                  opacity: count === 0 ? 0.6 : 1
+                }}
+              >
+                {/* Level Header Row */}
+                <div 
+                  onClick={() => canClick && toggleLevel(index)}
+                  style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    padding: '16px',
+                    width: '100%'
+                  }}
+                >
+                  <span style={{ fontSize: '15px', fontWeight: 800 }}>Level {level}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span style={{ fontSize: '15px', fontWeight: 900, color: count > 0 ? 'var(--neon-lime)' : 'var(--text-dim)' }}>
+                      {count} Users
+                    </span>
+                    {count > 0 && (
+                      <span style={{ fontSize: '12px', color: 'var(--text-dim)', transform: isExpanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}>
+                        〉
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Expanded Member Details */}
+                {isExpanded && (
+                  <div style={{ 
+                    borderTop: '1px solid rgba(255,255,255,0.05)', 
+                    padding: '0px 16px',
+                    background: 'rgba(0,0,0,0.2)'
+                  }}>
+                    {loadingMembers ? (
+                      <div style={{ padding: '20px 0', textAlign: 'center', fontSize: '11px', color: 'var(--text-dim)', fontWeight: 700 }}>
+                        FETCHING MEMBERS...
+                      </div>
+                    ) : (
+                      <div style={{ padding: '12px 0' }}>
+                        {/* Member Header */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--text-dim)', fontWeight: 800, paddingBottom: '8px', borderBottom: '1px solid rgba(255,255,255,0.05)', marginBottom: '8px' }}>
+                          <span style={{ flex: 1 }}>NODE ID / WALLET</span>
+                          <span style={{ width: '60px', textAlign: 'center' }}>TIER</span>
+                          <span style={{ width: '80px', textAlign: 'right' }}>JOINED</span>
+                        </div>
+                        
+                        {/* Member Rows */}
+                        {levelMembers.length === 0 ? (
+                          <div style={{ padding: '10px 0', textAlign: 'center', fontSize: '12px', color: 'var(--text-dim)' }}>No members found.</div>
+                        ) : (
+                          levelMembers.map((member, mIdx) => (
+                            <div key={mIdx} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '12px', fontWeight: 700 }}>
+                              <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                                <span style={{ color: '#fff' }}>#{member.nodeId}</span>
+                                <span style={{ color: 'var(--text-dim)', fontSize: '10px' }}>{shortAddr(member.wallet)}</span>
+                              </div>
+                              <span style={{ width: '60px', textAlign: 'center', color: 'var(--neon-lime)' }}>{member.tier}</span>
+                              <span style={{ width: '80px', textAlign: 'right', color: 'var(--text-dim)' }}>{formatDate(member.joinedAt)}</span>
+                            </div>
+                          ))
+                        )}
+                        {levelMembers.length === 50 && (
+                          <div style={{ padding: '8px 0', textAlign: 'center', fontSize: '10px', color: 'var(--text-dim)', fontStyle: 'italic' }}>
+                            Showing latest 50 members
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
