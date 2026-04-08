@@ -1,3 +1,4 @@
+if (typeof global === 'undefined') { window.global = window; }
 import { ethers } from "ethers";
 import { createAppKit } from '@reown/appkit/react';
 import { EthersAdapter } from '@reown/appkit-adapter-ethers';
