@@ -66,7 +66,7 @@ export default function TopBar({ onConnect, onDisconnect }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <button
             className="wallet-btn"
-            onClick={isConnected ? null : onConnect}
+            onClick={onConnect}
             style={{ 
               background: isConnected ? 'rgba(163, 255, 18, 0.1)' : 'rgba(255,255,255,0.05)',
               color: isConnected ? 'var(--lime)' : '#FFFFFF',
@@ -75,7 +75,7 @@ export default function TopBar({ onConnect, onDisconnect }) {
               padding: '8px 16px',
               fontWeight: 700,
               fontSize: '13px',
-              cursor: isConnected ? 'default' : 'pointer'
+              cursor: 'pointer'
             }}
           >
             {isConnected ? shortAddr(walletAddress) : 'CONNECT'}
