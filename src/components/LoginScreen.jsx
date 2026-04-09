@@ -74,94 +74,41 @@ export default function LoginScreen({ onConnect }) {
           Connect your wallet to access your node, manage rewards, and build your team.
         </p>
 
-        {/* Primary MetaMask Button */}
+        {/* Single Premium Direct Connect Button */}
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={onConnect}
           style={{
-            background: 'linear-gradient(135deg, #E2761B 0%, #B65E15 100%)',
-            color: '#fff',
+            background: 'var(--lime)',
+            color: '#000',
             border: 'none',
             borderRadius: '16px',
-            padding: '18px 48px',
-            fontSize: '16px',
+            padding: '20px 60px',
+            fontSize: '18px',
             fontWeight: 900,
             cursor: 'pointer',
-            boxShadow: '0 10px 30px rgba(226, 118, 27, 0.3)',
+            boxShadow: '0 0 40px rgba(163, 255, 18, 0.4)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             gap: '12px',
-            margin: '0 auto 16px',
-            width: '100%',
-            maxWidth: '300px'
-          }}
-        >
-          <img src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Logo.svg" alt="MM" height="24" />
-          METAMASK
-        </motion.button>
-
-        {/* WalletConnect / Web3 Button */}
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={onConnect}
-          style={{
-            background: 'linear-gradient(135deg, #3B99FC 0%, #2065D1 100%)',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '16px',
-            padding: '18px 48px',
-            fontSize: '16px',
-            fontWeight: 900,
-            cursor: 'pointer',
-            boxShadow: '0 10px 30px rgba(59, 153, 252, 0.3)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '12px',
-            margin: '0 auto 16px',
-            width: '100%',
-            maxWidth: '300px'
-          }}
-        >
-          <img src="https://walletconnect.com/favicon.ico" alt="WC" height="24" />
-          WEB3 CONNECTION
-        </motion.button>
-
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={onConnect}
-          style={{
-            background: 'rgba(255,255,255,0.05)',
-            color: '#fff',
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: '16px',
-            padding: '14px 32px',
-            fontSize: '14px',
-            fontWeight: 800,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '10px',
             margin: '0 auto',
             width: '100%',
-            maxWidth: '300px'
+            maxWidth: '320px',
+            letterSpacing: '1px'
           }}
         >
-          ALL WALLETS
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="3" y="3" width="7" height="7"></rect>
-            <rect x="14" y="3" width="7" height="7"></rect>
-            <rect x="14" y="14" width="7" height="7"></rect>
-            <rect x="3" y="14" width="7" height="7"></rect>
+          DIRECT CONNECT
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="16 3 21 3 21 8"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+            <polyline points="9 21 3 21 3 16"></polyline>
+            <line x1="14" y1="10" x2="3" y2="21"></line>
           </svg>
         </motion.button>
 
-        <div style={{ marginTop: '40px' }} />
+        <div style={{ marginTop: '50px' }} />
       </motion.div>
 
       {/* Footer Branding */}
@@ -171,9 +118,14 @@ export default function LoginScreen({ onConnect }) {
         fontSize: '11px',
         opacity: 0.3,
         fontWeight: 700,
-        letterSpacing: '1px'
+        letterSpacing: '2px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px'
       }}>
+        <div style={{ width: '40px', height: '1px', background: 'rgba(255,255,255,0.2)' }} />
         SECURED BY BNB SMART CHAIN
+        <div style={{ width: '40px', height: '1px', background: 'rgba(255,255,255,0.2)' }} />
       </div>
     </div>
   );
