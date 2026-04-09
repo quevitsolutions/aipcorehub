@@ -1,6 +1,6 @@
 if (typeof global === 'undefined') { window.global = window; }
 import { ethers } from "ethers";
-import { createAppKit } from '@reown/appkit'; // Core SDK for stable JS initialization
+import { createAppKit } from '@reown/appkit/react'; 
 import { EthersAdapter } from '@reown/appkit-adapter-ethers';
 
 export const CONTRACTS = {
