@@ -86,7 +86,7 @@ export const useContract = () => {
 export const useWalletLifecycle = () => {
   const { address, isConnected } = useAppKitAccount();
   const { walletProvider } = useAppKitProvider('eip155');
-  const { setWallet, disconnectWallet } = useGameStore();
+  const { setWallet, disconnectWallet, fetchUserData } = useGameStore();
   const { loadNodeData, fetchBnbBalance } = useContract();
 
   useEffect(() => {
@@ -94,10 +94,11 @@ export const useWalletLifecycle = () => {
       setWallet(address);
       loadNodeData(address);
       fetchBnbBalance(address);
+      fetchUserData().catch(() => {}); // Sync backend state on connect
     } else if (!isConnected) {
       disconnectWallet();
     }
-  }, [isConnected, address, walletProvider]);
+  }, [isConnected, address, walletProvider, fetchUserData]);
 
   return {
     setupListeners: () => {}, // Handled by AppKit hooks automatically

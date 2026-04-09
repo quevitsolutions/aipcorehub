@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { useGameStore } from './store/gameStore.js';
 import { useContract, useWalletLifecycle } from './hooks/useContract.js';
+import LoginScreen from './components/LoginScreen.jsx';
 import TopBar from './components/TopBar.jsx';
 import TabBar from './components/TabBar.jsx';
 import EarnScreen from './pages/EarnScreen.jsx';
@@ -17,14 +18,25 @@ import DailyPopup from './components/DailyPopup.jsx';
 export default function App() {
   const {
     activeTab,
+    isConnected,
     rechargeEnergy,
     showNodePopup,
     showDailyPopup,
     lastClaimDate,
     setShowDailyPopup
   } = useGameStore();
-  const { connectWallet, disconnectWallet } = useContract();
+  const { connectWallet } = useContract();
   const { setupListeners, removeListeners } = useWalletLifecycle();
+
+  // Entrance Check
+  if (!isConnected) {
+    return (
+      <div className="app-container">
+        <LoginScreen onConnect={connectWallet} />
+        <Toaster position="top-center" />
+      </div>
+    );
+  }
 
   // Energy recharge every 3s
   useEffect(() => {
