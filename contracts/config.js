@@ -30,7 +30,7 @@ export const provider = new ethers.FallbackProvider(
 );
 
 // --- WalletConnect (Reown AppKit React Alignment) ---
-const projectId = import.meta.env.VITE_PROJECT_ID || '7c1c9e999e33d5e429756ee46e4c2194';
+const projectId = import.meta.env.VITE_PROJECT_ID || '85bbe92e974bca9f67c7910e0d1365ea';
 
 const bscChain = {
   chainId: BSC_CHAIN_ID,
