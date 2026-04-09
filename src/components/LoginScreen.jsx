@@ -102,6 +102,34 @@ export default function LoginScreen({ onConnect }) {
           METAMASK
         </motion.button>
 
+        {/* WalletConnect / Web3 Button */}
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={onConnect}
+          style={{
+            background: 'linear-gradient(135deg, #3B99FC 0%, #2065D1 100%)',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '16px',
+            padding: '18px 48px',
+            fontSize: '16px',
+            fontWeight: 900,
+            cursor: 'pointer',
+            boxShadow: '0 10px 30px rgba(59, 153, 252, 0.3)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '12px',
+            margin: '0 auto 16px',
+            width: '100%',
+            maxWidth: '300px'
+          }}
+        >
+          <img src="https://walletconnect.com/favicon.ico" alt="WC" height="24" />
+          WEB3 CONNECTION
+        </motion.button>
+
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
@@ -124,7 +152,7 @@ export default function LoginScreen({ onConnect }) {
             maxWidth: '300px'
           }}
         >
-          OTHER WALLETS
+          ALL WALLETS
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <rect x="3" y="3" width="7" height="7"></rect>
             <rect x="14" y="3" width="7" height="7"></rect>
