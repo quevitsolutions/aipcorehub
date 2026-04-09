@@ -48,6 +48,7 @@ export const modal = createAppKit({
 });
 
 export const provider = new ethers.JsonRpcProvider(RPC_NODES[0]);
+export const getProvider = () => provider;
 
 export const getSigner = async () => {
   const { walletProvider } = modal.getWalletProvider();
