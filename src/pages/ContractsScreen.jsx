@@ -1,5 +1,5 @@
 import React from 'react';
-import { CONTRACTS } from '../../contracts/config.js';
+import { CONTRACTS } from '../config/constants.js';
 import { useGameStore } from '../store/gameStore.js';
 import toast from 'react-hot-toast';
 

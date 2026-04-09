@@ -72,12 +72,12 @@ export default function TeamScreen() {
 
       {/* Network Overview Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px' }}>
-        <div className="booster-card" style={{ margin: 0, padding: '16px', alignItems: 'center', border: '1px solid rgba(203, 255, 1, 0.1)' }}>
-          <span style={{ fontSize: '24px', fontWeight: 900, color: 'var(--neon-lime)' }}>{calculatedDirects}</span>
+        <div className="booster-card" style={{ margin: 0, padding: '16px', alignItems: 'center', border: '1px solid rgba(163, 255, 18, 0.1)' }}>
+          <span style={{ fontSize: '24px', fontWeight: 900, color: 'var(--neon-lime)' }}>{directRefs || 0}</span>
           <span style={{ fontSize: '10px', color: 'var(--text-dim)', fontWeight: 800, marginTop: '4px' }}>DIRECT COUNT</span>
         </div>
-        <div className="booster-card" style={{ margin: 0, padding: '16px', alignItems: 'center', border: '1px solid rgba(203, 255, 1, 0.1)' }}>
-          <span style={{ fontSize: '24px', fontWeight: 900, color: 'var(--neon-lime)' }}>{calculatedTotal}</span>
+        <div className="booster-card" style={{ margin: 0, padding: '16px', alignItems: 'center', border: '1px solid rgba(163, 255, 18, 0.1)' }}>
+          <span style={{ fontSize: '24px', fontWeight: 900, color: 'var(--neon-lime)' }}>{teamSize || 0}</span>
           <span style={{ fontSize: '10px', color: 'var(--text-dim)', fontWeight: 800, marginTop: '4px' }}>TEAM MATRIX COUNT</span>
         </div>
       </div>

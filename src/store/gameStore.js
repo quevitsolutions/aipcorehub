@@ -14,6 +14,8 @@ export const useGameStore = create(
       walletAddress: null,
       isConnected: false,
       bnbBalance: '0.00',
+      leaderboard: [],
+      referralList: [],
  
       // Backend Sync
       isSyncing: false,
@@ -238,6 +240,26 @@ export const useGameStore = create(
           }
         } catch (err) {
           console.warn("API Fetch Failed:", err.message);
+        }
+      },
+
+      fetchLeaderboardData: async () => {
+        try {
+          const data = await api.fetchLeaderboard();
+          set({ leaderboard: data });
+        } catch (err) {
+          console.warn("Leaderboard Fetch Failed:", err.message);
+        }
+      },
+
+      fetchReferralData: async () => {
+        const { walletAddress } = get();
+        if (!walletAddress) return;
+        try {
+          const data = await api.fetchReferralList(walletAddress);
+          set({ referralList: data });
+        } catch (err) {
+          console.warn("Referral List Fetch Failed:", err.message);
         }
       },
  

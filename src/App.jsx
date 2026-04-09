@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from './store/gameStore.js';
 import { useContract, useWalletLifecycle } from './hooks/useContract.js';
 import LoginScreen from './components/LoginScreen.jsx';
@@ -96,19 +97,31 @@ export default function App() {
       {/* Always show TopBar for consistent wallet status visibility */}
       <TopBar onConnect={connectWallet} onDisconnect={disconnectWallet} />
 
-      <div className="page" style={{ 
+      <main className="page" style={{ 
         paddingTop: '70px',
         paddingBottom: activeTab === 'earn' ? '220px' : '100px',
-        display: 'flex', flexDirection: 'column' 
+        display: 'flex', flexDirection: 'column',
+        position: 'relative'
       }}>
-        {activeTab === 'earn'    && <EarnScreen />}
-        {activeTab === 'mine'    && <UpgradeScreen />}
-        {activeTab === 'tasks'   && <TaskScreen />}
-        {activeTab === 'friends' && <ReferralScreen />}
-        {activeTab === 'team'    && <TeamScreen />}
-        {activeTab === 'dash'    && <DashboardScreen />}
-        {activeTab === 'contracts' && <ContractsScreen />}
-      </div>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            style={{ width: '100%', height: '100%' }}
+          >
+            {activeTab === 'earn'    && <EarnScreen />}
+            {activeTab === 'mine'    && <UpgradeScreen />}
+            {activeTab === 'tasks'   && <TaskScreen />}
+            {activeTab === 'friends' && <ReferralScreen />}
+            {activeTab === 'team'    && <TeamScreen />}
+            {activeTab === 'dash'    && <DashboardScreen />}
+            {activeTab === 'contracts' && <ContractsScreen />}
+          </motion.div>
+        </AnimatePresence>
+      </main>
 
       <TabBar />
 

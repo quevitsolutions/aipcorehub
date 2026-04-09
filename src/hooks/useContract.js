@@ -1,6 +1,6 @@
 import { useMemo, useEffect } from 'react';
-import { useAppKitAccount, useAppKitProvider, useAppKit, useDisconnect } from '@reown/appkit/react';
-import { ethers } from 'ethers';
+import { useAccount, useDisconnect } from 'wagmi';
+import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { blockchain } from '../services/blockchain.js';
 import { useGameStore } from "../store/gameStore.js";
 import toast from "react-hot-toast";
@@ -12,7 +12,8 @@ export const useContract = () => {
   const setNodeData = useGameStore(s => s.setNodeData);
   const updateChainData = useGameStore(s => s.updateChainData);
   const setBnbBalance = useGameStore(s => s.setBnbBalance);
-  const { open } = useAppKit();
+  
+  const { openConnectModal } = useConnectModal();
   const { disconnect } = useDisconnect();
 
   const loadNodeData = async (address, retries = 3) => {
@@ -45,7 +46,7 @@ export const useContract = () => {
 
   return useMemo(() => ({
     loadNodeData, fetchBnbBalance, 
-    connectWallet: () => open(),
+    connectWallet: () => openConnectModal?.(),
     disconnectWallet: () => disconnect(),
     createNode: async (sponsorId = 1) => {
       const tid = toast.loading("Activating Node...");
@@ -54,7 +55,7 @@ export const useContract = () => {
         toast.success("🚀 Node Activated!", { id: tid });
         return nid;
       } catch (e) {
-        toast.error(e.reason || "Activation failed", { id: tid });
+        toast.error(e.message || "Activation failed", { id: tid });
         return false;
       }
     },
@@ -82,12 +83,11 @@ export const useContract = () => {
     },
     fetchTeamCounts: (nid) => blockchain.getMatrixCounts(nid),
     fetchTeamLevelMembers: (nid, layer) => blockchain.getMatrixMembers(nid, layer)
-  }), [setNodeData, updateChainData, setBnbBalance, open]);
+  }), [setNodeData, updateChainData, setBnbBalance, openConnectModal, disconnect]);
 };
 
 export const useWalletLifecycle = () => {
-  const { address, isConnected } = useAppKitAccount();
-  const { walletProvider } = useAppKitProvider('eip155');
+  const { address, isConnected } = useAccount();
   const { setWallet, disconnectWallet, fetchUserData } = useGameStore();
   const { loadNodeData, fetchBnbBalance } = useContract();
 
@@ -100,10 +100,10 @@ export const useWalletLifecycle = () => {
     } else if (!isConnected) {
       disconnectWallet();
     }
-  }, [isConnected, address, walletProvider, fetchUserData]);
+  }, [isConnected, address, fetchUserData]);
 
   return {
-    setupListeners: () => {}, // Handled by AppKit hooks automatically
+    setupListeners: () => {}, 
     removeListeners: () => {}
   };
 };

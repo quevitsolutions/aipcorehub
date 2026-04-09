@@ -3,8 +3,8 @@ import { useGameStore } from '../store/gameStore.js';
 import { formatNumber } from '../utils/format.js';
 import { useContract } from '../hooks/useContract.js';
 import { ethers } from 'ethers';
-import { CONTRACTS } from '../../contracts/config.js';
-import { AIPCORE_ABI } from '../../contracts/abi.js';
+import { CONTRACTS } from '../config/constants.js';
+import { AIPCORE_ABI } from '../config/abi.js';
 import toast from 'react-hot-toast';
 
 export default function UpgradeScreen() {

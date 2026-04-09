@@ -342,6 +342,16 @@ html, body, #root {
 .booster-stat-label { color: var(--text-dim); }
 .booster-stat-value { font-weight: 700; }
 
+.booster-card:hover, .partner-card:hover {
+  border-color: rgba(163, 255, 18, 0.3);
+  box-shadow: 0 0 20px rgba(163, 255, 18, 0.1);
+  transform: translateY(-2px);
+}
+
+.booster-card:active, .partner-card:active {
+  transform: scale(0.98);
+}
+
 .upgrade-btn {
   margin-top: 16px;
   background: rgba(255,255,255,0.05);
@@ -356,12 +366,41 @@ html, body, #root {
   justify-content: center;
   gap: 6px;
   cursor: pointer;
-  transition: 0.2s;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.upgrade-btn:hover {
+  background: rgba(163, 255, 18, 0.1);
+  box-shadow: 0 0 15px rgba(163, 255, 18, 0.2);
 }
 
 .upgrade-btn:active {
   transform: scale(0.95);
-  background: rgba(255,255,255,0.1);
+}
+
+/* Sweep Shine Triggered on Hover */
+.booster-card::after, .partner-card::after, .giant-btn::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(255, 255, 255, 0.05),
+    transparent
+  );
+  transform: skewX(-25deg);
+  transition: none;
+}
+
+.booster-card:hover::after, .partner-card:hover::after, .giant-btn:hover::after {
+  left: 150%;
+  transition: left 0.6s ease-in-out;
 }
 
 .upgrade-btn img {

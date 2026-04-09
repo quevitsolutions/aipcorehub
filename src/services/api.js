@@ -22,6 +22,18 @@ class ApiService {
     if (!res.ok) throw new Error('Sync failed');
     return res.json();
   }
+
+  async fetchLeaderboard() {
+    const res = await fetch(`${this.baseUrl}/leaderboard`);
+    if (!res.ok) throw new Error('Failed to fetch leaderboard');
+    return res.json();
+  }
+
+  async fetchReferralList(walletAddress) {
+    const res = await fetch(`${this.baseUrl}/referrals/${walletAddress}`);
+    if (!res.ok) throw new Error('Failed to fetch referrals');
+    return res.json();
+  }
 }
 
 export const api = new ApiService();

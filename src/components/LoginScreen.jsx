@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
 
 export default function LoginScreen({ onConnect }) {
   return (
@@ -75,38 +76,55 @@ export default function LoginScreen({ onConnect }) {
         </p>
 
         {/* Single Premium Direct Connect Button */}
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={onConnect}
-          style={{
-            background: 'var(--lime)',
-            color: '#000',
-            border: 'none',
-            borderRadius: '16px',
-            padding: '20px 60px',
-            fontSize: '18px',
-            fontWeight: 900,
-            cursor: 'pointer',
-            boxShadow: '0 0 40px rgba(163, 255, 18, 0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '12px',
-            margin: '0 auto',
-            width: '100%',
-            maxWidth: '320px',
-            letterSpacing: '1px'
+        <ConnectButton.Custom>
+          {({ openConnectModal, mounted }) => {
+            return (
+              <div
+                {...(!mounted && {
+                  'aria-hidden': true,
+                  'style': {
+                    opacity: 0,
+                    pointerEvents: 'none',
+                    userSelect: 'none',
+                  },
+                })}
+              >
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={openConnectModal}
+                  style={{
+                    background: 'var(--lime)',
+                    color: '#000',
+                    border: 'none',
+                    borderRadius: '16px',
+                    padding: '20px 60px',
+                    fontSize: '18px',
+                    fontWeight: 900,
+                    cursor: 'pointer',
+                    boxShadow: '0 0 40px rgba(163, 255, 18, 0.4)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '12px',
+                    margin: '0 auto',
+                    width: '100%',
+                    maxWidth: '320px',
+                    letterSpacing: '1px'
+                  }}
+                >
+                  DIRECT CONNECT
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="16 3 21 3 21 8"></polyline>
+                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                    <polyline points="9 21 3 21 3 16"></polyline>
+                    <line x1="14" y1="10" x2="3" y2="21"></line>
+                  </svg>
+                </motion.button>
+              </div>
+            );
           }}
-        >
-          DIRECT CONNECT
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="16 3 21 3 21 8"></polyline>
-            <line x1="10" y1="14" x2="21" y2="3"></line>
-            <polyline points="9 21 3 21 3 16"></polyline>
-            <line x1="14" y1="10" x2="3" y2="21"></line>
-          </svg>
-        </motion.button>
+        </ConnectButton.Custom>
 
         <div style={{ marginTop: '50px' }} />
       </motion.div>

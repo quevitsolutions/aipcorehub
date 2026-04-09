@@ -17,8 +17,11 @@
     "axios": "^1.6.8",
     "react-hot-toast": "^2.4.1",
     "framer-motion": "^11.1.7",
-    "@reown/appkit": "1.8.19",
-    "@reown/appkit-adapter-ethers": "1.8.19"
+    "@rainbow-me/rainbowkit": "^2.1.2",
+    "wagmi": "^2.10.8",
+    "viem": "^2.17.0",
+    "@tanstack/react-query": "^5.45.1",
+    "lucide-react": "^0.363.0"
   },
   "devDependencies": {
     "@types/react": "^18.3.1",

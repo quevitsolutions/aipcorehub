@@ -1,15 +1,23 @@
 import { ethers } from "ethers";
-import { CONTRACTS, provider, getSigner, getProvider } from "../../contracts/config.js";
-import { AIPCORE_ABI, AIPVIEW_ABI, REWARDPOOL_ABI } from "../../contracts/abi.js";
+import { CONTRACTS, RPC_NODES } from "../config/constants.js";
+import { AIPCORE_ABI, REWARDPOOL_ABI } from "../../contracts/abi.js";
+import { config } from "../config/wagmi.js";
+import { getEthersProvider, getEthersSigner } from "../utils/ethers-adapter.js";
 
 /**
- * AIPCore Blockchain Service (Ethers v6)
- * Pure logic for contract interaction using AIPViews helpers
+ * AIPCore Blockchain Service (Ethers v6) - Refactored for RainbowKit/Wagmi
  */
 class BlockchainService {
   constructor() {
-    this.core = new ethers.Contract(CONTRACTS.AIPCORE, AIPCORE_ABI, provider);
-    this.pool = new ethers.Contract(CONTRACTS.REWARDPOOL, REWARDPOOL_ABI, provider);
+    // Default Read-only Provider (Static for initial loads)
+    this.staticProvider = new ethers.JsonRpcProvider(RPC_NODES[0]);
+    this.core = new ethers.Contract(CONTRACTS.AIPCORE, AIPCORE_ABI, this.staticProvider);
+    this.pool = new ethers.Contract(CONTRACTS.REWARDPOOL, REWARDPOOL_ABI, this.staticProvider);
+  }
+
+  // Helper to get the most relevant provider (Wagmi-optimized)
+  _getProvider() {
+    return getEthersProvider(config) || this.staticProvider;
   }
 
   // Optimized hydration in one trip
@@ -46,7 +54,7 @@ class BlockchainService {
   }
 
   async getBnbBalance(address) {
-    const p = getProvider();
+    const p = this._getProvider();
     const bal = await p.getBalance(address);
     return ethers.formatEther(bal);
   }
@@ -54,7 +62,8 @@ class BlockchainService {
   // --- WRITE ACTIONS ---
 
   async createNode(sponsorId = 1) {
-    const signer = await getSigner();
+    const signer = await getEthersSigner(config);
+    if (!signer) throw new Error("Wallet not connected");
     const core = new ethers.Contract(CONTRACTS.AIPCORE, AIPCORE_ABI, signer);
     const cost = await core.getTierCost(1).catch(() => ethers.parseEther("0.05"));
     const tx = await core.createNode(sponsorId, { value: cost });
@@ -77,21 +86,24 @@ class BlockchainService {
   }
 
   async claimRewards() {
-    const signer = await getSigner();
+    const signer = await getEthersSigner(config);
+    if (!signer) throw new Error("Wallet not connected");
     const core = new ethers.Contract(CONTRACTS.AIPCORE, AIPCORE_ABI, signer);
     const tx = await core.withdraw();
     return tx.wait();
   }
 
   async claimPool(nodeId) {
-    const signer = await getSigner();
+    const signer = await getEthersSigner(config);
+    if (!signer) throw new Error("Wallet not connected");
     const pool = new ethers.Contract(CONTRACTS.REWARDPOOL, REWARDPOOL_ABI, signer);
     const tx = await pool.claim(nodeId);
     return tx.wait();
   }
 
   async unlockTier(nodeId, toTier) {
-    const signer = await getSigner();
+    const signer = await getEthersSigner(config);
+    if (!signer) throw new Error("Wallet not connected");
     const core = new ethers.Contract(CONTRACTS.AIPCORE, AIPCORE_ABI, signer);
     const cost = await core.getTierCost(toTier - 1);
     const tx = await core.unlockTier(nodeId, toTier, { value: cost });

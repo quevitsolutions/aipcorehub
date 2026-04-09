@@ -1,5 +1,7 @@
 import { useGameStore } from '../store/gameStore.js';
 import { useContract } from '../hooks/useContract.js';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { motion } from 'framer-motion';
 
 export default function TopBar() {
   const { walletAddress, isConnected } = useGameStore();
@@ -71,7 +73,14 @@ export default function TopBar() {
 
         {/* Official SDK Connection Bridge */}
         <div style={{ transform: 'scale(0.9)', transformOrigin: 'right center' }}>
-          <appkit-button balance="hide" />
+          <ConnectButton 
+            chainStatus="none" 
+            showBalance={false} 
+            accountStatus={{
+              smallScreen: 'avatar',
+              largeScreen: 'full',
+            }}
+          />
         </div>
       </div>
     </div>

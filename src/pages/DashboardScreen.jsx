@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useGameStore } from '../store/gameStore.js';
 import { useContract } from '../hooks/useContract.js';
 import { formatNumber, formatBNB, shortAddr } from '../utils/format.js';
-import { CONTRACTS } from '../../contracts/config.js';
+import { CONTRACTS } from '../config/constants.js';
 
 export default function DashboardScreen() {
   const {
