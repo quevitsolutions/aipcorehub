@@ -20,10 +20,7 @@ export default defineConfig({
     chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom', 'framer-motion'],
-          web3: ['wagmi', 'viem', 'ethers', '@rainbow-me/rainbowkit', '@tanstack/react-query'],
-        },
+        // Letting Vite handle chunks automatically to avoid React instance conflicts
       },
     },
   },
