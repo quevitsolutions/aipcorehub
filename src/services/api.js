@@ -7,8 +7,8 @@ class ApiService {
     this.baseUrl = baseUrl;
   }
 
-  async fetchUser(tgId) {
-    const res = await fetch(`${this.baseUrl}/user/${tgId}`);
+  async fetchUser(walletAddress) {
+    const res = await fetch(`${this.baseUrl}/user/${walletAddress}`);
     if (!res.ok) throw new Error('Failed to fetch user');
     return res.json();
   }

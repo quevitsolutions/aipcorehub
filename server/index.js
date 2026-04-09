@@ -14,20 +14,20 @@ app.use(express.json());
 // Health Check
 app.get('/health', (req, res) => res.send('API is healthy'));
 
-// Fetch or create user data
-app.get('/api/user/:tgId', async (req, res) => {
-  const { tgId } = req.params;
+// Fetch or create user data via wallet address
+app.get('/api/user/:walletAddress', async (req, res) => {
+  const { walletAddress } = req.params;
   try {
     const result = await query(
-      'SELECT * FROM users WHERE telegram_id = $1',
-      [tgId]
+      'SELECT * FROM users WHERE wallet_address = $1',
+      [walletAddress]
     );
     
     if (result.rows.length === 0) {
-      // Create new user record
+      // Create new user record indexed by wallet
       const newUser = await query(
-        'INSERT INTO users (telegram_id) VALUES ($1) RETURNING *',
-        [tgId]
+        'INSERT INTO users (wallet_address) VALUES ($1) RETURNING *',
+        [walletAddress]
       );
       return res.json(newUser.rows[0]);
     }
@@ -39,25 +39,31 @@ app.get('/api/user/:tgId', async (req, res) => {
   }
 });
 
-// Sync game state
+// Sync game state via wallet address
 app.post('/api/sync', async (req, res) => {
-  const { tgId, walletAddress, taps, localReward, energy, nodeTier } = req.body;
+  const { walletAddress, taps, localReward, energy } = req.body;
   
+  if (!walletAddress) return res.status(400).json({ error: 'Wallet address required' });
+
   try {
     const result = await query(
       `UPDATE users 
-       SET wallet_address = $2, 
-           taps = $3, 
-           local_reward = $4, 
-           energy = $5, 
+       SET taps = $2, 
+           local_reward = $3, 
+           energy = $4, 
            updated_at = CURRENT_TIMESTAMP
-       WHERE telegram_id = $1
+       WHERE wallet_address = $1
        RETURNING *`,
-      [tgId, walletAddress, taps, localReward, energy]
+      [walletAddress, taps, localReward, energy]
     );
     
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
+      // If user doesn't exist yet, create them during sync
+      const newUser = await query(
+        'INSERT INTO users (wallet_address, taps, local_reward, energy) VALUES ($1, $2, $3, $4) RETURNING *',
+        [walletAddress, taps, localReward, energy]
+      );
+      return res.json(newUser.rows[0]);
     }
     
     res.json(result.rows[0]);

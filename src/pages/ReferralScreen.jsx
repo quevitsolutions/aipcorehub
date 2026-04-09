@@ -23,6 +23,17 @@ export default function ReferralScreen() {
     });
   };
 
+  const inviteLink = walletAddress ? `https://aipcore.online/?ref=${walletAddress}` : 'Connect wallet to get link';
+  
+  const handleShare = () => {
+    if (!walletAddress) {
+      toast.error("Please connect wallet first");
+      return;
+    }
+    navigator.clipboard.writeText(inviteLink);
+    toast.success("Referral link copied!");
+  };
+
   const topReferrers = [
     { rank: 1, name: 'WhaleMaster', count: 1240, reward: '15.4M' },
     { rank: 2, name: 'CryptoKnight', count: 856, reward: '10.2M' },

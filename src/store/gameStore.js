@@ -16,7 +16,6 @@ export const useGameStore = create(
       bnbBalance: '0.00',
  
       // Backend Sync
-      tgUser: window.Telegram?.WebApp?.initDataUnsafe?.user || null,
       isSyncing: false,
       lastBackendSync: null,
 
@@ -207,11 +206,10 @@ export const useGameStore = create(
  
       syncWithBackend: async () => {
         const state = get();
-        if (!state.tgUser) return;
+        if (!state.walletAddress) return;
         
         try {
           await api.syncState({
-            tgId: state.tgUser.id,
             walletAddress: state.walletAddress,
             taps: state.taps,
             localReward: state.localReward,
@@ -224,17 +222,16 @@ export const useGameStore = create(
       },
  
       fetchUserData: async () => {
-        const state = get();
-        if (!state.tgUser) return;
+        const { walletAddress } = get();
+        if (!walletAddress) return;
         
         try {
-          const data = await api.fetchUser(state.tgUser.id);
-          if (data && data.taps > state.taps) {
+          const data = await api.fetchUser(walletAddress);
+          if (data && data.taps > get().taps) {
             set({
               taps: data.taps,
               localReward: Number(data.local_reward),
-              energy: data.energy,
-              walletAddress: data.wallet_address || state.walletAddress
+              energy: data.energy
             });
           }
         } catch (err) {

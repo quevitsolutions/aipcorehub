@@ -40,46 +40,12 @@ export default function App() {
     }
   }, []);
 
-  // Auto-init Telegram WebApp
-  useEffect(() => {
-    if (window.Telegram?.WebApp) {
-      window.Telegram.WebApp.ready();
-      window.Telegram.WebApp.expand();
-      window.Telegram.WebApp.setHeaderColor('#05080F');
-      window.Telegram.WebApp.setBackgroundColor('#05080F');
-    }
-
-    // Parse referral from URL
-    const params = new URLSearchParams(window.location.search);
-    const ref = params.get('ref') || params.get('start');
-    if (ref) {
-      const parsed = ref.replace('ref_', '');
-      useGameStore.getState().setReferrerId(parsed);
-    }
-  }, []);
-
-  // Wallet event listeners & Auto-connect
-  useEffect(() => {
     setupListeners();
     
-    // 1. Initial Backend Sync
-    const { fetchUserData } = useGameStore.getState();
-    fetchUserData().catch(() => {});
-
-    // 2. Attempt auto-connect once on mount
-    const persisted = localStorage.getItem('aipcore-game-state');
-    if (persisted) {
-      try {
-        const state = JSON.parse(persisted);
-        if (state.state.isConnected && state.state.walletAddress) {
-          // Sync existing wallet to store
-          useGameStore.getState().setWallet(state.state.walletAddress);
-          // Gently check node data
-          connectWallet().catch(() => {});
-        }
-      } catch (e) {
-        console.warn("Auto-connect failed:", e);
-      }
+    // Initial Backend Sync only if wallet is already connected via persisted state
+    const { fetchUserData, walletAddress } = useGameStore.getState();
+    if (walletAddress) {
+      fetchUserData().catch(() => {});
     }
     
     return () => removeListeners();
