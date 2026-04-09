@@ -27,7 +27,7 @@ fi
 
 # 3. Test API Endpoint (Recursive Logic)
 echo -n "3. Testing API Health Endpoint... "
-HEALTH_CHECK=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/health)
+HEALTH_CHECK=$(docker exec aipcore-api curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/health)
 if [ "$HEALTH_CHECK" == "200" ]; then
     echo -e "${GREEN}PASSED (HTTP 200)${NC}"
 else
