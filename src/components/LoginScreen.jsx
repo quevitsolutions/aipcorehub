@@ -74,40 +74,71 @@ export default function LoginScreen({ onConnect }) {
           Connect your wallet to access your node, manage rewards, and build your team.
         </p>
 
+        {/* Primary MetaMask Button */}
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={onConnect}
           style={{
-            background: 'var(--lime)',
-            color: '#000',
+            background: 'linear-gradient(135deg, #E2761B 0%, #B65E15 100%)',
+            color: '#fff',
             border: 'none',
             borderRadius: '16px',
             padding: '18px 48px',
             fontSize: '16px',
             fontWeight: 900,
             cursor: 'pointer',
-            boxShadow: '0 0 30px rgba(163, 255, 18, 0.3)',
+            boxShadow: '0 10px 30px rgba(226, 118, 27, 0.3)',
             display: 'flex',
             alignItems: 'center',
+            justifyContent: 'center',
             gap: '12px',
-            margin: '0 auto'
+            margin: '0 auto 16px',
+            width: '100%',
+            maxWidth: '300px'
           }}
         >
-          CONNECT WALLET
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-            <polyline points="12 5 19 12 12 19"></polyline>
+          <img src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Logo.svg" alt="MM" height="24" />
+          METAMASK
+        </motion.button>
+
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={onConnect}
+          style={{
+            background: 'rgba(255,255,255,0.05)',
+            color: '#fff',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: '16px',
+            padding: '14px 32px',
+            fontSize: '14px',
+            fontWeight: 800,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '10px',
+            margin: '0 auto',
+            width: '100%',
+            maxWidth: '300px'
+          }}
+        >
+          OTHER WALLETS
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
           </svg>
         </motion.button>
 
         {/* Official SDK Bridge (Invisible fallback / Rescue) */}
-        <div style={{ marginTop: '24px', opacity: 0.8, display: 'flex', justifyContent: 'center' }}>
+        <div style={{ marginTop: '32px', opacity: 0.8, display: 'flex', justifyContent: 'center' }}>
           <appkit-button />
         </div>
 
-        <div style={{ marginTop: '30px', display: 'flex', justifyContent: 'center', gap: '24px', opacity: 0.4 }}>
-          <img src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Logo.svg" alt="MetaMask" height="20" />
+        <div style={{ marginTop: '40px', display: 'flex', justifyContent: 'center', gap: '24px', opacity: 0.4 }}>
           <img src="https://walletconnect.com/favicon.ico" alt="WalletConnect" height="20" />
           <img src="https://trustwallet.com/assets/images/favicon.png" alt="Trust Wallet" height="20" />
         </div>
