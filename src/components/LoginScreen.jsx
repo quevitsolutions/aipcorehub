@@ -46,7 +46,7 @@ export default function LoginScreen({ onConnect }) {
         <div style={{ 
           fontSize: '12px', 
           fontWeight: 800, 
-          color: 'var(--lime)', 
+          color: 'var(--neon-lime)', 
           letterSpacing: '4px',
           marginBottom: '16px'
         }}>
@@ -61,7 +61,7 @@ export default function LoginScreen({ onConnect }) {
           letterSpacing: '-0.03em'
         }}>
           MINING THE <br/> 
-          <span style={{ color: 'var(--lime)' }}>FUTURE OF AI</span>
+          <span style={{ color: 'var(--neon-lime)' }}>FUTURE OF AI</span>
         </h1>
 
         <p style={{ 
@@ -94,7 +94,7 @@ export default function LoginScreen({ onConnect }) {
                   whileTap={{ scale: 0.95 }}
                   onClick={openConnectModal}
                   style={{
-                    background: 'var(--lime)',
+                    background: 'var(--neon-lime)',
                     color: '#000',
                     border: 'none',
                     borderRadius: '16px',
