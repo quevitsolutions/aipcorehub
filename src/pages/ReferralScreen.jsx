@@ -5,10 +5,8 @@ import toast from 'react-hot-toast';
 export default function ReferralScreen() {
   const { walletAddress, nodeId, directRefs, localReward } = useGameStore();
 
-  const userId = nodeId || walletAddress?.slice(-6) || '000000';
-  const refLink = getRefLink(userId);
-  const webAppRefLink = getWebAppRefLink(userId);
-
+  const inviteLink = walletAddress ? `https://aipcore.online/?ref=${walletAddress}` : 'Connect wallet to get link';
+  
   const copyLink = (link) => {
     navigator.clipboard.writeText(link).then(() => {
       toast.success('LINK COPIED! 🔗', {
@@ -23,15 +21,12 @@ export default function ReferralScreen() {
     });
   };
 
-  const inviteLink = walletAddress ? `https://aipcore.online/?ref=${walletAddress}` : 'Connect wallet to get link';
-  
   const handleShare = () => {
     if (!walletAddress) {
       toast.error("Please connect wallet first");
       return;
     }
-    navigator.clipboard.writeText(inviteLink);
-    toast.success("Referral link copied!");
+    copyLink(inviteLink);
   };
 
   const topReferrers = [
@@ -76,8 +71,8 @@ export default function ReferralScreen() {
       <div className="partner-card" style={{ gap: 16, padding: '20px', marginBottom: '32px', background: 'linear-gradient(90deg, #1B2A4A, #05080F)' }}>
         <div style={{ fontSize: '32px' }}>💎</div>
         <div className="flex-column" style={{ flex: 1 }}>
-          <span style={{ fontSize: '15px', fontWeight: 800 }}>Telegram Premium</span>
-          <span style={{ fontSize: '12px', color: 'var(--neon-lime)', fontWeight: 700 }}>+25,000 for you and friend</span>
+          <span style={{ fontSize: '15px', fontWeight: 800 }}>Premium Node Bonus</span>
+          <span style={{ fontSize: '12px', color: 'var(--neon-lime)', fontWeight: 700 }}>+50,000 for team upgrade</span>
         </div>
         <span style={{ fontSize: '12px', opacity: 0.3 }}>〉</span>
       </div>
@@ -104,60 +99,30 @@ export default function ReferralScreen() {
       </div>
 
       {/* Referral Link & Share Container */}
-      <div style={{ padding: '20px 0', background: 'transparent' }}>
-        
-        <h4 style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-dim)', marginBottom: '8px' }}>STANDARD BOT LINK</h4>
+        <h4 style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-dim)', marginBottom: '8px' }}>MY REFERRAL LINK</h4>
         <div style={{ 
           display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.05)', 
-          borderRadius: '16px', padding: '12px 16px', marginBottom: '16px',
-          border: '1px solid rgba(255,255,255,0.1)'
+          borderRadius: '16px', padding: '12px 16px', marginBottom: '32px',
+          border: '1px solid rgba(163, 255, 18, 0.1)'
         }}>
           <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '13px', color: 'var(--text-dim)', fontWeight: 600, userSelect: 'all' }}>
-            {refLink}
+            {inviteLink}
           </div>
           <button 
-            onClick={() => copyLink(refLink)}
+            onClick={() => copyLink(inviteLink)}
             style={{ 
               background: 'none', border: 'none', color: 'var(--neon-lime)', 
               fontSize: '18px', cursor: 'pointer', paddingLeft: '16px', marginLeft: '8px',
               borderLeft: '1px solid rgba(255,255,255,0.1)'
             }}
-            title="Copy Bot Link"
           >
             📋
           </button>
         </div>
 
-        <h4 style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-dim)', marginBottom: '8px' }}>DIRECT WEBAPP LINK</h4>
-        <div style={{ 
-          display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.05)', 
-          borderRadius: '16px', padding: '12px 16px', marginBottom: '16px',
-          border: '1px solid rgba(255,255,255,0.1)'
-        }}>
-          <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '13px', color: 'var(--text-dim)', fontWeight: 600, userSelect: 'all' }}>
-            {webAppRefLink}
-          </div>
-          <button 
-            onClick={() => copyLink(webAppRefLink)}
-            style={{ 
-              background: 'none', border: 'none', color: 'var(--neon-lime)', 
-              fontSize: '18px', cursor: 'pointer', paddingLeft: '16px', marginLeft: '8px',
-              borderLeft: '1px solid rgba(255,255,255,0.1)'
-            }}
-            title="Copy WebApp Link"
-          >
-            📋
-          </button>
-        </div>
-
-        <button className="giant-btn" onClick={() => {
-          const text = "🚀 Join my AIPCore Network and let's earn BNB together!";
-          const tgUrl = `https://t.me/share/url?url=${encodeURIComponent(webAppRefLink)}&text=${encodeURIComponent(text)}`;
-          window.open(tgUrl, '_blank');
-        }}>
-          SHARE DIRECT APP TO TELEGRAM
+        <button className="giant-btn shimmer-btn" onClick={handleShare}>
+          INVITE FRIENDS
         </button>
-      </div>
     </div>
   );
 }

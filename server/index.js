@@ -18,8 +18,12 @@ app.get('/health', (req, res) => res.send('API is healthy'));
 app.get('/api/user/:walletAddress', async (req, res) => {
   const { walletAddress } = req.params;
   try {
+    // 1. Fetch user & calculate direct referral count in one query
     const result = await query(
-      'SELECT * FROM users WHERE wallet_address = $1',
+      `SELECT u.*, 
+       (SELECT COUNT(*) FROM users WHERE referrer_id = CAST(u.id AS BIGINT)) as direct_refs
+       FROM users u 
+       WHERE u.wallet_address = $1`,
       [walletAddress]
     );
     
@@ -29,10 +33,15 @@ app.get('/api/user/:walletAddress', async (req, res) => {
         'INSERT INTO users (wallet_address) VALUES ($1) RETURNING *',
         [walletAddress]
       );
-      return res.json(newUser.rows[0]);
+      return res.json({ ...newUser.rows[0], direct_refs: 0, team_size: 0 });
     }
     
-    res.json(result.rows[0]);
+    const user = result.rows[0];
+    res.json({
+      ...user,
+      direct_refs: parseInt(user.direct_refs || 0),
+      team_size: parseInt(user.direct_refs || 0) // Placeholder logic for now
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Database error' });

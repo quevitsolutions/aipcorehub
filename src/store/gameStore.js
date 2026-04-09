@@ -227,11 +227,13 @@ export const useGameStore = create(
         
         try {
           const data = await api.fetchUser(walletAddress);
-          if (data && data.taps > get().taps) {
+          if (data) {
             set({
-              taps: data.taps,
-              localReward: Number(data.local_reward),
-              energy: data.energy
+              taps: data.taps || 0,
+              localReward: Number(data.local_reward || 0),
+              energy: data.energy || 0,
+              directRefs: data.direct_refs || 0,
+              teamSize: data.team_size || 0
             });
           }
         } catch (err) {

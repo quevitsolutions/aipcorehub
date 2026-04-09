@@ -23,10 +23,21 @@ export default function App() {
     showNodePopup,
     showDailyPopup,
     lastClaimDate,
-    setShowDailyPopup
+    setShowDailyPopup,
+    setReferrerId
   } = useGameStore();
   const { connectWallet, disconnectWallet } = useContract();
   const { setupListeners, removeListeners } = useWalletLifecycle();
+
+  // Capture Referral from URL (?ref=0x...)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get('ref');
+    if (ref && /^0x[a-fA-F0-9]{40}$/.test(ref)) {
+      console.log("Captured Referrer ID:", ref);
+      setReferrerId(ref);
+    }
+  }, [setReferrerId]);
 
   // Entrance Check
   if (!isConnected) {
