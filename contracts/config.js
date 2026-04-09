@@ -1,6 +1,6 @@
 if (typeof global === 'undefined') { window.global = window; }
 import { ethers } from "ethers";
-import { createAppKit } from '@reown/appkit/react';
+import { createAppKit } from '@reown/appkit/ethers';
 import { EthersAdapter } from '@reown/appkit-adapter-ethers';
 
 export const CONTRACTS = {
@@ -11,7 +11,7 @@ export const CONTRACTS = {
 
 export const BSC_CHAIN_ID = 56;
 
-// Scalable RPC Nodes: Prioritizing Dedicated IP Node
+// Scalable RPC Nodes
 const PRIMARY_RPC = import.meta.env.VITE_PRIMARY_RPC;
 export const RPC_NODES = [
   ...(PRIMARY_RPC ? [PRIMARY_RPC] : []),
@@ -21,17 +21,15 @@ export const RPC_NODES = [
   "https://binance.llamarpc.com"
 ];
 
-// Rebuild: Resilient Fallback Provider with weighted primary node
 export const provider = new ethers.FallbackProvider(
   RPC_NODES.map((url, index) => ({
     provider: new ethers.JsonRpcProvider(url, undefined, { staticNetwork: true }),
-    priority: index === 0 ? 1 : 2, // Highest priority for index 0 (Primary)
+    priority: index === 0 ? 1 : 2,
     stallTimeout: 2000
   }))
 );
 
-// --- WalletConnect (Reown AppKit) Configuration ---
-
+// --- WalletConnect (Reown AppKit Core) ---
 const projectId = import.meta.env.VITE_PROJECT_ID || '7c1c9e999e33d5e429756ee46e4c2194';
 
 const bscChain = {
@@ -54,6 +52,7 @@ export const modal = createAppKit({
   networks: [bscChain],
   metadata,
   projectId,
+  themeMode: 'dark',
   features: {
     analytics: true
   }
@@ -63,25 +62,19 @@ export const modal = createAppKit({
 export const getProvider = () => provider;
 
 export const getSigner = async () => {
-  // If connected via AppKit, the modal handles the provider
   const { walletProvider } = modal.getWalletProvider();
   if (walletProvider) {
     const browserProvider = new ethers.BrowserProvider(walletProvider);
     return browserProvider.getSigner();
   }
-  
-  // Fallback to Window Ethereum if available
   if (window.ethereum) {
     const p = new ethers.BrowserProvider(window.ethereum);
     return p.getSigner();
   }
-  
   throw new Error("No wallet connected");
 };
 
 export const switchToBSC = async () => {
-  // AppKit handles network switching automatically if configured, 
-  // but we keep this for manual triggers
   if (window.ethereum) {
     try {
       await window.ethereum.request({

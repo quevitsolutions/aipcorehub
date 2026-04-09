@@ -17,8 +17,8 @@
     "axios": "^1.6.8",
     "react-hot-toast": "^2.4.1",
     "framer-motion": "^11.1.7",
-    "@reown/appkit": "latest",
-    "@reown/appkit-adapter-ethers": "latest"
+    "@reown/appkit": "1.1.9",
+    "@reown/appkit-adapter-ethers": "1.1.9"
   },
   "devDependencies": {
     "@types/react": "^18.3.1",
