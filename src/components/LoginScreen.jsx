@@ -133,15 +133,7 @@ export default function LoginScreen({ onConnect }) {
           </svg>
         </motion.button>
 
-        {/* Official SDK Bridge (Invisible fallback / Rescue) */}
-        <div style={{ marginTop: '32px', opacity: 0.8, display: 'flex', justifyContent: 'center' }}>
-          <appkit-button />
-        </div>
-
-        <div style={{ marginTop: '40px', display: 'flex', justifyContent: 'center', gap: '24px', opacity: 0.4 }}>
-          <img src="https://walletconnect.com/favicon.ico" alt="WalletConnect" height="20" />
-          <img src="https://trustwallet.com/assets/images/favicon.png" alt="Trust Wallet" height="20" />
-        </div>
+        <div style={{ marginTop: '40px' }} />
       </motion.div>
 
       {/* Footer Branding */}
