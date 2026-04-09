@@ -101,6 +101,11 @@ export default function LoginScreen({ onConnect }) {
           </svg>
         </motion.button>
 
+        {/* Official SDK Bridge (Invisible fallback / Rescue) */}
+        <div style={{ marginTop: '24px', opacity: 0.8, display: 'flex', justifyContent: 'center' }}>
+          <appkit-button />
+        </div>
+
         <div style={{ marginTop: '30px', display: 'flex', justifyContent: 'center', gap: '24px', opacity: 0.4 }}>
           <img src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Logo.svg" alt="MetaMask" height="20" />
           <img src="https://walletconnect.com/favicon.ico" alt="WalletConnect" height="20" />
