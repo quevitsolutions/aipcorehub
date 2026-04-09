@@ -62,7 +62,15 @@ export const modal = createAppKit({
   featuredWalletIds: [
     'c57ca95b47569778ef461d6ce6d376ca3005bcc040a4555986927d2446f28cfc', // MetaMask
     '4622a2b2d6af1c9844944291e5e7351a6659c037990038435f3d3d6667104a39'  // Trust Wallet
-  ]
+  ],
+  themeMode: 'dark',
+  themeVariables: {
+    '--w3m-accent': '#A3FF12',
+    '--w3m-background-color': '#05080F',
+    '--w3m-color-mix': '#A3FF12',
+    '--w3m-color-mix-strength': 15,
+    '--w3m-border-radius-master': '2px',
+  }
 });
 
 // Helpers
