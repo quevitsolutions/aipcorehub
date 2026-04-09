@@ -17,7 +17,7 @@ export const RPC_NODES = [
   "https://bsc-dataseed1.ninicoin.io"
 ];
 
-const projectId = import.meta.env.VITE_PROJECT_ID || '85bbe92e974bca9f67c7910e0d1365ea';
+const projectId = import.meta.env.VITE_PROJECT_ID || '526553896504a7495027588eaaa51614';
 
 const bscChain = {
   chainId: BSC_CHAIN_ID,
@@ -39,7 +39,16 @@ export const modal = createAppKit({
   networks: [bscChain],
   metadata,
   projectId,
-  allWallets: 'SHOW', // Mandatory root property for v1 list loading
+  featuredWalletIds: [
+    'c57ca95b47569778a828d19178114f4db188b89b763c899ba0be274e5a26788b', // MetaMask
+    '4622a2b2d6af1c9844944291e5e7351a6aa24cd7b23099efac1b2fd875da31a0'  // Trust Wallet
+  ],
+  features: {
+    analytics: true,
+    allWallets: true,
+    email: false,
+    socials: false,
+  },
   themeMode: 'dark',
   themeVariables: {
     '--w3m-accent': '#A3FF12',
