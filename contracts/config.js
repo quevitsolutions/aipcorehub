@@ -1,6 +1,6 @@
 if (typeof global === 'undefined') { window.global = window; }
 import { ethers } from "ethers";
-import { createAppKit } from '@reown/appkit/react';
+import { createAppKit } from '@reown/appkit'; // Core SDK for stable JS initialization
 import { EthersAdapter } from '@reown/appkit-adapter-ethers';
 
 export const CONTRACTS = {
@@ -34,11 +34,15 @@ const metadata = {
   icons: ['https://aipcore.online/favicon.ico']
 };
 
+// Explicit Adapter Instantiation
+const ethersAdapter = new EthersAdapter();
+
+// Core AppKit Initialization (Stability Fix for "Adapter not found")
 export const modal = createAppKit({
-  adapters: [new EthersAdapter()],
+  adapters: [ethersAdapter],
   networks: [bscChain],
-  projectId,
   metadata,
+  projectId,
   features: {
     analytics: true,
     allWallets: true,
