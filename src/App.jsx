@@ -40,6 +40,7 @@ export default function App() {
     }
   }, []);
 
+  useEffect(() => {
     setupListeners();
     
     // Initial Backend Sync only if wallet is already connected via persisted state
@@ -49,8 +50,7 @@ export default function App() {
     }
     
     return () => removeListeners();
-    // eslint-disable-next-line
-  }, []); 
+  }, []);
 
   return (
     <div className="app-container">
