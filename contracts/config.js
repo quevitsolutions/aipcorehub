@@ -16,6 +16,8 @@ const PRIMARY_RPC = import.meta.env.VITE_PRIMARY_RPC;
 export const RPC_NODES = [
   ...(PRIMARY_RPC ? [PRIMARY_RPC] : []),
   "https://bsc-dataseed.binance.org",
+  "https://bsc-dataseed1.defibit.io",
+  "https://bsc-dataseed1.ninicoin.io",
   "https://rpc.ankr.com/bsc",
   "https://nodes.pancakeswap.com/bsc-mainnet",
   "https://binance.llamarpc.com"
