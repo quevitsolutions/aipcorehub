@@ -12,9 +12,11 @@ export const CONTRACTS = {
 export const BSC_CHAIN_ID = 56;
 
 export const RPC_NODES = [
-  "https://bsc-dataseed.binance.org",
+  import.meta.env.VITE_BSC_MAINNET_RPC || "https://bsc-dataseed.binance.org",
+  "https://binance.llamarpc.com",
   "https://bsc-dataseed1.defibit.io",
-  "https://bsc-dataseed1.ninicoin.io"
+  "https://1rpc.io/bnb",
+  "https://rpc.ankr.com/bsc"
 ];
 
 const projectId = import.meta.env.VITE_PROJECT_ID || 'ad615b7c3d0dc4e3aee306104d15c745';
