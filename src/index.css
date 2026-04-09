@@ -5,8 +5,11 @@
 
 :root {
   --neon-lime:   #A3FF12;
-  --bg-dark:     #05080F;
-  --bg-glass:    rgba(13, 20, 36, 0.85);
+  --bg-dark:     #0D1117; /* IDE Base Background */
+  --bg-card:     #161B22; /* IDE Editor Surface */
+  --text-white:  #E6EDF3; /* Crisp IDE Text */
+  --text-dim:    #8B949E; /* IDE Comment/Muted Text */
+  --bg-glass:    rgba(22, 27, 34, 0.85);
   --glass-blur:  blur(25px);
   --neon-glow:   0 0 20px rgba(163, 255, 18, 0.2);
   --radius-xl:    32px;
@@ -32,7 +35,7 @@ html, body, #root {
   height: 100vh;
   margin: 0 auto;
   position: relative;
-  background: radial-gradient(circle at 50% 50%, #15203A 0%, var(--bg-dark) 100%);
+  background: var(--bg-dark);
   display: flex;
   flex-direction: column;
 }
