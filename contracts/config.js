@@ -54,8 +54,15 @@ export const modal = createAppKit({
   projectId,
   themeMode: 'dark',
   features: {
-    analytics: true
-  }
+    analytics: true,
+    allWallets: true,
+    email: false,
+    socials: false,
+  },
+  featuredWalletIds: [
+    'c57ca95b47569778ef461d6ce6d376ca3005bcc040a4555986927d2446f28cfc', // MetaMask
+    '4622a2b2d6af1c9844944291e5e7351a6659c037990038435f3d3d6667104a39'  // Trust Wallet
+  ]
 });
 
 // Helpers
