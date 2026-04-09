@@ -17,7 +17,7 @@ export const RPC_NODES = [
   "https://bsc-dataseed1.ninicoin.io"
 ];
 
-const projectId = import.meta.env.VITE_PROJECT_ID || '526553896504a7495027588eaaa51614';
+const projectId = import.meta.env.VITE_PROJECT_ID || 'ad615b7c3d0dc4e3aee306104d15c745';
 
 const bscChain = {
   chainId: BSC_CHAIN_ID,
