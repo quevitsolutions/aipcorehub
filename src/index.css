@@ -255,14 +255,7 @@ html, body, #root {
   100% { transform: translateX(100%) rotate(45deg); }
 }
 
-/* AppKit Overrides */
-w3m-modal-container {
-  backdrop-filter: var(--glass-blur) !important;
-}
-w3m-modal-card {
-  background: var(--bg-glass) !important;
-  border: 1px solid rgba(163, 255, 18, 0.1) !important;
-}
+/* AppKit Overrides are handled in JS via themeVariables */
 
 .modal-pill {
   width: 40px; height: 4px;
