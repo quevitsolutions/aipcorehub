@@ -1,7 +1,8 @@
 if (typeof global === 'undefined') { window.global = window; }
 import { ethers } from "ethers";
-import { createAppKit } from '@reown/appkit/ethers';
+import { createAppKit } from '@reown/appkit';
 import { EthersAdapter } from '@reown/appkit-adapter-ethers';
+import { bsc } from '@reown/appkit/networks';
 
 export const CONTRACTS = {
   AIPCORE:    import.meta.env.VITE_AIPCORE_ADDRESS || "0xB6CbD70147835D4eA93B4a768D8e101B6E9A420f",
@@ -32,14 +33,6 @@ export const provider = new ethers.FallbackProvider(
 // --- WalletConnect (Reown AppKit Core) ---
 const projectId = import.meta.env.VITE_PROJECT_ID || '7c1c9e999e33d5e429756ee46e4c2194';
 
-const bscChain = {
-  chainId: BSC_CHAIN_ID,
-  name: 'BNB Smart Chain',
-  currency: 'BNB',
-  explorerUrl: 'https://bscscan.com',
-  rpcUrl: RPC_NODES[0]
-};
-
 const metadata = {
   name: 'AIPCore Hub',
   description: 'AI-Powered Mining Dashboard',
@@ -49,7 +42,7 @@ const metadata = {
 
 export const modal = createAppKit({
   adapters: [new EthersAdapter()],
-  networks: [bscChain],
+  networks: [bsc],
   metadata,
   projectId,
   themeMode: 'dark',
