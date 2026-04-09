@@ -1,109 +1,77 @@
 import { useGameStore } from '../store/gameStore.js';
 import { useContract } from '../hooks/useContract.js';
-import { shortAddr } from '../utils/format.js';
 
-export default function TopBar({ onConnect, onDisconnect }) {
-  const { walletAddress, isConnected, bnbBalance, hasNode, nodeTier } = useGameStore();
+export default function TopBar() {
+  const { walletAddress, isConnected } = useGameStore();
   const { loadNodeData } = useContract();
 
   return (
-    <div className="top-bar" style={{ 
-      background: 'rgba(10, 17, 31, 0.9)', 
-      borderBottom: '1px solid rgba(255,255,255,0.05)',
-      padding: '16px'
+    <div className="top-bar-fixed" style={{ 
+      position: 'fixed',
+      top: 0, left: 0, right: 0,
+      background: 'rgba(5, 8, 15, 0.85)', 
+      backdropFilter: 'blur(15px)',
+      WebkitBackdropFilter: 'blur(15px)',
+      borderBottom: '1px solid rgba(163, 255, 18, 0.1)',
+      padding: '12px 20px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      zIndex: 1100,
+      height: '64px'
     }}>
-      <div className="logo" style={{ 
-        color: 'var(--lime)', 
-        fontSize: '22px', 
-        fontWeight: 900,
-        letterSpacing: '-0.02em',
-        background: 'none'
-      }}>
-        AIPCORE <span style={{ fontSize: '10px', opacity: 0.5, fontWeight: 700 }}>v2.0</span>
+      {/* Branding Left */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ 
+          width: '32px', height: '32px', 
+          background: 'var(--neon-lime)', 
+          borderRadius: '8px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: '18px', color: '#000', fontWeight: 900,
+          boxShadow: '0 0 15px rgba(163, 255, 18, 0.3)'
+        }}>A</div>
+        <div style={{ 
+          color: '#fff', 
+          fontSize: '18px', 
+          fontWeight: 900,
+          letterSpacing: '-0.02em'
+        }}>
+          AIPCORE <span style={{ fontSize: '10px', opacity: 0.5, color: 'var(--neon-lime)' }}>PRO</span>
+        </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <button 
-          onClick={async (e) => {
-            e.currentTarget.style.transform = 'rotate(360deg)';
-            e.currentTarget.style.transition = 'transform 0.5s ease-in-out';
-            const { fetchUserData } = useGameStore.getState();
-            await Promise.allSettled([
-              loadNodeData(walletAddress),
-              fetchUserData()
-            ]);
-            setTimeout(() => e.currentTarget.style.transform = 'rotate(0deg)', 500);
-          }}
-          disabled={!isConnected}
-          style={{
-            background: 'rgba(255,255,255,0.05)',
-            border: 'none', borderRadius: '50%',
-            width: '32px', height: '32px',
-            color: isConnected ? '#fff' : '#444', 
-            cursor: isConnected ? 'pointer' : 'default',
-            display: 'flex', alignItems: 'center', justifyContent: 'center'
-          }}
-        >
-          ↻
-        </button>
+      {/* Wallet Actions Right */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
         {isConnected && (
-          <div style={{ 
-            background: 'rgba(255,255,255,0.05)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: '12px',
-            padding: '8px 12px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            fontSize: '12px',
-            fontWeight: 800
-          }}>
-            <span style={{ color: 'var(--lime)' }}>{bnbBalance}</span>
-            <span style={{ opacity: 0.5 }}>BNB</span>
-          </div>
-        )}
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <button
-            className="wallet-btn"
-            onClick={onConnect}
-            style={{ 
-              background: isConnected ? 'rgba(163, 255, 18, 0.1)' : 'rgba(255,255,255,0.05)',
-              color: isConnected ? 'var(--lime)' : '#FFFFFF',
-              border: isConnected ? '1px solid rgba(163, 255, 18, 0.2)' : '1px solid rgba(255,255,255,0.1)',
-              borderRadius: '12px',
-              padding: '8px 16px',
-              fontWeight: 700,
-              fontSize: '13px',
-              cursor: 'pointer'
+          <button 
+            onClick={async (e) => {
+              const icon = e.currentTarget.querySelector('span');
+              if (icon) icon.style.transform = 'rotate(360deg)';
+              const { fetchUserData } = useGameStore.getState();
+              await Promise.allSettled([
+                loadNodeData(walletAddress),
+                fetchUserData()
+              ]);
+              if (icon) setTimeout(() => icon.style.transform = 'rotate(0deg)', 500);
+            }}
+            className="shimmer-btn"
+            style={{
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.1)', 
+              borderRadius: '10px',
+              width: '36px', height: '36px',
+              color: '#fff', 
+              cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
             }}
           >
-            {isConnected ? shortAddr(walletAddress) : 'CONNECT'}
+            <span style={{ transition: 'transform 0.5s ease' }}>↻</span>
           </button>
+        )}
 
-          {isConnected && (
-            <button 
-              onClick={onDisconnect}
-              style={{
-                background: 'rgba(255, 59, 48, 0.1)',
-                border: '1px solid rgba(255, 59, 48, 0.2)',
-                borderRadius: '10px',
-                padding: '8px',
-                color: '#FF3B30',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-              title="Disconnect Wallet"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                <polyline points="16 17 21 12 16 7"></polyline>
-                <line x1="21" y1="12" x2="9" y2="12"></line>
-              </svg>
-            </button>
-          )}
+        {/* Official SDK Connection Bridge */}
+        <div style={{ transform: 'scale(0.9)', transformOrigin: 'right center' }}>
+          <appkit-button balance="hide" />
         </div>
       </div>
     </div>

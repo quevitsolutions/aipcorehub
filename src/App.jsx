@@ -97,6 +97,7 @@ export default function App() {
       <TopBar onConnect={connectWallet} onDisconnect={disconnectWallet} />
 
       <div className="page" style={{ 
+        paddingTop: '70px',
         paddingBottom: activeTab === 'earn' ? '220px' : '100px',
         display: 'flex', flexDirection: 'column' 
       }}>
