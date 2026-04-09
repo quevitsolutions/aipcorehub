@@ -1,5 +1,5 @@
 import { useMemo, useEffect } from 'react';
-import { useAppKitAccount, useAppKitProvider, useAppKit } from '@reown/appkit/react';
+import { useAppKitAccount, useAppKitProvider, useAppKit, useDisconnect } from '@reown/appkit/react';
 import { ethers } from 'ethers';
 import { blockchain } from '../services/blockchain.js';
 import { useGameStore } from "../store/gameStore.js";
@@ -13,6 +13,7 @@ export const useContract = () => {
   const updateChainData = useGameStore(s => s.updateChainData);
   const setBnbBalance = useGameStore(s => s.setBnbBalance);
   const { open } = useAppKit();
+  const { disconnect } = useDisconnect();
 
   const loadNodeData = async (address, retries = 3) => {
     if (!address) return;
@@ -45,6 +46,7 @@ export const useContract = () => {
   return useMemo(() => ({
     loadNodeData, fetchBnbBalance, 
     connectWallet: () => open(),
+    disconnectWallet: () => disconnect(),
     createNode: async (sponsorId = 1) => {
       const tid = toast.loading("Activating Node...");
       try {

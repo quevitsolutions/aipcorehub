@@ -25,7 +25,7 @@ export default function App() {
     lastClaimDate,
     setShowDailyPopup
   } = useGameStore();
-  const { connectWallet } = useContract();
+  const { connectWallet, disconnectWallet } = useContract();
   const { setupListeners, removeListeners } = useWalletLifecycle();
 
   // Entrance Check
