@@ -40,31 +40,24 @@ export default function App() {
     }
   }, [setReferrerId]);
 
-  // Entrance Check
-  if (!isConnected) {
-    return (
-      <div className="app-container">
-        <LoginScreen onConnect={connectWallet} />
-        <Toaster position="top-center" />
-      </div>
-    );
-  }
-
   // Energy recharge every 3s
   useEffect(() => {
+    if (!isConnected) return;
     const id = setInterval(rechargeEnergy, 3000);
     return () => clearInterval(id);
-  }, [rechargeEnergy]);
+  }, [rechargeEnergy, isConnected]);
 
   // Check daily streak on load
   useEffect(() => {
+    if (!isConnected) return;
     const today = new Date().toDateString();
     if (lastClaimDate !== today) {
       setTimeout(() => setShowDailyPopup(true), 1200);
     }
-  }, []);
+  }, [isConnected, lastClaimDate, setShowDailyPopup]);
 
   useEffect(() => {
+    if (!isConnected) return;
     setupListeners();
     
     // Initial Backend Sync only if wallet is already connected via persisted state
@@ -74,7 +67,17 @@ export default function App() {
     }
     
     return () => removeListeners();
-  }, []);
+  }, [isConnected, setupListeners, removeListeners]);
+
+  // Entrance Check
+  if (!isConnected) {
+    return (
+      <div className="app-container">
+        <LoginScreen onConnect={connectWallet} />
+        <Toaster position="top-center" />
+      </div>
+    );
+  }
 
   return (
     <div className="app-container">
