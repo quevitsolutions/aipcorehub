@@ -1,22 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { useGameStore } from '../store/gameStore.js';
 import { useContract } from '../hooks/useContract.js';
 import TopBar from '../components/TopBar.jsx';
 
-const FEATURES = [
-  { icon: '⬡', label: 'MINING ENGINE', desc: '24/7 Autonomous $AIP Token Mining', color: '#CBFF01' },
-  { icon: '💎', label: 'BINARY MATRIX', desc: 'Up to 18 Tiers of Team Rewards', color: '#4FFFFF' },
-  { icon: '🏊', label: 'GLOBAL POOL', desc: 'Share of Protocol Revenue Pool', color: '#FF6BFF' },
-  { icon: '🚀', label: 'UNLIMITED SCALE', desc: 'Build a Global Network of Miners', color: '#FF9F43' },
-];
-
-const STATS = [
-  { label: 'ACTIVE MINERS', targetValue: 12489, format: v => v.toLocaleString() },
-  { label: 'TOTAL DISTRIBUTED', targetValue: 2841500, format: v => `$${(v/1000).toFixed(0)}K` },
-  { label: 'MAX HOURLY RATE', targetValue: 200, format: v => `${v} 🪙` },
-];
-
+/* ─── Live Stat Counter ─── */
 function AnimatedNumber({ target, format }) {
   const [current, setCurrent] = useState(0);
   useEffect(() => {
@@ -32,6 +20,68 @@ function AnimatedNumber({ target, format }) {
   return <span>{format(current)}</span>;
 }
 
+/* ─── Income Stream Data (from contract ABIs) ─── */
+const INCOME_STREAMS = [
+  {
+    icon: '💰',
+    title: 'SPONSOR / REFERRAL INCOME',
+    badge: '10% PER REGISTRATION & UPGRADE',
+    color: '#CBFF01',
+    desc: 'Earn 10% of every BNB paid by your direct referrals — at registration AND each time they unlock a new tier, all the way up to Level 18. One sponsor connection = lifetime passive income.',
+    rows: [
+      { label: 'Referral Registration', value: '10% of entry cost' },
+      { label: 'Tier 1 → 18 Upgrades', value: '10% per upgrade' },
+      { label: 'Max Levels', value: '18 Tiers' },
+      { label: 'Duration', value: 'Lifetime' },
+    ]
+  },
+  {
+    icon: '🔷',
+    title: 'BINARY MATRIX INCOME',
+    badge: '70% FROM ALL VOLUME',
+    color: '#4FFFFF',
+    desc: '70% of every registration and upgrade is distributed to eligible upline nodes via the binary matrix. When you reach the required tier, the matrix works for you — even from your downline\'s downlines.',
+    rows: [
+      { label: 'Pool Share', value: '70% of All Volume' },
+      { label: 'Distribution', value: 'Binary Matrix Upline' },
+      { label: 'Qualifying Trigger', value: 'Matching Tier Required' },
+      { label: 'Depth', value: '18 Matrix Levels' },
+    ]
+  },
+  {
+    icon: '⬡',
+    title: 'LEVEL / TIER INCOME',
+    badge: 'UP TO 18 ACTIVE LEVELS',
+    color: '#FF6BFF',
+    desc: 'As you upgrade through all 18 tiers, each level unlocks higher mining rates and deeper matrix earning eligibility. Higher tiers receive a larger share of network volume from deeper layers.',
+    rows: [
+      { label: 'Tier 1', value: 'Base Entry Earnings' },
+      { label: 'Tier 6 (Self)', value: 'Mid-Network Eligible' },
+      { label: 'Tier 18', value: 'Maximum Depth + Rate' },
+      { label: 'Mining Rate', value: '100 → 200 🪙/hr' },
+    ]
+  },
+  {
+    icon: '🏊',
+    title: 'GLOBAL REWARD POOL',
+    badge: 'QUALIFIED MEMBERS ONLY',
+    color: '#FF9F43',
+    desc: 'Qualified nodes earn a share of the protocol\'s global revenue pool. Eligibility unlocks when you meet specific direct count, team size, and tier milestones — then income flows automatically.',
+    rows: [
+      { label: 'Pool 1', value: 'Starter Pool Access' },
+      { label: 'Pool 2+', value: 'Larger Network Share' },
+      { label: 'Distribution', value: 'Smart Contract Auto-Pay' },
+      { label: 'Claim', value: 'On-Chain Anytime' },
+    ]
+  },
+];
+
+const PROTOCOL_STATS = [
+  { label: 'ACTIVE MINERS', target: 12489, format: v => v.toLocaleString() },
+  { label: 'PROTOCOL VOLUME', target: 2841500, format: v => `$${(v/1000).toFixed(0)}K` },
+  { label: 'INCOME STREAMS', target: 4, format: v => `${v} TYPES` },
+];
+
 export default function MarketingScreen({ onConnect, onDisconnect }) {
   const { referrerId, isConnected, bnbBalance } = useGameStore();
   const { createNode, connectWallet } = useContract();
@@ -41,8 +91,8 @@ export default function MarketingScreen({ onConnect, onDisconnect }) {
   const hasEnoughBnb = parseFloat(bnbBalance || '0') >= 0.01;
 
   useEffect(() => {
-    const timer = setTimeout(() => setShowStats(true), 800);
-    return () => clearTimeout(timer);
+    const t = setTimeout(() => setShowStats(true), 600);
+    return () => clearTimeout(t);
   }, []);
 
   const handleActivate = async () => {
@@ -54,290 +104,197 @@ export default function MarketingScreen({ onConnect, onDisconnect }) {
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: '#05080F',
-      color: '#fff',
-      display: 'flex',
-      flexDirection: 'column',
-      overflowX: 'hidden',
-    }}>
-      {/* Background Glows */}
-      <div style={{
-        position: 'fixed', top: '-20%', left: '-20%', width: '60%', height: '60%',
-        background: 'radial-gradient(circle, rgba(203, 255, 1, 0.06) 0%, transparent 70%)',
-        pointerEvents: 'none', zIndex: 0
-      }} />
-      <div style={{
-        position: 'fixed', bottom: '-20%', right: '-20%', width: '70%', height: '70%',
-        background: 'radial-gradient(circle, rgba(79, 255, 255, 0.04) 0%, transparent 70%)',
-        pointerEvents: 'none', zIndex: 0
-      }} />
+    <div style={{ minHeight: '100vh', background: '#05080F', color: '#fff', overflowX: 'hidden', fontFamily: 'Outfit, sans-serif' }}>
+      {/* Ambient Glows */}
+      <div style={{ position: 'fixed', top: '-20%', left: '-15%', width: '55%', height: '55%', background: 'radial-gradient(circle, rgba(203,255,1,0.07) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
+      <div style={{ position: 'fixed', bottom: '-20%', right: '-15%', width: '60%', height: '60%', background: 'radial-gradient(circle, rgba(79,255,255,0.05) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
 
-      {/* Top Bar */}
       <TopBar onConnect={onConnect} onDisconnect={onDisconnect} />
 
-      <div style={{ position: 'relative', zIndex: 1, paddingTop: '80px', paddingBottom: '120px' }}>
+      <div style={{ position: 'relative', zIndex: 1, paddingTop: 80, paddingBottom: 120 }}>
 
-        {/* 🔒 RESTRICTED BADGE */}
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          style={{ textAlign: 'center', padding: '0 20px 12px' }}
-        >
+        {/* ─ RESTRICTED BADGE ─ */}
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+          style={{ textAlign: 'center', padding: '12px 20px' }}>
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: 8,
-            background: 'rgba(255, 59, 48, 0.1)',
-            border: '1px solid rgba(255, 59, 48, 0.3)',
-            borderRadius: 40, padding: '6px 16px',
-            fontSize: 11, fontWeight: 900, color: '#FF3B30', letterSpacing: 2
+            background: 'rgba(255,59,48,0.12)', border: '1px solid rgba(255,59,48,0.35)',
+            borderRadius: 40, padding: '7px 18px', fontSize: 11, fontWeight: 900, color: '#FF3B30', letterSpacing: 2
           }}>
             🔒 PROTOCOL ACCESS RESTRICTED
           </div>
         </motion.div>
 
-        {/* HERO */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.7 }}
-          style={{ textAlign: 'center', padding: '20px 24px 32px' }}
-        >
-          <h1 style={{
-            fontSize: 'clamp(32px, 9vw, 52px)',
-            fontWeight: 900,
-            lineHeight: 1.1,
-            letterSpacing: '-0.04em',
-            marginBottom: 16,
-          }}>
+        {/* ─ HERO ─ */}
+        <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.7 }}
+          style={{ textAlign: 'center', padding: '12px 24px 28px' }}>
+          <h1 style={{ fontSize: 'clamp(30px, 9vw, 50px)', fontWeight: 900, lineHeight: 1.1, letterSpacing: '-0.04em', marginBottom: 14 }}>
             ACTIVATE YOUR<br />
-            <span style={{
-              color: 'var(--neon-lime)',
-              textShadow: '0 0 40px rgba(203,255,1,0.5)',
-            }}>
-              MINING NODE
-            </span>
+            <span style={{ color: 'var(--neon-lime)', textShadow: '0 0 40px rgba(203,255,1,0.5)' }}>MINING NODE</span>
           </h1>
-          <p style={{
-            fontSize: 15, opacity: 0.5, maxWidth: 300,
-            margin: '0 auto', lineHeight: 1.6, fontWeight: 500
-          }}>
-            One-time node activation unlocks 24/7 automatic mining, team bonuses, and protocol pool rewards.
+          <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.75)', maxWidth: 320, margin: '0 auto', lineHeight: 1.6, fontWeight: 500 }}>
+            One activation. Four income streams. 18 levels deep. Passive rewards 24/7.
           </p>
         </motion.div>
 
-        {/* STATS ROW */}
+        {/* ─ LIVE STATS ─ */}
         {showStats && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            style={{
-              display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
-              gap: 1, margin: '0 0 8px',
-              background: 'rgba(255,255,255,0.04)',
-              borderTop: '1px solid rgba(255,255,255,0.05)',
-              borderBottom: '1px solid rgba(255,255,255,0.05)',
-            }}
-          >
-            {STATS.map((s, i) => (
-              <div key={i} style={{
-                padding: '16px 8px', textAlign: 'center',
-                borderRight: i < STATS.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none'
-              }}>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6 }}
+            style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', borderTop: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.06)', marginBottom: 8 }}>
+            {PROTOCOL_STATS.map((s, i) => (
+              <div key={i} style={{ padding: '16px 8px', textAlign: 'center', borderRight: i < 2 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
                 <div style={{ fontSize: 20, fontWeight: 900, color: 'var(--neon-lime)' }}>
-                  <AnimatedNumber target={s.targetValue} format={s.format} />
+                  <AnimatedNumber target={s.target} format={s.format} />
                 </div>
-                <div style={{ fontSize: 9, fontWeight: 800, color: 'var(--text-dim)', marginTop: 4, letterSpacing: 1 }}>
-                  {s.label}
-                </div>
+                <div style={{ fontSize: 9, fontWeight: 800, color: '#fff', marginTop: 4, letterSpacing: 1, opacity: 0.6 }}>{s.label}</div>
               </div>
             ))}
           </motion.div>
         )}
 
-        {/* FEATURES GRID */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5, duration: 0.6 }}
-          style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, padding: '24px 20px' }}
-        >
-          {FEATURES.map((f, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.4 + i * 0.1 }}
-              style={{
-                background: 'rgba(255,255,255,0.02)',
-                border: `1px solid ${f.color}22`,
-                borderRadius: 24, padding: '20px 16px',
-                display: 'flex', flexDirection: 'column', alignItems: 'center',
-                textAlign: 'center', gap: 10,
-              }}
-            >
-              <div style={{
-                width: 56, height: 56, borderRadius: 18,
-                background: `${f.color}15`,
-                border: `1px solid ${f.color}33`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 26, boxShadow: `0 0 20px ${f.color}22`
-              }}>
-                {f.icon}
-              </div>
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 900, color: f.color, letterSpacing: 1, marginBottom: 4 }}>
-                  {f.label}
-                </div>
-                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', fontWeight: 600, lineHeight: 1.4 }}>
-                  {f.desc}
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </motion.div>
-
-        {/* EARNING SIMULATION CARD */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8 }}
-          style={{
-            margin: '0 20px 32px',
-            background: 'linear-gradient(135deg, rgba(203,255,1,0.06) 0%, rgba(203,255,1,0.02) 100%)',
-            border: '1px solid rgba(203,255,1,0.15)',
-            borderRadius: 28, padding: 24,
-          }}
-        >
-          <div style={{ fontSize: 11, fontWeight: 900, color: 'var(--neon-lime)', letterSpacing: 2, marginBottom: 16 }}>
-            ⚡ POTENTIAL EARNINGS PREVIEW
+        {/* ─ 4 INCOME STREAMS ─ */}
+        <div style={{ padding: '20px 20px 0' }}>
+          <div style={{ fontSize: 11, fontWeight: 900, color: 'var(--neon-lime)', letterSpacing: 3, marginBottom: 16, textAlign: 'center' }}>
+            ◈ 4 INCOME STREAMS FROM CONTRACTS
           </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {INCOME_STREAMS.map((stream, i) => (
+              <motion.div key={i}
+                initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 + i * 0.1 }}
+                style={{
+                  background: `linear-gradient(135deg, ${stream.color}09 0%, rgba(255,255,255,0.01) 100%)`,
+                  border: `1px solid ${stream.color}25`,
+                  borderLeft: `3px solid ${stream.color}`,
+                  borderRadius: 20, padding: '20px',
+                }}
+              >
+                {/* Header */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+                  <div style={{
+                    width: 44, height: 44, borderRadius: 14, flexShrink: 0,
+                    background: `${stream.color}18`, border: `1px solid ${stream.color}40`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 22, boxShadow: `0 0 16px ${stream.color}20`
+                  }}>
+                    {stream.icon}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 900, color: '#fff', letterSpacing: 0.5 }}>{stream.title}</div>
+                    <div style={{ fontSize: 10, fontWeight: 800, color: stream.color, marginTop: 3, letterSpacing: 1 }}>{stream.badge}</div>
+                  </div>
+                </div>
+
+                {/* Description */}
+                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.78)', lineHeight: 1.6, fontWeight: 500, margin: '0 0 14px' }}>
+                  {stream.desc}
+                </p>
+
+                {/* Data Rows */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 12px' }}>
+                  {stream.rows.map((row, j) => (
+                    <div key={j} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 10px', background: 'rgba(255,255,255,0.03)', borderRadius: 8 }}>
+                      <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.65)', fontWeight: 700 }}>{row.label}</span>
+                      <span style={{ fontSize: 10, color: '#fff', fontWeight: 900 }}>{row.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+
+        {/* ─ EARNINGS SIMULATION ─ */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8 }}
+          style={{ margin: '24px 20px', background: 'linear-gradient(135deg, rgba(203,255,1,0.07) 0%, rgba(203,255,1,0.02) 100%)', border: '1px solid rgba(203,255,1,0.18)', borderRadius: 24, padding: 22 }}>
+          <div style={{ fontSize: 11, fontWeight: 900, color: 'var(--neon-lime)', letterSpacing: 2, marginBottom: 16 }}>⚡ MINING EARNINGS PREVIEW</div>
           {[
-            { period: 'Per Hour', value: '200 🪙', note: 'Tier 2 Rate' },
-            { period: 'Per Day', value: '4,800 🪙', note: 'Auto-Mined While Offline' },
+            { period: 'Per Hour', value: '200 🪙', note: 'Tier 2 Auto-Mining Rate' },
+            { period: 'Per Day', value: '4,800 🪙', note: 'Offline Passive Mining' },
             { period: 'Per Month', value: '144,000 🪙', note: 'Before Team Multipliers' },
-          ].map((row, i) => (
-            <div key={i} style={{
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              padding: '10px 0',
-              borderBottom: i < 2 ? '1px solid rgba(255,255,255,0.04)' : 'none',
-            }}>
+            { period: 'Referral Bonus', value: '10% BNB', note: 'Each Direct Referral Entry' },
+            { period: 'Matrix Income', value: '70% Share', note: 'When Matrix Eligible' },
+          ].map((row, i, arr) => (
+            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: i < arr.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 800 }}>{row.period}</div>
-                <div style={{ fontSize: 10, color: 'var(--text-dim)', fontWeight: 700 }}>{row.note}</div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#fff' }}>{row.period}</div>
+                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', fontWeight: 700, marginTop: 2 }}>{row.note}</div>
               </div>
-              <div style={{ fontSize: 18, fontWeight: 900, color: 'var(--neon-lime)' }}>{row.value}</div>
+              <div style={{ fontSize: 16, fontWeight: 900, color: 'var(--neon-lime)' }}>{row.value}</div>
             </div>
           ))}
         </motion.div>
 
-        {/* REFERRAL BADGE */}
+        {/* ─ HOW IT WORKS ─ */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.0 }}
+          style={{ margin: '0 20px 24px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 24, padding: 22 }}>
+          <div style={{ fontSize: 11, fontWeight: 900, color: '#fff', letterSpacing: 2, marginBottom: 16 }}>◆ HOW IT WORKS</div>
+          {[
+            { step: '01', text: 'Connect your BSC wallet', sub: 'MetaMask or WalletConnect' },
+            { step: '02', text: 'Activate your Mining Node', sub: 'One-time BNB payment to contract' },
+            { step: '03', text: 'Start mining $AIP instantly', sub: '100 coins/hr auto-credited' },
+            { step: '04', text: 'Sponsor others & earn 10%', sub: 'From registration + all 18 upgrades' },
+            { step: '05', text: 'Upgrade tiers to unlock matrix', sub: 'Earn 70% of downline volume' },
+          ].map((item, i) => (
+            <div key={i} style={{ display: 'flex', gap: 14, padding: '10px 0', borderBottom: i < 4 ? '1px solid rgba(255,255,255,0.04)' : 'none', alignItems: 'flex-start' }}>
+              <div style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(203,255,1,0.1)', border: '1px solid rgba(203,255,1,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 900, color: 'var(--neon-lime)', flexShrink: 0 }}>
+                {item.step}
+              </div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#fff' }}>{item.text}</div>
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontWeight: 600, marginTop: 2 }}>{item.sub}</div>
+              </div>
+            </div>
+          ))}
+        </motion.div>
+
+        {/* ─ REFERRAL BADGE ─ */}
         {referrerId && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1 }}
-            style={{ textAlign: 'center', marginBottom: 16 }}
-          >
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 8,
-              background: 'rgba(203, 255, 1, 0.08)',
-              border: '1px solid rgba(203, 255, 1, 0.2)',
-              borderRadius: 40, padding: '8px 20px',
-              fontSize: 12, fontWeight: 900, color: 'var(--neon-lime)',
-            }}>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.1 }}
+            style={{ textAlign: 'center', marginBottom: 16 }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(203,255,1,0.08)', border: '1px solid rgba(203,255,1,0.25)', borderRadius: 40, padding: '8px 20px', fontSize: 12, fontWeight: 900, color: 'var(--neon-lime)' }}>
               🔗 SPONSORED BY NODE #{referrerId}
             </div>
           </motion.div>
         )}
 
-        {/* BNB Balance Warning */}
+        {/* ─ BNB WARNING ─ */}
         {isConnected && !hasEnoughBnb && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            style={{
-              margin: '0 20px 16px',
-              background: 'rgba(255, 149, 0, 0.08)',
-              border: '1px solid rgba(255, 149, 0, 0.25)',
-              borderRadius: 16, padding: '14px 20px',
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            }}
-          >
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+            style={{ margin: '0 20px 16px', background: 'rgba(255,149,0,0.08)', border: '1px solid rgba(255,149,0,0.3)', borderRadius: 16, padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <div style={{ fontSize: 12, fontWeight: 900, color: '#FF9500' }}>⚠️ LOW BNB BALANCE</div>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', fontWeight: 700, marginTop: 2 }}>
-                You have {parseFloat(bnbBalance || 0).toFixed(4)} BNB — need min ~0.05
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: 700, marginTop: 2 }}>
+                You have {parseFloat(bnbBalance || 0).toFixed(4)} BNB — need min ~0.05 BNB
               </div>
             </div>
-            <a
-              href="https://www.binance.com/en/buy-sell-crypto?crypto=BNB"
-              target="_blank" rel="noreferrer"
-              style={{
-                background: '#FF9500', color: '#000',
-                padding: '8px 14px', borderRadius: 10,
-                fontSize: 11, fontWeight: 900, textDecoration: 'none'
-              }}
-            >
+            <a href="https://www.binance.com/en/buy-sell-crypto?crypto=BNB" target="_blank" rel="noreferrer"
+              style={{ background: '#FF9500', color: '#000', padding: '8px 14px', borderRadius: 10, fontSize: 11, fontWeight: 900, textDecoration: 'none', flexShrink: 0, marginLeft: 12 }}>
               GET BNB
             </a>
           </motion.div>
         )}
 
-        {/* ACTIVATE CTA */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1.0 }}
-          style={{ padding: '0 20px' }}
-        >
-          <motion.button
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            onClick={handleActivate}
-            disabled={loading}
+        {/* ─ CTA BUTTON ─ */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.1 }}
+          style={{ padding: '0 20px' }}>
+          <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+            onClick={handleActivate} disabled={loading}
             style={{
-              width: '100%',
-              background: loading ? 'rgba(203,255,1,0.5)' : 'var(--neon-lime)',
-              color: '#000',
-              border: 'none',
-              borderRadius: 20,
-              padding: '20px',
-              fontSize: 18,
-              fontWeight: 900,
-              cursor: loading ? 'not-allowed' : 'pointer',
-              boxShadow: '0 0 50px rgba(203, 255, 1, 0.35)',
-              letterSpacing: 1,
-              position: 'relative',
-              overflow: 'hidden',
-            }}
-          >
-            {loading ? (
-              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
-                <span style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}>⟳</span>
-                ACTIVATING...
-              </span>
-            ) : isConnected ? (
-              '⬡ ACTIVATE MINING NODE'
-            ) : (
-              '🔗 CONNECT WALLET FIRST'
-            )}
+              width: '100%', background: loading ? 'rgba(203,255,1,0.5)' : 'var(--neon-lime)', color: '#000',
+              border: 'none', borderRadius: 20, padding: '20px', fontSize: 18, fontWeight: 900,
+              cursor: loading ? 'not-allowed' : 'pointer', boxShadow: '0 0 50px rgba(203,255,1,0.35)', letterSpacing: 1
+            }}>
+            {loading
+              ? <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}><span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>⟳</span> ACTIVATING...</span>
+              : isConnected ? '⬡ ACTIVATE MINING NODE' : '🔗 CONNECT WALLET FIRST'}
           </motion.button>
-
-          <p style={{
-            textAlign: 'center', fontSize: 11, color: 'rgba(255,255,255,0.25)',
-            marginTop: 14, fontWeight: 700, letterSpacing: 0.5
-          }}>
+          <p style={{ textAlign: 'center', fontSize: 11, color: 'rgba(255,255,255,0.45)', marginTop: 12, fontWeight: 700, letterSpacing: 0.5 }}>
             One-time activation · BSC Smart Contract · No Hidden Fees
           </p>
         </motion.div>
       </div>
 
-      <style>{`
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-      `}</style>
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }
