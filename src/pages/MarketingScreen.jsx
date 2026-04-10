@@ -25,52 +25,52 @@ const INCOME_STREAMS = [
   {
     icon: '💰',
     title: 'SPONSOR / REFERRAL INCOME',
-    badge: '10% PER REGISTRATION & UPGRADE',
+    badge: '10% — REGISTRATION & ALL 18 UPGRADES',
     color: '#CBFF01',
-    desc: 'Earn 10% of every BNB paid by your direct referrals — at registration AND each time they unlock a new tier, all the way up to Level 18. One sponsor connection = lifetime passive income.',
+    desc: 'Earn 10% of every BNB paid by your direct referrals — at registration AND each time they unlock a new tier up to Level 18. One sponsor = lifetime passive income stream.',
     rows: [
-      { label: 'Referral Registration', value: '10% of entry cost' },
-      { label: 'Tier 1 → 18 Upgrades', value: '10% per upgrade' },
-      { label: 'Max Levels', value: '18 Tiers' },
+      { label: 'Distribution Share', value: '10%' },
+      { label: 'Referral Registration', value: '10% of entry' },
+      { label: 'Tier 1→18 Upgrades', value: '10% per upgrade' },
       { label: 'Duration', value: 'Lifetime' },
     ]
   },
   {
     icon: '🔷',
     title: 'BINARY MATRIX INCOME',
-    badge: '70% FROM ALL VOLUME',
+    badge: '70% — LARGEST POOL FROM ALL VOLUME',
     color: '#4FFFFF',
-    desc: '70% of every registration and upgrade is distributed to eligible upline nodes via the binary matrix. When you reach the required tier, the matrix works for you — even from your downline\'s downlines.',
+    desc: '70% of every registration and upgrade flows through the binary matrix to eligible upline nodes. The deeper your matrix, the more volume flows — automatically distributed by the smart contract.',
     rows: [
-      { label: 'Pool Share', value: '70% of All Volume' },
-      { label: 'Distribution', value: 'Binary Matrix Upline' },
-      { label: 'Qualifying Trigger', value: 'Matching Tier Required' },
+      { label: 'Distribution Share', value: '70%' },
+      { label: 'Source', value: 'All Registrations' },
+      { label: 'Qualifying Trigger', value: 'Matching Tier' },
       { label: 'Depth', value: '18 Matrix Levels' },
     ]
   },
   {
     icon: '⬡',
     title: 'LEVEL / TIER INCOME',
-    badge: 'UP TO 18 ACTIVE LEVELS',
+    badge: '~15% — PER TIER UNLOCK ACROSS NETWORK',
     color: '#FF6BFF',
-    desc: 'As you upgrade through all 18 tiers, each level unlocks higher mining rates and deeper matrix earning eligibility. Higher tiers receive a larger share of network volume from deeper layers.',
+    desc: 'Approximately 15% of all network volume is distributed as level income when qualified uplines match the unlocking tier. Upgrading yourself to higher tiers earns more from deeper network upgrades.',
     rows: [
-      { label: 'Tier 1', value: 'Base Entry Earnings' },
-      { label: 'Tier 6 (Self)', value: 'Mid-Network Eligible' },
-      { label: 'Tier 18', value: 'Maximum Depth + Rate' },
+      { label: 'Distribution Share', value: '~15%' },
+      { label: 'Trigger', value: 'Tier Unlock Events' },
+      { label: 'Tier Range', value: 'Level 1 → 18' },
       { label: 'Mining Rate', value: '100 → 200 🪙/hr' },
     ]
   },
   {
     icon: '🏊',
     title: 'GLOBAL REWARD POOL',
-    badge: 'QUALIFIED MEMBERS ONLY',
+    badge: '5% — PROTOCOL REVENUE SHARE',
     color: '#FF9F43',
-    desc: 'Qualified nodes earn a share of the protocol\'s global revenue pool. Eligibility unlocks when you meet specific direct count, team size, and tier milestones — then income flows automatically.',
+    desc: '5% of all protocol volume is reserved for the Global Reward Pool. Qualified nodes meeting team size, tier, and direct count requirements earn an automatic share of this pool on-chain.',
     rows: [
-      { label: 'Pool 1', value: 'Starter Pool Access' },
-      { label: 'Pool 2+', value: 'Larger Network Share' },
-      { label: 'Distribution', value: 'Smart Contract Auto-Pay' },
+      { label: 'Distribution Share', value: '5%' },
+      { label: 'Pool Access', value: 'Qualified Nodes Only' },
+      { label: 'Distribution', value: 'Auto Smart Contract' },
       { label: 'Claim', value: 'On-Chain Anytime' },
     ]
   },
@@ -151,6 +151,34 @@ export default function MarketingScreen({ onConnect, onDisconnect }) {
             ))}
           </motion.div>
         )}
+
+        {/* ─ 100% DISTRIBUTION BAR ─ */}
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
+          style={{ margin: '16px 20px 4px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 20, padding: '18px 20px' }}>
+          <div style={{ fontSize: 10, fontWeight: 900, color: '#fff', letterSpacing: 2, marginBottom: 12, opacity: 0.7 }}>◈ 100% COMMUNITY DISTRIBUTION</div>
+          {/* Stacked bar */}
+          <div style={{ display: 'flex', height: 10, borderRadius: 8, overflow: 'hidden', marginBottom: 14, gap: 2 }}>
+            <div style={{ width: '70%', background: '#4FFFFF', borderRadius: '8px 0 0 8px' }} />
+            <div style={{ width: '15%', background: '#FF6BFF' }} />
+            <div style={{ width: '10%', background: '#CBFF01' }} />
+            <div style={{ width: '5%',  background: '#FF9F43', borderRadius: '0 8px 8px 0' }} />
+          </div>
+          {/* Legend */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 16px' }}>
+            {[
+              { color: '#4FFFFF', label: 'Binary Matrix',     pct: '70%' },
+              { color: '#FF6BFF', label: 'Level Income',      pct: '~15%' },
+              { color: '#CBFF01', label: 'Sponsor Referral',  pct: '10%' },
+              { color: '#FF9F43', label: 'Global Pool',       pct: '5%' },
+            ].map((item, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 10, height: 10, borderRadius: 3, background: item.color, flexShrink: 0 }} />
+                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.75)', fontWeight: 700, flex: 1 }}>{item.label}</span>
+                <span style={{ fontSize: 11, color: '#fff', fontWeight: 900 }}>{item.pct}</span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
 
         {/* ─ 4 INCOME STREAMS ─ */}
         <div style={{ padding: '20px 20px 0' }}>
