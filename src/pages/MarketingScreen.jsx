@@ -33,10 +33,12 @@ function AnimatedNumber({ target, format }) {
 }
 
 export default function MarketingScreen({ onConnect, onDisconnect }) {
-  const { referrerId, isConnected } = useGameStore();
+  const { referrerId, isConnected, bnbBalance } = useGameStore();
   const { createNode, connectWallet } = useContract();
   const [loading, setLoading] = useState(false);
   const [showStats, setShowStats] = useState(false);
+
+  const hasEnoughBnb = parseFloat(bnbBalance || '0') >= 0.01;
 
   useEffect(() => {
     const timer = setTimeout(() => setShowStats(true), 800);
@@ -248,6 +250,39 @@ export default function MarketingScreen({ onConnect, onDisconnect }) {
             }}>
               🔗 SPONSORED BY NODE #{referrerId}
             </div>
+          </motion.div>
+        )}
+
+        {/* BNB Balance Warning */}
+        {isConnected && !hasEnoughBnb && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            style={{
+              margin: '0 20px 16px',
+              background: 'rgba(255, 149, 0, 0.08)',
+              border: '1px solid rgba(255, 149, 0, 0.25)',
+              borderRadius: 16, padding: '14px 20px',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            }}
+          >
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 900, color: '#FF9500' }}>⚠️ LOW BNB BALANCE</div>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', fontWeight: 700, marginTop: 2 }}>
+                You have {parseFloat(bnbBalance || 0).toFixed(4)} BNB — need min ~0.05
+              </div>
+            </div>
+            <a
+              href="https://www.binance.com/en/buy-sell-crypto?crypto=BNB"
+              target="_blank" rel="noreferrer"
+              style={{
+                background: '#FF9500', color: '#000',
+                padding: '8px 14px', borderRadius: 10,
+                fontSize: 11, fontWeight: 900, textDecoration: 'none'
+              }}
+            >
+              GET BNB
+            </a>
           </motion.div>
         )}
 

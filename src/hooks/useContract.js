@@ -49,13 +49,31 @@ export const useContract = () => {
     connectWallet: () => openConnectModal?.(),
     disconnectWallet: () => disconnect(),
     createNode: async (sponsorId = 1) => {
-      const tid = toast.loading("Activating Node...");
+      const tid = toast.loading("Estimating activation cost...");
       try {
+        // Pre-flight: check user has enough BNB for gas + cost
+        const bal = await blockchain.getBnbBalance(
+          (await import('wagmi/actions')).getAccount(await import('../config/wagmi.js').then(m => m.config)).address
+        );
         const nid = await blockchain.createNode(sponsorId);
-        toast.success("🚀 Node Activated!", { id: tid });
+        toast.success("🚀 Node Activated! Welcome to the Protocol.", { id: tid, duration: 5000 });
         return nid;
       } catch (e) {
-        toast.error(e.message || "Activation failed", { id: tid });
+        // Friendly insufficient funds error
+        if (
+          e?.message?.includes('insufficient funds') ||
+          e?.message?.includes('INSUFFICIENT_FUNDS') ||
+          e?.code === -32000
+        ) {
+          toast.error(
+            '⚠️ Not enough BNB — Fund your wallet to activate.',
+            { id: tid, duration: 8000 }
+          );
+        } else if (e?.code === 4001 || e?.message?.includes('rejected')) {
+          toast.error('Transaction cancelled.', { id: tid });
+        } else {
+          toast.error(e?.shortMessage || e?.message || 'Activation failed.', { id: tid });
+        }
         return false;
       }
     },
