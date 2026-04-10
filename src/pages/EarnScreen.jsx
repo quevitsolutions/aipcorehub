@@ -96,8 +96,8 @@ export default function EarnScreen() {
       {/* ── Balance ── */}
       <div className="balance-container" style={{ margin: '4px 0 8px' }}>
         <div className="balance-main">
-          <img src="/assets/gold_coin.png" className="balance-coin" style={{ width: 40 }} alt="coin" />
-          <span className="balance-value" style={{ fontSize: 44 }}>{formatNumber(localReward)}</span>
+          <img src="/assets/gold_coin.png" className="balance-coin" style={{ width: 40, clipPath: 'circle(50%)' }} alt="coin" />
+          <span className="balance-value" style={{ fontSize: 44 }}>{Math.floor(localReward).toLocaleString('en-US')}</span>
         </div>
       </div>
 
@@ -164,9 +164,9 @@ export default function EarnScreen() {
               {maturity >= 1 ? '🥚 READY TO HATCH' : 'COLLECT MINED'}
             </span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <img src="/assets/gold_coin.png" style={{ width: 14 }} alt="coin" />
+              <img src="/assets/gold_coin.png" style={{ width: 14, clipPath: 'circle(50%)' }} alt="coin" />
               <span style={{ fontSize: 15, fontWeight: 900, color: localMined > 0 ? '#000' : 'rgba(255,255,255,0.3)' }}>
-                {formatNumber(Math.floor(localMined))}
+                {Math.floor(localMined).toLocaleString('en-US')}
               </span>
             </div>
           </div>
