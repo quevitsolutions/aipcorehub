@@ -97,6 +97,7 @@ export const useWalletLifecycle = () => {
       loadNodeData(address);
       fetchBnbBalance(address);
       fetchAdminStatus(); // Check for owner privileges
+      fetchUserConversions(); // Load payout history
       fetchUserData().catch(() => {}); // Sync backend state on connect
     } else if (!isConnected) {
       disconnectWallet();

@@ -33,3 +33,14 @@ CREATE TABLE IF NOT EXISTS snapshots (
 );
 
 CREATE INDEX IF NOT EXISTS idx_snapshots_created ON snapshots(created_at);
+
+-- User-specific conversion history for fast lookups
+CREATE TABLE IF NOT EXISTS user_conversions (
+    id SERIAL PRIMARY KEY,
+    snapshot_id INTEGER REFERENCES snapshots(id) ON DELETE CASCADE,
+    wallet_address VARCHAR(42) NOT NULL,
+    mined_amount NUMERIC(36, 18) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_conv_wallet ON user_conversions(wallet_address);

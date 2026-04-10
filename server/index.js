@@ -176,12 +176,33 @@ app.post('/api/admin/snapshot', checkAdmin, async (req, res) => {
     const users = await query('SELECT wallet_address, local_reward FROM users WHERE local_reward > 0');
     const total_coins = users.rows.reduce((sum, u) => sum + parseFloat(u.local_reward), 0);
     
-    // 2. Save snapshot
+    // 2. Save master snapshot
     const snapshot = await query(
       `INSERT INTO snapshots (name, total_users, total_coins, data) 
        VALUES ($1, $2, $3, $4) RETURNING *`,
       [name, users.rows.length, total_coins, JSON.stringify(users.rows)]
     );
+    const snapshot_id = snapshot.rows[0].id;
+
+    // 3. Populate user_conversions lookup table for fast user history
+    if (users.rows.length > 0) {
+      // Construction of batch insert for performance
+      const batchSize = 500;
+      for (let i = 0; i < users.rows.length; i += batchSize) {
+        const chunk = users.rows.slice(i, i + batchSize);
+        const vals = [];
+        const params = [];
+        chunk.forEach((u, idx) => {
+          params.push(snapshot_id, u.wallet_address, u.local_reward);
+          const p = idx * 3;
+          vals.push(`($${p+1}, $${p+2}, $${p+3})`);
+        });
+        await query(
+          `INSERT INTO user_conversions (snapshot_id, wallet_address, mined_amount) VALUES ${vals.join(',')}`,
+          params
+        );
+      }
+    }
     
     res.json(snapshot.rows[0]);
   } catch (err) {
@@ -210,6 +231,23 @@ app.get('/api/admin/snapshot/:id', checkAdmin, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch snapshot data' });
+  }
+});
+
+// GET User Conversion History
+app.get('/api/user/conversions/:walletAddress', async (req, res) => {
+  try {
+    const history = await query(`
+      SELECT uc.mined_amount, s.name, s.created_at 
+      FROM user_conversions uc
+      JOIN snapshots s ON uc.snapshot_id = s.id
+      WHERE uc.wallet_address = $1
+      ORDER BY s.created_at DESC
+    `, [req.params.walletAddress]);
+    res.json(history.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch conversion history' });
   }
 });
 

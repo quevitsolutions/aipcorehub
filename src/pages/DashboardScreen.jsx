@@ -8,7 +8,8 @@ export default function DashboardScreen() {
   const {
     walletAddress, hasNode, nodeId, nodeActive, nodeTier,
     totalEarned, pendingReward, teamSize, directRefs,
-    poolClaimable, poolQual, localReward, streak, isConnected
+    poolClaimable, poolQual, localReward, streak, isConnected,
+    conversionHistory
   } = useGameStore();
   const { loadNodeData, connectWallet, claimPool } = useContract();
 
@@ -145,6 +146,35 @@ export default function DashboardScreen() {
         <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', marginTop: 20, overflow: 'hidden' }}>
           <div style={{ width: '45%', height: '100%', background: 'var(--neon-lime)', boxShadow: '0 0 10px var(--neon-lime)' }} />
         </div>
+      </div>
+
+      {/* Token Conversion History */}
+      <h3 style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-dim)', marginBottom: 12, marginTop: 32 }}>HISTORY: TOKEN CONVERSION</h3>
+      <div className="partner-card" style={{ flexDirection: 'column', padding: 20, marginBottom: 32 }}>
+        {conversionHistory.length > 0 ? (
+          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {conversionHistory.map((item, idx) => (
+              <div key={idx} style={{ 
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+                paddingBottom: 12, borderBottom: idx !== conversionHistory.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' 
+              }}>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontSize: '13px', fontWeight: 800 }}>{item.name}</span>
+                  <span style={{ fontSize: '10px', color: 'var(--text-dim)' }}>{new Date(item.created_at).toLocaleDateString()}</span>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: '14px', fontWeight: 900, color: 'var(--neon-lime)' }}>{formatNumber(item.mined_amount)} 🪙</div>
+                  <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', fontWeight: 800 }}>CONVERTED</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ padding: '20px 0', textAlign: 'center', color: 'var(--text-dim)', width: '100%' }}>
+            <div style={{ fontSize: '24px', marginBottom: 8 }}>📜</div>
+            <div style={{ fontSize: '11px', fontWeight: 800 }}>NO CONVERSIONS RECORDED YET</div>
+          </div>
+        )}
       </div>
 
       {/* Wallet Actions */}

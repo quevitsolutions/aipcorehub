@@ -17,6 +17,7 @@ export const useGameStore = create(
       isAdmin: false,
       leaderboard: [],
       referralList: [],
+      conversionHistory: [],
       adminStats: null,
       snapshotHistory: [],
  
@@ -328,9 +329,20 @@ export const useGameStore = create(
           set({ snapshotHistory: list });
         } catch (e) { console.warn(e); }
       },
+
+      fetchUserConversions: async () => {
+        const { walletAddress } = get();
+        if (!walletAddress) return;
+        try {
+          const list = await api.fetchUserConversions(walletAddress);
+          set({ conversionHistory: list });
+        } catch (e) {
+          console.warn("Conversion History Fetch Failed:", e.message);
+        }
+      },
  
       reset: () => set({
-        taps: 0, demoTaps: 0, localReward: 0,
+        taps: 0, demoTaps: 0, localReward: 0, conversionHistory: [],
         energy: MAX_ENERGY, isLocked: false, showNodePopup: false
       })
     }),

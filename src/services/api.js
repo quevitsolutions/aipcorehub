@@ -55,6 +55,12 @@ class ApiService {
     return res.json();
   }
 
+  async fetchUserConversions(walletAddress) {
+    const res = await fetch(`${this.baseUrl}/user/conversions/${walletAddress}`);
+    if (!res.ok) throw new Error('History fetch failed');
+    return res.json();
+  }
+
   // Admin Endpoints
   async fetchAdminOverview(adminWallet) {
     const res = await fetch(`${this.baseUrl}/admin/overview`, {
