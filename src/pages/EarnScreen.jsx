@@ -29,12 +29,11 @@ function useLocalMining(lastClaimTime, ratePerHour, hasNode) {
 
 export default function EarnScreen() {
   const {
-    localReward, nodeTier, isPremium, energy, maxEnergy,
+    localReward, nodeTier, isPremium,
     hasNode, nodeId, lastClaimTime,
-    handleTap, claimMined, setActiveTab, addLocalReward
+    claimMined, setActiveTab, addLocalReward
   } = useGameStore();
 
-  const [taps, setTaps] = useState([]);
   const [isExploding, setIsExploding] = useState(false);
   const [claimedTasks, setClaimedTasks] = useState(() => {
     try { return JSON.parse(localStorage.getItem('aip-tasks') || '[]'); } catch { return []; }
@@ -61,16 +60,6 @@ export default function EarnScreen() {
     const t = setInterval(() => setTick(n => n + 1), 1000);
     return () => clearInterval(t);
   }, []);
-
-  const handleTapInteraction = useCallback((e) => {
-    const res = handleTap();
-    if (res.status === 'SUCCESS' || res.status === 'DEMO') {
-      const touch = e.touches ? e.touches[0] : e;
-      const id = Date.now();
-      setTaps(prev => [...prev, { id, x: touch.clientX, y: touch.clientY, val: (ratePerHour / 3600).toFixed(2) }]);
-      setTimeout(() => setTaps(prev => prev.filter(t => t.id !== id)), 800);
-    }
-  }, [handleTap, ratePerHour]);
 
   const onClaim = () => {
     if (localMined <= 0) return;
@@ -133,30 +122,13 @@ export default function EarnScreen() {
             )}
           </AnimatePresence>
 
-          {/* EGG — no wrapper box, no background */}
-          <motion.div
-            whileTap={{ scale: 0.92 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 15 }}
-            style={{ position: 'relative', width: 210, height: 210, cursor: 'pointer', zIndex: 10 }}
-            onClick={handleTapInteraction}
-          >
+          {/* EGG — no wrapper box, no background, non-interactive */}
+          <div style={{ position: 'relative', width: 210, height: 210, zIndex: 10 }}>
             <img src="/assets/egg_orange.png"
               style={{ width: '100%', height: '100%', objectFit: 'contain', mixBlendMode: 'screen', clipPath: 'circle(48% at 50% 50%)', filter: `drop-shadow(0 0 ${20 * maturity}px rgba(203,255,1,0.5))` }}
               alt="Mining Egg" />
-          </motion.div>
+          </div>
 
-          {/* Floating coin numbers */}
-          <AnimatePresence>
-            {taps.map(t => (
-              <motion.span key={t.id}
-                initial={{ opacity: 1, y: t.y - 120, x: t.x - 120 }}
-                animate={{ opacity: 0, y: t.y - 220 }}
-                exit={{ opacity: 0 }}
-                style={{ position: 'fixed', left: 0, top: 0, fontSize: 22, fontWeight: 900, color: '#fff', textShadow: '0 0 10px var(--neon-lime)', pointerEvents: 'none', zIndex: 100 }}>
-                +{t.val}
-              </motion.span>
-            ))}
-          </AnimatePresence>
 
           {/* BOOST pill — pulsing, links to Boost page */}
           <motion.div onClick={() => setActiveTab('mine')}
@@ -166,11 +138,6 @@ export default function EarnScreen() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <span style={{ fontSize: 13, fontWeight: 900, color: '#000', letterSpacing: 1 }}>BOOST</span>
               <span style={{ fontSize: 11, fontWeight: 900, color: 'rgba(0,0,0,0.6)' }}>T{displayTier}→{displayTier + 1} ⬆</span>
-            </div>
-            <div style={{ width: 1, height: 12, background: 'rgba(0,0,0,0.2)' }} />
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <span style={{ fontSize: 11, fontWeight: 900, color: '#000' }}>⚡ {energy}</span>
-              <span style={{ fontSize: 10, fontWeight: 800, color: 'rgba(0,0,0,0.5)' }}>/ {maxEnergy}</span>
             </div>
           </motion.div>
         </div>

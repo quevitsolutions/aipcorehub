@@ -78,12 +78,6 @@ export default function App() {
 
   useEffect(() => {
     if (!isConnected) return;
-    const id = setInterval(rechargeEnergy, 3000);
-    return () => clearInterval(id);
-  }, [rechargeEnergy, isConnected]);
-
-  useEffect(() => {
-    if (!isConnected) return;
     const today = new Date().toDateString();
     if (lastClaimDate !== today) setTimeout(() => setShowDailyPopup(true), 1200);
   }, [isConnected, lastClaimDate, setShowDailyPopup]);
