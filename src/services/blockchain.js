@@ -30,9 +30,9 @@ class BlockchainService {
       const nId = await this.core.nodeId(address);
       if (!nId || Number(nId) === 0) return { nodeId: 0, hasNode: false };
 
-      // Batch call using AIPViews getNodeStats
-      const [stats, isActive, pending, poolData] = await Promise.all([
-        this.core.getNodeStats(nId),
+      // Batch call for comprehensive data
+      const [nodeInfo, isActive, pending, poolData] = await Promise.all([
+        this.core.nodes(nId),
         this.core.isNodeActive(nId),
         this.core.pendingReward(address),
         this.pool.getPoolViewHelper(nId)
@@ -41,10 +41,10 @@ class BlockchainService {
       return {
         hasNode: true,
         nodeId: Number(nId),
-        tier: Number(stats[0]),
-        directRefs: Number(stats[1]),
-        teamSize: Number(stats[2]),
-        totalEarned: ethers.formatEther(stats[3]),
+        tier: Number(nodeInfo.tier),
+        directRefs: Number(nodeInfo.directNodes),
+        teamSize: Number(nodeInfo.totalMatrixNodes),
+        totalEarned: ethers.formatEther(nodeInfo.totalContribution),
         nodeActive: isActive,
         pendingReward: ethers.formatEther(pending),
         poolClaimable: ethers.formatEther(poolData[2]),
