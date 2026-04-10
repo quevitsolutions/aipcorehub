@@ -131,7 +131,7 @@ export default function App() {
 
       {/* Main content area */}
       <main className="page" style={{
-        paddingBottom: activeTab === 'earn' ? '200px' : '100px',
+        paddingBottom: '84px',
         display: 'flex',
         flexDirection: 'column',
         position: 'relative'

@@ -143,11 +143,11 @@ export default function EarnScreen() {
         <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
 
           {/* Maturity circle ring — outer only */}
-          <svg style={{ position: 'absolute', top: -20, left: -20, width: 280, height: 280, transform: 'rotate(-90deg)', pointerEvents: 'none' }}>
-            <circle cx="140" cy="140" r="128" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="3" />
-            <motion.circle cx="140" cy="140" r="128" fill="none" stroke="var(--neon-lime)" strokeWidth="3"
-              strokeDasharray="804"
-              animate={{ strokeDashoffset: 804 * (1 - maturity) }}
+          <svg style={{ position: 'absolute', top: '50%', left: '50%', width: 260, height: 260, transform: 'translate(-50%, -50%) rotate(-90deg)', pointerEvents: 'none' }}>
+            <circle cx="130" cy="130" r="120" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="3" />
+            <motion.circle cx="130" cy="130" r="120" fill="none" stroke="var(--neon-lime)" strokeWidth="3"
+              strokeDasharray="754"
+              animate={{ strokeDashoffset: 754 * (1 - maturity) }}
               transition={{ duration: 1, ease: 'linear' }}
               strokeLinecap="round" />
           </svg>
@@ -197,7 +197,7 @@ export default function EarnScreen() {
       </div>
 
       {/* ── Claim Module ── */}
-      <div style={{ flexShrink: 0, padding: '12px 0 40px', background: 'linear-gradient(to top, var(--bg-dark) 60%, transparent)' }}>
+      <div style={{ flexShrink: 0, padding: '12px 0 0px', background: 'linear-gradient(to top, var(--bg-dark) 60%, transparent)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
           <span style={{ fontSize: 10, fontWeight: 800, color: 'rgba(255,255,255,0.45)', letterSpacing: 1 }}>SESSION ENDS IN</span>
           <span style={{ fontSize: 11, fontWeight: 900, color: '#fff' }}>{formatTime(timeRemaining)}</span>
