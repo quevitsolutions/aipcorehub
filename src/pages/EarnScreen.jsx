@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useGameStore } from '../store/gameStore.js';
-import { formatNumber } from '../utils/format.js';
 import { motion, AnimatePresence } from 'framer-motion';
+import toast from 'react-hot-toast';
 
 const QUICK_TASKS = [
   { id: 'tg_join',  icon: '✈️', label: 'Telegram',  reward: 200000, url: 'https://t.me/AIPCoreOfficial' },
@@ -63,8 +63,11 @@ export default function EarnScreen() {
 
   const onClaim = () => {
     if (localMined <= 0) return;
+    const amount = Math.floor(localMined);
     setIsExploding(true);
-    setTimeout(() => { claimMined(); setIsExploding(false); }, 800);
+    claimMined(amount);
+    toast.success('Hatched! +' + amount.toLocaleString('en-US') + ' coins collected!', { duration: 3000 });
+    setTimeout(() => setIsExploding(false), 800);
   };
 
   const handleTaskClaim = (task) => {

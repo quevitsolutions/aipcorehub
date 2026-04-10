@@ -180,22 +180,29 @@ export const useGameStore = create(
         set({ pendingMined: totalMined });
       },
 
-      claimMined: async () => {
-        const { walletAddress } = get();
+      claimMined: async (amount = 0) => {
+        const { walletAddress, localReward } = get();
         if (!walletAddress) return;
 
+        // ── Optimistic local update IMMEDIATELY (no waiting for API) ──
+        const coinsToAdd = amount > 0 ? amount : 0;
+        set({
+          localReward: localReward + coinsToAdd,
+          pendingMined: 0,
+          lastClaimTime: Date.now()   // resets the mining clock
+        });
+
+        // ── Background API sync (best-effort, won't block UI) ──
         try {
           const res = await api.claimMining(walletAddress);
-          if (res.success) {
-            set((s) => ({
-              localReward: Number(res.user.local_reward),
-              pendingMined: 0,
-              lastClaimTime: Date.now()
+          if (res?.success && res?.user?.local_reward !== undefined) {
+            // Reconcile with server value only if server is higher (prevents rollback)
+            set(s => ({
+              localReward: Math.max(s.localReward, Number(res.user.local_reward))
             }));
-            return res.reward;
           }
         } catch (err) {
-          console.warn("Claim failed:", err.message);
+          console.warn('Claim API failed (local update retained):', err.message);
         }
       },
 
