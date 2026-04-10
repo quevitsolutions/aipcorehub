@@ -77,20 +77,59 @@ export default function ReferralScreen() {
           </div>
           <button 
             onClick={() => copyLink(inviteLink)}
-            style={{ 
-              background: 'none', border: 'none', color: 'var(--neon-lime)', 
-              fontSize: '16px', cursor: 'pointer', marginLeft: '12px'
-            }}
-          >
+            style={{ background: 'none', border: 'none', color: 'var(--neon-lime)', fontSize: '16px', cursor: 'pointer', marginLeft: '12px' }}>
             📋
           </button>
         </div>
-        <button className="shimmer-btn" style={{ 
-          width: '100%', marginTop: '16px', background: 'var(--neon-lime)', color: '#000',
-          fontWeight: 900, padding: '14px', borderRadius: '12px', border: 'none', fontSize: '14px'
-        }} onClick={handleShare}>
-          SEND INVITE
-        </button>
+
+        {/* ─ Social Share Buttons ─ */}
+        <div style={{ marginTop: 16 }}>
+          <div style={{ fontSize: 10, fontWeight: 800, color: 'rgba(255,255,255,0.45)', letterSpacing: 2, marginBottom: 10 }}>
+            SHARE ON SOCIAL MEDIA
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+            {/* WhatsApp */}
+            <button onClick={() => {
+              const msg = encodeURIComponent(`🔥 I'm mining $AIP tokens on AIPCore — earn 200 coins/hr with 18-level matrix income!\n\n🔗 Join with my link: ${inviteLink}\n\n⬡ One-time activation | 70% matrix | 10% referral | 5% Global Pool`);
+              window.open(`https://wa.me/?text=${msg}`, '_blank');
+            }} style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'rgba(37,211,102,0.1)', border: '1px solid rgba(37,211,102,0.3)', borderRadius: 14, padding: '12px 16px', cursor: 'pointer', width: '100%' }}>
+              <span style={{ fontSize: 22 }}>💬</span>
+              <div style={{ textAlign: 'left' }}>
+                <div style={{ fontSize: 13, fontWeight: 900, color: '#25D366' }}>Share on WhatsApp</div>
+                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', fontWeight: 700 }}>Send referral invite to contacts</div>
+              </div>
+              <span style={{ marginLeft: 'auto', fontSize: 14, color: '#25D366' }}>→</span>
+            </button>
+
+            {/* Telegram */}
+            <button onClick={() => {
+              const msg = encodeURIComponent(`🚀 Join me on AIPCore — mine $AIP 24/7 with binary matrix rewards!\n\nEarn from 4 income streams:\n💰 10% Referral\n🔷 70% Matrix\n⬡ 15% Level Income\n🏊 5% Global Pool\n\nActivate your node 👇\n${inviteLink}`);
+              window.open(`https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${msg}`, '_blank');
+            }} style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'rgba(42,171,238,0.1)', border: '1px solid rgba(42,171,238,0.3)', borderRadius: 14, padding: '12px 16px', cursor: 'pointer', width: '100%' }}>
+              <span style={{ fontSize: 22 }}>✈️</span>
+              <div style={{ textAlign: 'left' }}>
+                <div style={{ fontSize: 13, fontWeight: 900, color: '#2AABEE' }}>Share on Telegram</div>
+                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', fontWeight: 700 }}>Reach your Telegram community</div>
+              </div>
+              <span style={{ marginLeft: 'auto', fontSize: 14, color: '#2AABEE' }}>→</span>
+            </button>
+
+            {/* Twitter/X */}
+            <button onClick={() => {
+              const tweet = encodeURIComponent(`⬡ Just activated my Mining Node on @AIPCore!\n\nEarning $AIP tokens 24/7 with:\n✅ 70% Binary Matrix\n✅ 10% Referral Income\n✅ 15% Level Income\n✅ 5% Global Pool\n\n🚀 Join under my node 👇\n${inviteLink}\n\n#AIPCore #Crypto #BSC #DeFi #Mining`);
+              window.open(`https://twitter.com/intent/tweet?text=${tweet}`, '_blank');
+            }} style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 14, padding: '12px 16px', cursor: 'pointer', width: '100%' }}>
+              <span style={{ fontSize: 22 }}>𝕏</span>
+              <div style={{ textAlign: 'left' }}>
+                <div style={{ fontSize: 13, fontWeight: 900, color: '#fff' }}>Share on X / Twitter</div>
+                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', fontWeight: 700 }}>Tweet with crypto hashtags</div>
+              </div>
+              <span style={{ marginLeft: 'auto', fontSize: 14, color: '#fff' }}>→</span>
+            </button>
+
+          </div>
+        </div>
       </div>
 
       {/* My Recent Invites */}
