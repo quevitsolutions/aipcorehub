@@ -103,25 +103,26 @@ export const useGameStore = create(
       },
 
       setNodeData: (data) => {
-        // Raw tier from contract (1 to 18)
-        const tier = (data.tier !== undefined) ? Number(data.tier) : 1;
-        
-        // GEOMETRIC MINING: 1000 * 2^(tier-1)
+        // Tier from blockchain (authoritative) — clamp to min 1 for active nodes
+        const rawTier = data.tier !== undefined ? Number(data.tier) : 0;
+        const currentTier = get().nodeTier || 0;
+        // Never downgrade an already-known tier from the blockchain
+        const tier = rawTier > 0 ? rawTier : (currentTier > 0 ? currentTier : 1);
+
         const newMiningRate = 1000 * Math.pow(2, Math.max(0, tier - 1));
-        const newMaxEnergy = 500 + (tier - 1) * 200;
-        
+        const newMaxEnergy  = 500 + (tier - 1) * 200;
         const isActuallyActive = data.nodeId && Number(data.nodeId) > 0;
 
         set({
-          hasNode: isActuallyActive,
-          nodeId: isActuallyActive ? Number(data.nodeId) : null,
-          nodeTier: isActuallyActive ? tier : 0,
+          hasNode:    isActuallyActive,
+          nodeId:     isActuallyActive ? Number(data.nodeId) : null,
+          nodeTier:   isActuallyActive ? tier : 0,
           nodeActive: data.active,
           miningRate: newMiningRate,
-          maxEnergy: newMaxEnergy,
-          energy: Math.min(newMaxEnergy, get().energy),
-          isLocked: !isActuallyActive,
-          demoTaps: 0
+          maxEnergy:  newMaxEnergy,
+          energy:     Math.min(newMaxEnergy, get().energy),
+          isLocked:   !isActuallyActive,
+          demoTaps:   0
         });
       },
 
@@ -256,15 +257,19 @@ export const useGameStore = create(
         try {
           const data = await api.fetchUser(walletAddress);
           if (data) {
+            const currentTier = get().nodeTier || 0;
+            // Backend tier is advisory only — blockchain is authoritative.
+            // Only update if backend has a real value AND it is higher than stored.
+            const backendTier = Number(data.node_tier || 0);
             set({
-              taps: data.taps || 0,
-              localReward: Number(data.local_reward || 0),
-              energy: data.energy || 0,
-              directRefs: data.direct_refs || 0,
-              teamSize: data.team_size || 0,
-              nodeTier: data.node_tier || 0,
-              isPremium: data.is_premium || false,
-              pendingMined: Number(data.pending_mined || 0),
+              taps:          data.taps || 0,
+              localReward:   Number(data.local_reward || 0),
+              energy:        data.energy || 0,
+              directRefs:    data.direct_refs || 0,
+              teamSize:      data.team_size || 0,
+              nodeTier:      backendTier > currentTier ? backendTier : currentTier,
+              isPremium:     data.is_premium || false,
+              pendingMined:  Number(data.pending_mined || 0),
               lastClaimTime: new Date(data.last_claim_time).getTime()
             });
           }

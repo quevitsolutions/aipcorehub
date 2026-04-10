@@ -1,21 +1,25 @@
 import { ethers } from "ethers";
 import { CONTRACTS, RPC_NODES } from "../config/constants.js";
-import { AIPCORE_ABI, REWARDPOOL_ABI } from "../../contracts/abi.js";
+import { AIPCORE_ABI, AIPVIEW_ABI, REWARDPOOL_ABI } from "../../contracts/abi.js";
 import { config } from "../config/wagmi.js";
 import { getEthersProvider, getEthersSigner } from "../utils/ethers-adapter.js";
 
 /**
- * AIPCore Blockchain Service (Ethers v6) - Refactored for RainbowKit/Wagmi
+ * AIPCore Blockchain Service (Ethers v6) - 4-source Tier Waterfall
+ *   Sources (priority order):
+ *   1. AIPVIEW  getNodeStats(nId)[3]  → 'level'  (independent view contract)
+ *   2. AIPCORE  getNodeStats(nId)[0]  → 'tier'   (core stats)
+ *   3. AIPCORE  nodes(nId)[5]        → struct tier field (raw)
+ *   4. REWARDPOOL getPoolViewHelper(nId)[8] → nfeTier
  */
 class BlockchainService {
   constructor() {
-    // Default Read-only Provider (Static for initial loads)
     this.staticProvider = new ethers.JsonRpcProvider(RPC_NODES[0]);
-    this.core = new ethers.Contract(CONTRACTS.AIPCORE, AIPCORE_ABI, this.staticProvider);
-    this.pool = new ethers.Contract(CONTRACTS.REWARDPOOL, REWARDPOOL_ABI, this.staticProvider);
+    this.core = new ethers.Contract(CONTRACTS.AIPCORE,    AIPCORE_ABI,    this.staticProvider);
+    this.view = new ethers.Contract(CONTRACTS.AIPVIEW,    AIPVIEW_ABI,    this.staticProvider);
+    this.pool = new ethers.Contract(CONTRACTS.REWARDPOOL,  REWARDPOOL_ABI, this.staticProvider);
   }
 
-  // Helper to get the most relevant provider (Wagmi-optimized)
   _getProvider() {
     return getEthersProvider(config) || this.staticProvider;
   }
@@ -24,49 +28,60 @@ class BlockchainService {
     return this.core.owner();
   }
 
-  // Optimized hydration in one trip
+  // ── Full dashboard hydration ──────────────────────────────────────────────
   async getFullDashboardData(address) {
     try {
       const nId = await this.core.nodeId(address);
       if (!nId || Number(nId) === 0) return { nodeId: 0, hasNode: false };
 
-      // Fetch all data sources independently so one failure doesn't kill everything
-      const [stats, nodeInfo, isActive, pending, poolData] = await Promise.all([
-        this.core.getNodeStats(nId).catch(() => [0n, 0n, 0n, 0n, 0n, 0n]),
-        this.core.nodes(nId).catch(() => null),
+      // All calls are isolated — one failure cannot break others
+      const [viewStats, coreStats, nodeRaw, isActive, pending, poolData] = await Promise.all([
+        this.view.getNodeStats(nId).catch(() => null),            // AIPVIEW  → [totalEarned, teamSize, directRefs, level]
+        this.core.getNodeStats(nId).catch(() => null),            // AIPCORE  → [tier, directCount, matrixCount, ...]
+        this.core.nodes(nId).catch(() => null),                   // raw struct → index 5 = tier
         this.core.isNodeActive(nId).catch(() => false),
         this.core.pendingReward(address).catch(() => 0n),
         this.pool.getPoolViewHelper(nId).catch(() => null)
       ]);
 
-      // Tier waterfall: nfeTier from pool (most reliable) → getNodeStats → nodes() struct
-      const tierFromPool  = poolData ? Number(poolData[8]) : 0;   // nfeTier index 8
-      const tierFromStats = Number(stats[0]) || 0;
-      const tierFromNodes = nodeInfo ? (Number(nodeInfo[5]) || Number(nodeInfo.tier) || 0) : 0;
-      const tier = tierFromPool  > 0 ? tierFromPool
-                 : tierFromStats > 0 ? tierFromStats
-                 : tierFromNodes > 0 ? tierFromNodes
-                 : 1; // absolute fallback
+      // ── 4-source tier waterfall ──
+      const t1 = viewStats  ? Number(viewStats[3])  : 0;  // AIPVIEW  level   (index 3)
+      const t2 = coreStats  ? Number(coreStats[0])  : 0;  // AIPCORE  tier    (index 0)
+      const t3 = nodeRaw    ? Number(nodeRaw[5])    : 0;  // nodes()  tier    (index 5)
+      const t4 = poolData   ? Number(poolData[8])   : 0;  // pool     nfeTier (index 8)
+
+      const tier = t1 > 0 ? t1
+                 : t2 > 0 ? t2
+                 : t3 > 0 ? t3
+                 : t4 > 0 ? t4
+                 : 1; // final fallback (node exists but tier unreachable)
+
+      console.debug(`[Tier] nId=${Number(nId)} AIPVIEW=${t1} CoreStats=${t2} nodes[5]=${t3} pool.nfeTier=${t4} → FINAL=${tier}`);
+
+      // ── directRefs / teamSize: prefer coreStats, fallback viewStats ──
+      const directRefs = coreStats ? Number(coreStats[1]) : (viewStats ? Number(viewStats[2]) : 0);
+      const teamSize   = coreStats ? Number(coreStats[2]) : (viewStats ? Number(viewStats[1]) : 0);
+      const totalEarned = coreStats ? ethers.formatEther(coreStats[3] || 0n) : '0';
 
       return {
-        hasNode: true,
+        hasNode:        true,
         nodeId:         Number(nId),
         tier,
-        directRefs:     Number(stats[1]) || 0,
-        teamSize:       Number(stats[2]) || 0,
-        totalEarned:    ethers.formatEther(stats[3] || 0n),
+        directRefs,
+        teamSize,
+        totalEarned,
         nodeActive:     isActive,
         pendingReward:  ethers.formatEther(pending || 0n),
-        poolClaimable:  ethers.formatEther(poolData?.[2] || 0n),
-        poolName:       String(poolData?.[1] || 'None'),
-        totalDeposited: ethers.formatEther(poolData?.[7] || 0n),
+        poolClaimable:  ethers.formatEther(poolData?.[2]  || 0n),
+        poolName:       String(poolData?.[1]  || 'None'),
+        totalDeposited: ethers.formatEther(poolData?.[7]  || 0n),
         isPoolQualified: Boolean(poolData?.[9]),
         missingDirects: Number(poolData?.[11]?.[0] || 0),
         missingTier:    Number(poolData?.[11]?.[1] || 0),
         missingTeam:    Number(poolData?.[11]?.[2] || 0),
       };
     } catch (err) {
-      console.error("Dashboard Data Fetch Failed:", err);
+      console.error("getFullDashboardData failed:", err);
       throw err;
     }
   }
@@ -77,7 +92,7 @@ class BlockchainService {
     return ethers.formatEther(bal);
   }
 
-  // --- WRITE ACTIONS ---
+  // ── WRITE ACTIONS ─────────────────────────────────────────────────────────
 
   async createNode(sponsorId = 1) {
     const signer = await getEthersSigner(config);
@@ -87,36 +102,27 @@ class BlockchainService {
     const tx = await core.createNode(sponsorId, { value: cost });
     const receipt = await tx.wait();
 
-    // Secondary: Pool registration
     try {
       const pool = new ethers.Contract(CONTRACTS.REWARDPOOL, REWARDPOOL_ABI, signer);
       const nodeLog = receipt.logs[0];
       const nid = nodeLog ? Number(nodeLog.topics[1]) : 0;
-      if (nid > 0) {
-        const tx2 = await pool.registerNode(nid);
-        await tx2.wait();
-        return nid;
-      }
+      if (nid > 0) { await (await pool.registerNode(nid)).wait(); return nid; }
     } catch (e) {
-      console.warn("Pool registration skipped/failed:", e.message);
+      console.warn("Pool registration skipped:", e.message);
     }
-    return 1; // Default fallback
+    return 1;
   }
 
   async claimRewards() {
     const signer = await getEthersSigner(config);
     if (!signer) throw new Error("Wallet not connected");
-    const core = new ethers.Contract(CONTRACTS.AIPCORE, AIPCORE_ABI, signer);
-    const tx = await core.withdraw();
-    return tx.wait();
+    return (await new ethers.Contract(CONTRACTS.AIPCORE, AIPCORE_ABI, signer).withdraw()).wait();
   }
 
   async claimPool(nodeId) {
     const signer = await getEthersSigner(config);
     if (!signer) throw new Error("Wallet not connected");
-    const pool = new ethers.Contract(CONTRACTS.REWARDPOOL, REWARDPOOL_ABI, signer);
-    const tx = await pool.claim(nodeId);
-    return tx.wait();
+    return (await new ethers.Contract(CONTRACTS.REWARDPOOL, REWARDPOOL_ABI, signer).claim(nodeId)).wait();
   }
 
   async unlockTier(nodeId, toTier) {
@@ -124,15 +130,15 @@ class BlockchainService {
     if (!signer) throw new Error("Wallet not connected");
     const core = new ethers.Contract(CONTRACTS.AIPCORE, AIPCORE_ABI, signer);
     const cost = await core.getTierCost(toTier - 1);
-    const tx = await core.unlockTier(nodeId, toTier, { value: cost });
-    return tx.wait();
+    return (await core.unlockTier(nodeId, toTier, { value: cost })).wait();
   }
 
-  // --- REPORTING ACTIONS ---
+  // ── REPORTING ─────────────────────────────────────────────────────────────
 
   async getMatrixCounts(nodeId) {
-    // Consolidated matrix users fetch
-    const promises = Array.from({ length: 18 }, (_, i) => this.core.getMatrixUsers(nodeId, i, 0, Math.pow(2, i + 1)));
+    const promises = Array.from({ length: 18 }, (_, i) =>
+      this.core.getMatrixUsers(nodeId, i, 0, Math.pow(2, i + 1))
+    );
     const results = await Promise.allSettled(promises);
     return results.map(r => r.status === 'fulfilled' ? r.value.length : 0);
   }
@@ -140,9 +146,9 @@ class BlockchainService {
   async getMatrixMembers(nodeId, layer, num = 50) {
     const members = await this.core.getMatrixUsers(nodeId, layer, 0, num);
     return members.map(m => ({
-      wallet: m.wallet,
-      nodeId: Number(m.nodeId),
-      tier: Number(m.tier),
+      wallet:  m.wallet,
+      nodeId:  Number(m.nodeId),
+      tier:    Number(m.tier),
       joinedAt: Number(m.joinedAt)
     }));
   }
