@@ -23,11 +23,16 @@ export const useContract = () => {
       if (data.hasNode) {
         setNodeData({ nodeId: data.nodeId, tier: data.tier, active: data.nodeActive });
         updateChainData({
-          totalEarned: parseFloat(data.totalEarned),
-          teamSize: data.teamSize,
-          directRefs: data.directRefs,
-          pendingReward: parseFloat(data.pendingReward),
-          poolClaimable: parseFloat(data.poolClaimable)
+          totalEarned:    parseFloat(data.totalEarned),
+          teamSize:       data.teamSize,
+          directRefs:     data.directRefs,
+          pendingReward:  parseFloat(data.pendingReward),
+          poolClaimable:  parseFloat(data.poolClaimable),
+          poolName:       data.poolName || 'None',
+          totalDeposited: parseFloat(data.totalDeposited || 0),
+          missingDirects: data.missingDirects || 0,
+          missingTier:    data.missingTier    || 0,
+          missingTeam:    data.missingTeam    || 0,
         });
       } else {
         setNodeData({ nodeId: 0, tier: 0, active: false });

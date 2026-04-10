@@ -44,16 +44,21 @@ class BlockchainService {
 
       return {
         hasNode: true,
-        nodeId:       Number(nId),
-        tier:         tier > 0 ? tier : (nodeInfo ? Number(nodeInfo[5] ?? nodeInfo.tier ?? 1) : 1),
-        directRefs:   Number(stats[1]),
-        teamSize:     Number(stats[2]),
-        totalEarned:  ethers.formatEther(stats[3]),
-        nodeActive:   isActive,
-        pendingReward: ethers.formatEther(pending),
-        poolClaimable: ethers.formatEther(poolData[2]),
-        poolName:     poolData[1],
-        isPoolQualified: poolData[9]
+        nodeId:         Number(nId),
+        tier:           tier > 0 ? tier : (nodeInfo ? Number(nodeInfo[5] ?? nodeInfo.tier ?? 1) : 1),
+        directRefs:     Number(stats[1]),
+        teamSize:       Number(stats[2]),
+        totalEarned:    ethers.formatEther(stats[3]),
+        nodeActive:     isActive,
+        pendingReward:  ethers.formatEther(pending),
+        poolClaimable:  ethers.formatEther(poolData[2]),
+        poolName:       String(poolData[1] || 'None'),
+        totalDeposited: ethers.formatEther(poolData[7] || 0n),
+        isPoolQualified: Boolean(poolData[9]),
+        // missingRequirements[0]=directs, [1]=tier, [2]=team
+        missingDirects: Number(poolData[11]?.[0] || 0),
+        missingTier:    Number(poolData[11]?.[1] || 0),
+        missingTeam:    Number(poolData[11]?.[2] || 0),
       };
     } catch (err) {
       console.error("Dashboard Data Fetch Failed:", err);

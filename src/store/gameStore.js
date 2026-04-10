@@ -216,13 +216,21 @@ export const useGameStore = create(
         return reward;
       },
 
-      updateChainData: (data) => set({
-        pendingReward: data.pendingReward || 0,
-        teamSize: data.teamSize || 0,
-        directRefs: data.directRefs || 0,
-        totalEarned: data.totalEarned || 0,
-        poolClaimable: data.poolClaimable || 0
-      }),
+      updateChainData: (data) => set(s => ({
+        pendingReward:  data.pendingReward  ?? s.pendingReward,
+        teamSize:       data.teamSize       ?? s.teamSize,
+        directRefs:     data.directRefs     ?? s.directRefs,
+        totalEarned:    data.totalEarned    ?? s.totalEarned,
+        poolClaimable:  data.poolClaimable  ?? s.poolClaimable,
+        poolQual: {
+          ...s.poolQual,
+          poolName:       data.poolName       ?? s.poolQual.poolName,
+          totalDeposited: data.totalDeposited ?? s.poolQual.totalDeposited,
+          missingDirects: data.missingDirects ?? s.poolQual.missingDirects,
+          missingTier:    data.missingTier    ?? s.poolQual.missingTier,
+          missingTeam:    data.missingTeam    ?? s.poolQual.missingTeam,
+        }
+      })),
  
       syncWithBackend: async () => {
         const state = get();
