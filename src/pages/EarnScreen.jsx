@@ -92,24 +92,9 @@ export default function EarnScreen() {
   return (
     <div className="page-earn" style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', overflow: 'hidden' }}>
 
-      {/* ── Header: Node info + Energy ── */}
-      <div style={{ flexShrink: 0, padding: '10px 0 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          {hasNode ? (
-            <div>
-              <span style={{ color: 'var(--neon-lime)', fontSize: 12, fontWeight: 900, letterSpacing: 1 }}>
-                ⬡ NODE #{nodeId} (TIER {displayTier})
-              </span>
-              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', fontWeight: 800, marginTop: 2 }}>
-                RATE: {ratePerHour}/HR
-              </div>
-            </div>
-          ) : (
-            <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 700 }}>STANDBY MODE</span>
-          )}
-        </div>
-
+      <div style={{ flexShrink: 0, padding: '10px 0 8px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
         {/* Energy pill */}
+
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <span style={{ fontSize: 13, fontWeight: 900, color: 'var(--neon-lime)' }}>{energy}</span>
@@ -182,7 +167,7 @@ export default function EarnScreen() {
             onClick={handleTapInteraction}
           >
             <img src="/assets/egg_orange.png"
-              style={{ width: '100%', height: '100%', objectFit: 'contain', filter: `drop-shadow(0 0 ${20 * maturity}px rgba(203,255,1,0.5))` }}
+              style={{ width: '100%', height: '100%', objectFit: 'contain', mixBlendMode: 'screen', filter: `drop-shadow(0 0 ${20 * maturity}px rgba(203,255,1,0.5))` }}
               alt="Mining Egg" />
           </motion.div>
 

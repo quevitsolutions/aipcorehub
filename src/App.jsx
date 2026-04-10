@@ -131,12 +131,10 @@ export default function App() {
 
       {/* Main content area */}
       <main className="page" style={{
-        paddingTop: '70px',
         paddingBottom: activeTab === 'earn' ? '200px' : '100px',
         display: 'flex',
         flexDirection: 'column',
-        position: 'relative',
-        height: '100%',
+        position: 'relative'
       }}>
         <AnimatePresence mode="wait">
           <motion.div

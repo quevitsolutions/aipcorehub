@@ -8,18 +8,17 @@ export default function TopBar() {
 
   return (
     <div className="top-bar-fixed" style={{
-      position: 'fixed', top: 0, left: 0, right: 0,
       background: 'rgba(5, 8, 15, 0.92)',
       backdropFilter: 'blur(15px)',
       WebkitBackdropFilter: 'blur(15px)',
       borderBottom: '1px solid rgba(163, 255, 18, 0.1)',
       padding: '0 16px',
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      zIndex: 1100, height: '64px', gap: 8
+      height: '64px', gap: 8
     }}>
 
-      {/* ─ Branding Left ─ */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+      {/* ─ Branding Left (Hidden on Desktop) ─ */}
+      <div className="mobile-only" style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
         <div style={{
           width: 32, height: 32, background: 'var(--neon-lime)',
           borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
