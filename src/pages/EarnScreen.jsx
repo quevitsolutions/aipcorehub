@@ -90,43 +90,17 @@ export default function EarnScreen() {
   const displayTier = Math.max(1, nodeTier || 1);
 
   return (
-    <div className="page-earn" style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', overflow: 'hidden' }}>
+    <div className="page-earn" style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', overflowY: 'auto', overflowX: 'hidden' }}>
 
+      {/* ── Removed Top Energy Pill ─ now on Boost Button ── */}
       <div style={{ flexShrink: 0, padding: '10px 0 8px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
-        {/* Energy pill */}
-
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ fontSize: 13, fontWeight: 900, color: 'var(--neon-lime)' }}>{energy}</span>
-            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', fontWeight: 700 }}>/ {maxEnergy}</span>
-          </div>
-          <div style={{ width: 60, height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 2, marginTop: 3, overflow: 'hidden' }}>
-            <div style={{ width: `${(energy / maxEnergy) * 100}%`, height: '100%', background: 'var(--neon-lime)', boxShadow: '0 0 8px var(--neon-lime)', transition: 'width 0.5s' }} />
-          </div>
-        </div>
       </div>
 
-      {/* ── Social Task Strip ── */}
-      <div style={{ flexShrink: 0, display: 'flex', gap: 6, marginBottom: 6, overflowX: 'auto', paddingBottom: 2 }}
-        className="no-scrollbar">
-        {QUICK_TASKS.map(task => {
-          const done = claimedTasks.includes(task.id);
-          return (
-            <button key={task.id} onClick={() => handleTaskClaim(task)} disabled={done}
-              style={{
-                flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5,
-                background: done ? 'rgba(203,255,1,0.08)' : 'rgba(255,255,255,0.04)',
-                border: done ? '1px solid rgba(203,255,1,0.3)' : '1px solid rgba(255,255,255,0.07)',
-                borderRadius: 30, padding: '5px 12px', cursor: done ? 'default' : 'pointer',
-                fontSize: 10, fontWeight: 800, color: done ? 'var(--neon-lime)' : '#fff', whiteSpace: 'nowrap'
-              }}>
-              {task.icon} {task.label} {done ? '✓' : <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 9 }}>+{formatNumber(task.reward)}</span>}
-            </button>
-          );
-        })}
+      {/* ── Removed horizontal task strip, using standalone button instead ── */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0 8px' }}>
         <button onClick={() => setActiveTab('tasks')}
-          style={{ flexShrink: 0, background: 'none', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 30, padding: '5px 12px', cursor: 'pointer', fontSize: 10, fontWeight: 800, color: 'rgba(255,255,255,0.4)', whiteSpace: 'nowrap' }}>
-          MORE →
+          style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: '6px 14px', cursor: 'pointer', fontSize: 11, fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span>✅</span> TASKS
         </button>
       </div>
 
@@ -167,7 +141,7 @@ export default function EarnScreen() {
             onClick={handleTapInteraction}
           >
             <img src="/assets/egg_orange.png"
-              style={{ width: '100%', height: '100%', objectFit: 'contain', mixBlendMode: 'screen', filter: `drop-shadow(0 0 ${20 * maturity}px rgba(203,255,1,0.5))` }}
+              style={{ width: '100%', height: '100%', objectFit: 'contain', mixBlendMode: 'screen', clipPath: 'circle(48% at 50% 50%)', filter: `drop-shadow(0 0 ${20 * maturity}px rgba(203,255,1,0.5))` }}
               alt="Mining Egg" />
           </motion.div>
 
@@ -188,10 +162,16 @@ export default function EarnScreen() {
           <motion.div onClick={() => setActiveTab('mine')}
             animate={{ boxShadow: ['0 0 8px rgba(203,255,1,0.3)', '0 0 22px rgba(203,255,1,0.7)', '0 0 8px rgba(203,255,1,0.3)'] }}
             transition={{ duration: 2.5, repeat: Infinity }}
-            style={{ marginTop: 8, background: 'var(--neon-lime)', borderRadius: 40, padding: '7px 20px', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', zIndex: 20 }}>
-            <span style={{ fontSize: 12, fontWeight: 900, color: '#000', letterSpacing: 1 }}>BOOST</span>
-            <span style={{ fontSize: 11, fontWeight: 900, color: '#000' }}>TIER {displayTier}→{displayTier + 1}</span>
-            <span style={{ fontSize: 14, color: '#000' }}>⬆</span>
+            style={{ marginTop: 8, background: 'var(--neon-lime)', borderRadius: 40, padding: '7px 20px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', zIndex: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ fontSize: 13, fontWeight: 900, color: '#000', letterSpacing: 1 }}>BOOST</span>
+              <span style={{ fontSize: 11, fontWeight: 900, color: 'rgba(0,0,0,0.6)' }}>T{displayTier}→{displayTier + 1} ⬆</span>
+            </div>
+            <div style={{ width: 1, height: 12, background: 'rgba(0,0,0,0.2)' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ fontSize: 11, fontWeight: 900, color: '#000' }}>⚡ {energy}</span>
+              <span style={{ fontSize: 10, fontWeight: 800, color: 'rgba(0,0,0,0.5)' }}>/ {maxEnergy}</span>
+            </div>
           </motion.div>
         </div>
       </div>
