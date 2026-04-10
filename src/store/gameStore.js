@@ -181,8 +181,8 @@ export const useGameStore = create(
       },
 
       claimMined: async () => {
-        const { walletAddress, pendingMined } = get();
-        if (!walletAddress || pendingMined <= 0) return;
+        const { walletAddress } = get();
+        if (!walletAddress) return;
 
         try {
           const res = await api.claimMining(walletAddress);
