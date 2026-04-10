@@ -70,8 +70,11 @@ export default function UpgradeScreen() {
   const nextTier  = BOOSTERS.find(b => b.tier === nodeTier + 1);
   const locked    = BOOSTERS.filter(b => b.tier > nodeTier + 1);
 
-  const currentCoinsPerHr = nodeTier === 1 ? 100 :
-    (BOOSTERS.find(b => b.tier === nodeTier)?.coinsPerHr || 100);
+  const currentCoinsPerHr = nodeTier >= 2
+    ? (BOOSTERS.find(b => b.tier === nodeTier)?.coinsPerHr || 100)
+    : 100;
+
+  const displayTier = nodeTier || 1;
 
   return (
     <div className="page page-upgrade" style={{ paddingBottom: 120 }}>
@@ -106,7 +109,7 @@ export default function UpgradeScreen() {
             <div style={{ fontSize: 32, fontWeight: 900, color: 'var(--neon-lime)', lineHeight: 1.1, marginTop: 4 }}>
               {currentCoinsPerHr} <span style={{ fontSize: 16 }}>🪙/hr</span>
             </div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.5)', marginTop: 4 }}>TIER {nodeTier} ACTIVE</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.65)', marginTop: 4 }}>TIER {displayTier} ACTIVE</div>
           </div>
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.6)', letterSpacing: 2 }}>DAILY EARNINGS</div>
@@ -172,18 +175,18 @@ export default function UpgradeScreen() {
       {/* ─ COMPLETED TIERS ─ */}
       {unlocked.length > 0 && (
         <>
-          <div style={{ fontSize: 11, fontWeight: 900, color: 'rgba(255,255,255,0.5)', letterSpacing: 3, marginBottom: 12 }}>✅ COMPLETED ({unlocked.length})</div>
+          <div style={{ fontSize: 11, fontWeight: 900, color: '#fff', letterSpacing: 3, marginBottom: 12 }}>✅ COMPLETED ({unlocked.length})</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 28 }}>
             {unlocked.map((b, i) => (
               <motion.div key={b.tier}
                 initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.04 }}
-                style={{ background: 'rgba(203,255,1,0.04)', border: '1px solid rgba(203,255,1,0.15)', borderRadius: 18, padding: '14px 12px', position: 'relative', overflow: 'hidden' }}>
+                style={{ background: 'rgba(203,255,1,0.05)', border: '1px solid rgba(203,255,1,0.2)', borderRadius: 18, padding: '14px 12px', position: 'relative', overflow: 'hidden' }}>
                 {/* Green tick badge */}
                 <div style={{ position: 'absolute', top: 8, right: 8, width: 22, height: 22, borderRadius: '50%', background: 'var(--neon-lime)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 900, color: '#000' }}>✓</div>
                 <div style={{ fontSize: 26, marginBottom: 8 }}>{b.icon}</div>
                 <div style={{ fontSize: 12, fontWeight: 900, color: '#fff', marginBottom: 2 }}>{b.name}</div>
                 <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--neon-lime)' }}>TIER {b.tier} ACTIVE</div>
-                <div style={{ fontSize: 11, fontWeight: 900, color: 'rgba(255,255,255,0.7)', marginTop: 6 }}>{b.coinsPerHr} 🪙/hr</div>
+                <div style={{ fontSize: 11, fontWeight: 900, color: '#fff', marginTop: 6 }}>{b.coinsPerHr} 🪙/hr</div>
               </motion.div>
             ))}
           </div>
@@ -193,18 +196,18 @@ export default function UpgradeScreen() {
       {/* ─ LOCKED TIERS ─ */}
       {locked.length > 0 && nodeId && (
         <>
-          <div style={{ fontSize: 11, fontWeight: 900, color: 'rgba(255,255,255,0.35)', letterSpacing: 3, marginBottom: 12 }}>🔒 LOCKED TIERS</div>
+          <div style={{ fontSize: 11, fontWeight: 900, color: 'rgba(255,255,255,0.6)', letterSpacing: 3, marginBottom: 12 }}>🔒 LOCKED TIERS — UPGRADE TO UNLOCK</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             {locked.map((b, i) => (
               <motion.div key={b.tier}
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.05 + i * 0.03 }}
-                style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 18, padding: '14px 12px', opacity: 0.55, position: 'relative' }}>
+                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 18, padding: '14px 12px', position: 'relative' }}>
                 <div style={{ position: 'absolute', top: 8, right: 8, fontSize: 12 }}>🔒</div>
-                <div style={{ fontSize: 26, marginBottom: 8, filter: 'grayscale(1)' }}>{b.icon}</div>
-                <div style={{ fontSize: 12, fontWeight: 900, color: 'rgba(255,255,255,0.7)', marginBottom: 2 }}>{b.name}</div>
-                <div style={{ fontSize: 10, fontWeight: 800, color: 'rgba(255,255,255,0.3)' }}>TIER {b.tier}</div>
-                <div style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.4)', marginTop: 6 }}>{b.coinsPerHr} 🪙/hr</div>
-                <div style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.25)', marginTop: 3 }}>
+                <div style={{ fontSize: 26, marginBottom: 8, filter: 'grayscale(0.6)' }}>{b.icon}</div>
+                <div style={{ fontSize: 12, fontWeight: 900, color: '#fff', marginBottom: 2 }}>{b.name}</div>
+                <div style={{ fontSize: 10, fontWeight: 800, color: 'rgba(255,255,255,0.55)' }}>TIER {b.tier}</div>
+                <div style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.7)', marginTop: 6 }}>{b.coinsPerHr} 🪙/hr</div>
+                <div style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.4)', marginTop: 3 }}>
                   {parseFloat(tierCosts[b.tier - 1] || '0').toFixed(3)} BNB
                 </div>
               </motion.div>

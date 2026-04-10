@@ -30,25 +30,29 @@ class BlockchainService {
       const nId = await this.core.nodeId(address);
       if (!nId || Number(nId) === 0) return { nodeId: 0, hasNode: false };
 
-      // Batch call for comprehensive data
-      const [nodeInfo, isActive, pending, poolData] = await Promise.all([
-        this.core.nodes(nId),
+      // Batch fetch: getNodeStats for tier/counts (positional, reliable), plus active/rewards
+      const [stats, nodeInfo, isActive, pending, poolData] = await Promise.all([
+        this.core.getNodeStats(nId),          // [tier, directCount, matrixCount, totalRewards, totalContribution, daysActive]
+        this.core.nodes(nId).catch(() => null), // raw node struct for fallback
         this.core.isNodeActive(nId),
         this.core.pendingReward(address),
         this.pool.getPoolViewHelper(nId)
       ]);
 
+      // stats[0] = tier (positional — reliable with ethers v6)
+      const tier = Number(stats[0]);
+
       return {
         hasNode: true,
-        nodeId: Number(nId),
-        tier: Number(nodeInfo.tier),
-        directRefs: Number(nodeInfo.directNodes),
-        teamSize: Number(nodeInfo.totalMatrixNodes),
-        totalEarned: ethers.formatEther(nodeInfo.totalContribution),
-        nodeActive: isActive,
+        nodeId:       Number(nId),
+        tier:         tier > 0 ? tier : (nodeInfo ? Number(nodeInfo[5] ?? nodeInfo.tier ?? 1) : 1),
+        directRefs:   Number(stats[1]),
+        teamSize:     Number(stats[2]),
+        totalEarned:  ethers.formatEther(stats[3]),
+        nodeActive:   isActive,
         pendingReward: ethers.formatEther(pending),
         poolClaimable: ethers.formatEther(poolData[2]),
-        poolName: poolData[1],
+        poolName:     poolData[1],
         isPoolQualified: poolData[9]
       };
     } catch (err) {
