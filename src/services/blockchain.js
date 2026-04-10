@@ -30,35 +30,40 @@ class BlockchainService {
       const nId = await this.core.nodeId(address);
       if (!nId || Number(nId) === 0) return { nodeId: 0, hasNode: false };
 
-      // Batch fetch: getNodeStats for tier/counts (positional, reliable), plus active/rewards
+      // Fetch all data sources independently so one failure doesn't kill everything
       const [stats, nodeInfo, isActive, pending, poolData] = await Promise.all([
-        this.core.getNodeStats(nId),          // [tier, directCount, matrixCount, totalRewards, totalContribution, daysActive]
-        this.core.nodes(nId).catch(() => null), // raw node struct for fallback
-        this.core.isNodeActive(nId),
-        this.core.pendingReward(address),
-        this.pool.getPoolViewHelper(nId)
+        this.core.getNodeStats(nId).catch(() => [0n, 0n, 0n, 0n, 0n, 0n]),
+        this.core.nodes(nId).catch(() => null),
+        this.core.isNodeActive(nId).catch(() => false),
+        this.core.pendingReward(address).catch(() => 0n),
+        this.pool.getPoolViewHelper(nId).catch(() => null)
       ]);
 
-      // stats[0] = tier (positional — reliable with ethers v6)
-      const tier = Number(stats[0]);
+      // Tier waterfall: nfeTier from pool (most reliable) → getNodeStats → nodes() struct
+      const tierFromPool  = poolData ? Number(poolData[8]) : 0;   // nfeTier index 8
+      const tierFromStats = Number(stats[0]) || 0;
+      const tierFromNodes = nodeInfo ? (Number(nodeInfo[5]) || Number(nodeInfo.tier) || 0) : 0;
+      const tier = tierFromPool  > 0 ? tierFromPool
+                 : tierFromStats > 0 ? tierFromStats
+                 : tierFromNodes > 0 ? tierFromNodes
+                 : 1; // absolute fallback
 
       return {
         hasNode: true,
         nodeId:         Number(nId),
-        tier:           tier > 0 ? tier : (nodeInfo ? Number(nodeInfo[5] ?? nodeInfo.tier ?? 1) : 1),
-        directRefs:     Number(stats[1]),
-        teamSize:       Number(stats[2]),
-        totalEarned:    ethers.formatEther(stats[3]),
+        tier,
+        directRefs:     Number(stats[1]) || 0,
+        teamSize:       Number(stats[2]) || 0,
+        totalEarned:    ethers.formatEther(stats[3] || 0n),
         nodeActive:     isActive,
-        pendingReward:  ethers.formatEther(pending),
-        poolClaimable:  ethers.formatEther(poolData[2]),
-        poolName:       String(poolData[1] || 'None'),
-        totalDeposited: ethers.formatEther(poolData[7] || 0n),
-        isPoolQualified: Boolean(poolData[9]),
-        // missingRequirements[0]=directs, [1]=tier, [2]=team
-        missingDirects: Number(poolData[11]?.[0] || 0),
-        missingTier:    Number(poolData[11]?.[1] || 0),
-        missingTeam:    Number(poolData[11]?.[2] || 0),
+        pendingReward:  ethers.formatEther(pending || 0n),
+        poolClaimable:  ethers.formatEther(poolData?.[2] || 0n),
+        poolName:       String(poolData?.[1] || 'None'),
+        totalDeposited: ethers.formatEther(poolData?.[7] || 0n),
+        isPoolQualified: Boolean(poolData?.[9]),
+        missingDirects: Number(poolData?.[11]?.[0] || 0),
+        missingTier:    Number(poolData?.[11]?.[1] || 0),
+        missingTeam:    Number(poolData?.[11]?.[2] || 0),
       };
     } catch (err) {
       console.error("Dashboard Data Fetch Failed:", err);
