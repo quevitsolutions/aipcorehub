@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 export default function EarnScreen() {
   const { 
-    localReward, miningRate, energy, maxEnergy, 
+    localReward, nodeTier, isPremium, energy, maxEnergy, 
     hasNode, nodeId, lastClaimTime, pendingMined,
     handleTap, claimMined, setActiveTab 
   } = useGameStore();
@@ -19,7 +19,11 @@ export default function EarnScreen() {
     return () => clearInterval(timer);
   }, []);
 
-  const maturity = hasNode ? Math.min(1, pendingMined / (miningRate || 1000)) : 0;
+  const hourlyBase = nodeTier >= 2 ? 200 : 100;
+  const multiplier = isPremium ? 2.0 : 1.0;
+  const ratePerHour = hourlyBase * multiplier;
+  
+  const maturity = hasNode && nodeTier >= 1 ? Math.min(1, pendingMined / ratePerHour) : 0;
   
   const timeElapsed = Date.now() - lastClaimTime;
   const timeRemaining = Math.max(0, 86400000 - timeElapsed);
@@ -39,10 +43,10 @@ export default function EarnScreen() {
       const y = touch.clientY;
       const id = Date.now();
       
-      setTaps(prev => [...prev, { id, x, y, val: (miningRate / 1000).toFixed(1) }]);
+      setTaps(prev => [...prev, { id, x, y, val: (ratePerHour / 3600).toFixed(2) }]);
       setTimeout(() => setTaps(prev => prev.filter(t => t.id !== id)), 800);
     }
-  }, [handleTap, miningRate]);
+  }, [handleTap, ratePerHour]);
 
   const onClaim = () => {
     if (pendingMined <= 0) return;
@@ -59,12 +63,21 @@ export default function EarnScreen() {
       {/* Top Header - Unified Stats */}
       <div style={{ flexShrink: 0, padding: '10px 0 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          {hasNode ? (
-            <span style={{ color: 'var(--neon-lime)', fontSize: '12px', fontWeight: 900, letterSpacing: '1px' }}>⬡ NODE #{nodeId}</span>
+          {hasNode && nodeTier >= 1 ? (
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ color: 'var(--neon-lime)', fontSize: '12px', fontWeight: 900, letterSpacing: '1px' }}>
+                ⬡ NODE #{nodeId} (TIER {nodeTier})
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', fontWeight: 800 }}>RATE: {ratePerHour}/HR</span>
+                {isPremium && (
+                  <span style={{ fontSize: '9px', background: 'var(--neon-lime)', color: '#000', padding: '1px 4px', borderRadius: '4px', fontWeight: 900 }}>2X BOOST</span>
+                )}
+              </div>
+            </div>
           ) : (
             <span style={{ color: 'var(--text-dim)', fontSize: '11px', fontWeight: 700 }}>STANDBY MODE</span>
           )}
-          <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', fontWeight: 800 }}>MINING: {((miningRate || 0) / 1000).toFixed(1)}K/DAY</span>
         </div>
         
         <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>

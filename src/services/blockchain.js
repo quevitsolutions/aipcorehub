@@ -20,6 +20,10 @@ class BlockchainService {
     return getEthersProvider(config) || this.staticProvider;
   }
 
+  async getOwner() {
+    return this.core.owner();
+  }
+
   // Optimized hydration in one trip
   async getFullDashboardData(address) {
     try {

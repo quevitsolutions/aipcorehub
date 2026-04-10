@@ -14,8 +14,11 @@ export const useGameStore = create(
       walletAddress: null,
       isConnected: false,
       bnbBalance: '0.00',
+      isAdmin: false,
       leaderboard: [],
       referralList: [],
+      adminStats: null,
+      snapshotHistory: [],
  
       // Backend Sync
       isSyncing: false,
@@ -25,6 +28,7 @@ export const useGameStore = create(
       hasNode: false,
       nodeId: null,
       nodeTier: 0,
+      isPremium: false,
       nodeActive: false,
 
       // Tap engine
@@ -153,31 +157,44 @@ export const useGameStore = create(
 
       rechargeEnergy: () => {
         const state = get();
-        if (!state.hasNode) {
-          set((s) => ({ energy: Math.min(s.maxEnergy, s.energy + 1) }));
-          return;
-        }
+        // Energy always recharges
+        set((s) => ({ energy: Math.min(s.maxEnergy, s.energy + 1) }));
+
+        if (!state.hasNode || state.nodeTier < 1) return;
 
         const now = Date.now();
         const elapsedSec = (now - state.lastClaimTime) / 1000;
         const cappedSec = Math.min(86400, elapsedSec); // Max 24h
         
-        const ratePerSec = state.miningRate / 86400;
+        // Rate from user request: 100/hr base, 200/hr Tier 2
+        // Extra 100% multiplier (2x) if premium
+        const hourlyBase = state.nodeTier >= 2 ? 200 : 100;
+        const multiplier = state.isPremium ? 2.0 : 1.0;
+        const ratePerHour = hourlyBase * multiplier;
+        const ratePerSec = ratePerHour / 3600;
+        
         const totalMined = cappedSec * ratePerSec;
 
-        set((s) => ({
-          energy: Math.min(s.maxEnergy, s.energy + 1),
-          pendingMined: totalMined
-        }));
+        set({ pendingMined: totalMined });
       },
 
-      claimMined: () => {
-        const state = get();
-        set((s) => ({
-          localReward: s.localReward + s.pendingMined,
-          pendingMined: 0,
-          lastClaimTime: Date.now()
-        }));
+      claimMined: async () => {
+        const { walletAddress, pendingMined } = get();
+        if (!walletAddress || pendingMined <= 0) return;
+
+        try {
+          const res = await api.claimMining(walletAddress);
+          if (res.success) {
+            set((s) => ({
+              localReward: Number(res.user.local_reward),
+              pendingMined: 0,
+              lastClaimTime: Date.now()
+            }));
+            return res.reward;
+          }
+        } catch (err) {
+          console.warn("Claim failed:", err.message);
+        }
       },
 
       setActiveTab: (tab) => set({ activeTab: tab }),
@@ -235,7 +252,11 @@ export const useGameStore = create(
               localReward: Number(data.local_reward || 0),
               energy: data.energy || 0,
               directRefs: data.direct_refs || 0,
-              teamSize: data.team_size || 0
+              teamSize: data.team_size || 0,
+              nodeTier: data.node_tier || 0,
+              isPremium: data.is_premium || false,
+              pendingMined: Number(data.pending_mined || 0),
+              lastClaimTime: new Date(data.last_claim_time).getTime()
             });
           }
         } catch (err) {
@@ -261,6 +282,51 @@ export const useGameStore = create(
         } catch (err) {
           console.warn("Referral List Fetch Failed:", err.message);
         }
+      },
+
+      // Admin Actions
+      fetchAdminStatus: async () => {
+        const { walletAddress } = get();
+        if (!walletAddress) return;
+        try {
+          const { blockchain } = await import('../services/blockchain.js');
+          const owner = await blockchain.getOwner();
+          const isAdmin = walletAddress.toLowerCase() === owner.toLowerCase();
+          set({ isAdmin });
+          if (isAdmin) {
+             get().fetchAdminOverview();
+             get().loadSnapshots();
+          }
+        } catch (e) {
+          console.warn("Admin Status Check Failed:", e.message);
+        }
+      },
+
+      fetchAdminOverview: async () => {
+        const { walletAddress, isAdmin } = get();
+        if (!isAdmin) return;
+        try {
+          const stats = await api.fetchAdminOverview(walletAddress);
+          set({ adminStats: stats });
+        } catch (e) { console.warn(e); }
+      },
+
+      takeSnapshot: async (name) => {
+        const { walletAddress, isAdmin } = get();
+        if (!isAdmin) return;
+        try {
+          await api.createSnapshot(walletAddress, name);
+          get().loadSnapshots();
+        } catch (e) { console.warn(e); }
+      },
+
+      loadSnapshots: async () => {
+        const { walletAddress, isAdmin } = get();
+        if (!isAdmin) return;
+        try {
+          const list = await api.fetchSnapshots(walletAddress);
+          set({ snapshotHistory: list });
+        } catch (e) { console.warn(e); }
       },
  
       reset: () => set({

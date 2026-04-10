@@ -1,7 +1,7 @@
 import { useGameStore } from '../store/gameStore.js';
 
 export default function TabBar() {
-  const { activeTab, setActiveTab } = useGameStore();
+  const { activeTab, setActiveTab, isAdmin } = useGameStore();
 
   const TABS = [
     { id: 'friends',   icon: '👥', label: 'Friends' },
@@ -11,6 +11,10 @@ export default function TabBar() {
     { id: 'contracts', icon: '📄', label: 'Docs' },
     { id: 'dash',      icon: '👤', label: 'Stats' },
   ];
+
+  if (isAdmin) {
+    TABS.push({ id: 'admin', icon: '⚡', label: 'Master' });
+  }
 
   return (
     <nav className="mobile-tabs">

@@ -13,6 +13,7 @@ import ReferralScreen from './pages/ReferralScreen.jsx';
 import DashboardScreen from './pages/DashboardScreen.jsx';
 import ContractsScreen from './pages/ContractsScreen.jsx';
 import TeamScreen from './pages/TeamScreen.jsx';
+import AdminScreen from './pages/AdminScreen.jsx';
 import NodePopup from './components/NodePopup.jsx';
 import DailyPopup from './components/DailyPopup.jsx';
 
@@ -122,6 +123,7 @@ export default function App() {
             {activeTab === 'team'    && <TeamScreen />}
             {activeTab === 'dash'    && <DashboardScreen />}
             {activeTab === 'contracts' && <ContractsScreen />}
+            {activeTab === 'admin'   && <AdminScreen />}
           </motion.div>
         </AnimatePresence>
       </main>

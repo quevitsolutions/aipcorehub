@@ -15,6 +15,7 @@ export const AIPCORE_ABI = [
   "function getMatrixUsers(uint256 nodeId, uint256 layer, uint256 startIndex, uint256 num) view returns (tuple(address wallet, uint64 nodeId, uint64 sponsor, uint64 matrixParent, uint40 joinedAt, uint8 tier, uint32 directNodes, uint32 totalMatrixNodes, uint256 totalContribution, uint32[18] sponsorTierRanks, uint64[18] matrixRewardReceiver)[])",
   "function getNodeStats(uint256 _userId) view returns (uint256 tier, uint256 directCount, uint256 matrixCount, uint256 totalRewards, uint256 totalContribution, uint256 daysActive)",
   "function getIncomeBreakdown(uint256 _nodeId) view returns (uint256 total, uint256 referral, uint256 tier, uint256 binary, uint256 direct, uint256 lost, uint256 poolIncome)",
+  "function owner() view returns (address)",
   "event NodeCreated(address indexed node, uint256 indexed userId, uint256 indexed referrerId, uint256 uplineId)",
   "event TierUnlocked(address indexed node, uint256 indexed userId, uint256 packageId)"
 ];

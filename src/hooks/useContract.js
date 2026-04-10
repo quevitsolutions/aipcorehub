@@ -88,7 +88,7 @@ export const useContract = () => {
 
 export const useWalletLifecycle = () => {
   const { address, isConnected } = useAccount();
-  const { setWallet, disconnectWallet, fetchUserData } = useGameStore();
+  const { setWallet, disconnectWallet, fetchUserData, fetchAdminStatus } = useGameStore();
   const { loadNodeData, fetchBnbBalance } = useContract();
 
   useEffect(() => {
@@ -96,6 +96,7 @@ export const useWalletLifecycle = () => {
       setWallet(address);
       loadNodeData(address);
       fetchBnbBalance(address);
+      fetchAdminStatus(); // Check for owner privileges
       fetchUserData().catch(() => {}); // Sync backend state on connect
     } else if (!isConnected) {
       disconnectWallet();

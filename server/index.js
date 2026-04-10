@@ -51,14 +51,165 @@ app.get('/api/user/:walletAddress', async (req, res) => {
     }
     
     const user = userResult.rows[0];
+    
+    // Calculate pending mining rewards
+    let pending_mined = 0;
+    if (user.node_tier >= 1) {
+      const now = new Date();
+      const lastClaim = new Date(user.last_claim_time);
+      const diffHours = (now - lastClaim) / (1000 * 60 * 60);
+      const cappedHours = Math.min(diffHours, 24); // 24h cap
+      
+      const baseRate = user.node_tier >= 2 ? 200 : 100;
+      const multiplier = user.is_premium ? 2.0 : 1.0;
+      pending_mined = cappedHours * baseRate * multiplier;
+    }
+
     res.json({
       ...user,
       direct_refs: parseInt(user.direct_refs || 0),
-      team_size: parseInt(user.team_size || 0)
+      team_size: parseInt(user.team_size || 0),
+      pending_mined: parseFloat(pending_mined.toFixed(4))
     });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Database error' });
+  }
+});
+
+// POST Claim Mining Rewards
+app.post('/api/mining/claim', async (req, res) => {
+  const { walletAddress } = req.body;
+  if (!walletAddress) return res.status(400).json({ error: 'Wallet required' });
+
+  try {
+    const userResult = await query('SELECT * FROM users WHERE wallet_address = $1', [walletAddress]);
+    if (userResult.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    
+    const user = userResult.rows[0];
+    if (user.node_tier < 1) return res.status(400).json({ error: 'No active node' });
+
+    const now = new Date();
+    const lastClaim = new Date(user.last_claim_time);
+    const diffHours = (now - lastClaim) / (1000 * 60 * 60);
+    const cappedHours = Math.min(diffHours, 24);
+    
+    const baseRate = user.node_tier >= 2 ? 200 : 100;
+    const multiplier = user.is_premium ? 2.0 : 1.0;
+    const reward = cappedHours * baseRate * multiplier;
+
+    const update = await query(
+      `UPDATE users 
+       SET local_reward = local_reward + $2, 
+           last_claim_time = CURRENT_TIMESTAMP,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE wallet_address = $1
+       RETURNING *`,
+      [walletAddress, reward]
+    );
+
+    res.json({ success: true, reward, user: update.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Claim failed' });
+  }
+});
+
+// POST Upgrade Mining Tier (Simulated for Tier 2)
+app.post('/api/mining/upgrade', async (req, res) => {
+  const { walletAddress, tier, isPremium } = req.body;
+  if (!walletAddress) return res.status(400).json({ error: 'Wallet required' });
+
+  try {
+    const update = await query(
+      `UPDATE users 
+       SET node_tier = COALESCE($2, node_tier),
+           is_premium = COALESCE($3, is_premium),
+           updated_at = CURRENT_TIMESTAMP
+       WHERE wallet_address = $1
+       RETURNING *`,
+      [walletAddress, tier, isPremium]
+    );
+    res.json(update.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Upgrade failed' });
+  }
+});
+
+// Admin Middleware (Security)
+const checkAdmin = (req, res, next) => {
+  const adminWallet = process.env.VITE_ADMIN_WALLET;
+  const userWallet = req.headers['x-admin-wallet'];
+  
+  if (!adminWallet || !userWallet || adminWallet.toLowerCase() !== userWallet.toLowerCase()) {
+    return res.status(403).json({ error: 'Admin access denied' });
+  }
+  next();
+};
+
+// GET Admin Overview Stats
+app.get('/api/admin/overview', checkAdmin, async (req, res) => {
+  try {
+    const stats = await query(`
+      SELECT 
+        (SELECT COUNT(*) FROM users) as total_users,
+        (SELECT SUM(local_reward) FROM users) as total_reward,
+        (SELECT COUNT(*) FROM users WHERE node_tier >= 1) as active_miners,
+        (SELECT COUNT(*) FROM users WHERE created_at > NOW() - INTERVAL '24 hours') as new_users_24h
+      FROM users LIMIT 1
+    `);
+    res.json(stats.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch admin stats' });
+  }
+});
+
+// POST Create Balance Snapshot
+app.post('/api/admin/snapshot', checkAdmin, async (req, res) => {
+  const { name } = req.body;
+  if (!name) return res.status(400).json({ error: 'Snapshot name required' });
+
+  try {
+    // 1. Fetch all users with rewards
+    const users = await query('SELECT wallet_address, local_reward FROM users WHERE local_reward > 0');
+    const total_coins = users.rows.reduce((sum, u) => sum + parseFloat(u.local_reward), 0);
+    
+    // 2. Save snapshot
+    const snapshot = await query(
+      `INSERT INTO snapshots (name, total_users, total_coins, data) 
+       VALUES ($1, $2, $3, $4) RETURNING *`,
+      [name, users.rows.length, total_coins, JSON.stringify(users.rows)]
+    );
+    
+    res.json(snapshot.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Snapshot failed' });
+  }
+});
+
+// GET Snapshot History
+app.get('/api/admin/snapshots', checkAdmin, async (req, res) => {
+  try {
+    const list = await query('SELECT id, name, total_users, total_coins, created_at FROM snapshots ORDER BY created_at DESC');
+    res.json(list.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch snapshots' });
+  }
+});
+
+// GET Single Snapshot Data (for export)
+app.get('/api/admin/snapshot/:id', checkAdmin, async (req, res) => {
+  try {
+    const data = await query('SELECT * FROM snapshots WHERE id = $1', [req.params.id]);
+    if (data.rows.length === 0) return res.status(404).json({ error: 'Snapshot not found' });
+    res.json(data.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch snapshot data' });
   }
 });
 

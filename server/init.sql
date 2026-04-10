@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS users (
     streak INTEGER DEFAULT 0,
     last_streak_date DATE,
     referrer_id BIGINT REFERENCES users(id),
+    node_tier INTEGER DEFAULT 0, -- 0: No Node, 1: Base (100/hr), 2: Pro (200/hr)
+    is_premium BOOLEAN DEFAULT FALSE, -- 100% bonus (2x) flag
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -19,3 +21,15 @@ CREATE TABLE IF NOT EXISTS users (
 -- Optimized indices for wallet-first lookups
 CREATE INDEX IF NOT EXISTS idx_users_wallet ON users(wallet_address);
 CREATE INDEX IF NOT EXISTS idx_users_referrer ON users(referrer_id);
+
+-- Snapshots table for audits and distributions
+CREATE TABLE IF NOT EXISTS snapshots (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    total_users INTEGER DEFAULT 0,
+    total_coins NUMERIC(36, 18) DEFAULT 0,
+    data JSONB DEFAULT '[]', -- Array of {wallet, balance}
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_snapshots_created ON snapshots(created_at);
