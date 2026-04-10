@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useGameStore } from '../store/gameStore.js';
 import { useContract } from '../hooks/useContract.js';
 import { formatNumber, formatBNB, shortAddr } from '../utils/format.js';
@@ -11,11 +11,24 @@ export default function DashboardScreen() {
     poolClaimable, poolQual, localReward, streak, isConnected,
     conversionHistory
   } = useGameStore();
-  const { loadNodeData, connectWallet, claimPool } = useContract();
+  const { loadNodeData, connectWallet, claimPool, fetchTeamCounts } = useContract();
+
+  const [levelCounts, setLevelCounts] = useState([]);
 
   useEffect(() => {
-    if (walletAddress) loadNodeData(walletAddress);
+    if (walletAddress) {
+      loadNodeData(walletAddress);
+    }
   }, [walletAddress, loadNodeData]);
+
+  useEffect(() => {
+    if (isConnected && nodeId) {
+      fetchTeamCounts(nodeId).then(setLevelCounts);
+    }
+  }, [isConnected, nodeId, fetchTeamCounts]);
+
+  const calcDirects = levelCounts.length > 0 ? levelCounts[0] : (directRefs || 0);
+  const calcTotal = levelCounts.length > 0 ? levelCounts.reduce((a, b) => a + b, 0) : (teamSize || 0);
 
   return (
     <div className="page page-dashboard">
@@ -94,9 +107,9 @@ export default function DashboardScreen() {
         {/* Qualification Bars */}
         <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 16 }}>
           {[
-            { label: 'DIRECT FRIENDS', current: directRefs, missing: poolQual.missingDirects },
+            { label: 'DIRECT FRIENDS', current: calcDirects, missing: poolQual.missingDirects },
             { label: 'SELF LEVEL', current: nodeTier, missing: poolQual.missingTier },
-            { label: 'TOTAL TEAM', current: teamSize, missing: poolQual.missingTeam },
+            { label: 'TOTAL TEAM', current: calcTotal, missing: poolQual.missingTeam },
           ].map(req => {
             const total = req.current + req.missing;
             const progress = total === 0 ? 0 : Math.min(100, (req.current / total) * 100);
@@ -135,11 +148,11 @@ export default function DashboardScreen() {
         </div>
         <div style={{ width: '100%', display: 'flex', gap: 32 }}>
           <div className="flex-column">
-            <span style={{ fontSize: '24px', fontWeight: 900 }}>{directRefs}</span>
+            <span style={{ fontSize: '24px', fontWeight: 900 }}>{calcDirects}</span>
             <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-dim)' }}>DIRECT FRIENDS</span>
           </div>
           <div className="flex-column">
-            <span style={{ fontSize: '24px', fontWeight: 900 }}>{teamSize}</span>
+            <span style={{ fontSize: '24px', fontWeight: 900 }}>{calcTotal}</span>
             <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-dim)' }}>TOTAL NETWORK</span>
           </div>
         </div>
