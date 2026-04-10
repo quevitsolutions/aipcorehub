@@ -88,7 +88,7 @@ export const useContract = () => {
 
 export const useWalletLifecycle = () => {
   const { address, isConnected } = useAccount();
-  const { setWallet, disconnectWallet, fetchUserData, fetchAdminStatus } = useGameStore();
+  const { setWallet, disconnectWallet, fetchUserData, fetchAdminStatus, fetchUserConversions } = useGameStore();
   const { loadNodeData, fetchBnbBalance } = useContract();
 
   useEffect(() => {
