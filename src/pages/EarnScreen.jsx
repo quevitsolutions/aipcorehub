@@ -3,16 +3,34 @@ import { useGameStore } from '../store/gameStore.js';
 import { formatNumber } from '../utils/format.js';
 import { motion, AnimatePresence } from 'framer-motion';
 
+const QUICK_TASKS = [
+  { id: 'tg_join',  icon: '✈️', label: 'Telegram', reward: 200000, url: 'https://t.me/AIPCoreOfficial', color: '#2AABEE' },
+  { id: 'tg_chat',  icon: '💬', label: 'TG Chat',  reward: 150000, url: 'https://t.me/AIPCoreChat',    color: '#2AABEE' },
+  { id: 'x_follow', icon: '𝕏',  label: 'X/Twitter', reward: 100000, url: 'https://x.com/AIPCore',       color: '#fff' },
+];
+
 export default function EarnScreen() {
-  const { 
-    localReward, nodeTier, isPremium, energy, maxEnergy, 
+  const {
+    localReward, nodeTier, isPremium, energy, maxEnergy,
     hasNode, nodeId, lastClaimTime, pendingMined,
-    handleTap, claimMined, setActiveTab 
+    handleTap, claimMined, setActiveTab, addLocalReward
   } = useGameStore();
 
   const [taps, setTaps] = useState([]);
   const [isExploding, setIsExploding] = useState(false);
   const [, setTick] = useState(0);
+  const [claimedTasks, setClaimedTasks] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('aip-tasks') || '[]'); } catch { return []; }
+  });
+
+  const handleTaskClaim = (task) => {
+    if (claimedTasks.includes(task.id)) return;
+    window.open(task.url, '_blank');
+    const updated = [...claimedTasks, task.id];
+    setClaimedTasks(updated);
+    localStorage.setItem('aip-tasks', JSON.stringify(updated));
+    addLocalReward(task.reward);
+  };
 
   useEffect(() => {
     const timer = setInterval(() => setTick(t => t + 1), 1000);
@@ -80,19 +98,64 @@ export default function EarnScreen() {
           )}
         </div>
         
+        {/* Energy bar */}
         <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span style={{ fontSize: '13px', fontWeight: 900, color: 'var(--neon-lime)' }}>{energy}</span>
-            <span style={{ fontSize: '11px', color: 'var(--text-dim)', fontWeight: 700 }}>/ {maxEnergy}</span>
+            <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', fontWeight: 700 }}>/ {maxEnergy}</span>
           </div>
           <div style={{ width: '60px', height: '4px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px', marginTop: '4px', overflow: 'hidden' }}>
-            <motion.div 
+            <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${(energy / maxEnergy) * 100}%` }}
-              style={{ height: '100%', background: 'var(--neon-lime)', boxShadow: '0 0 10px var(--neon-lime)' }} 
+              style={{ height: '100%', background: 'var(--neon-lime)', boxShadow: '0 0 10px var(--neon-lime)' }}
             />
           </div>
         </div>
+      </div>
+
+      {/* ─ Social Task Quick-Strip ─ */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 10, overflowX: 'auto', paddingBottom: 2 }}>
+        {QUICK_TASKS.map(task => {
+          const done = claimedTasks.includes(task.id);
+          return (
+            <motion.button
+              key={task.id}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => handleTaskClaim(task)}
+              disabled={done}
+              style={{
+                flexShrink: 0,
+                display: 'flex', alignItems: 'center', gap: 6,
+                background: done ? 'rgba(203,255,1,0.07)' : 'rgba(255,255,255,0.04)',
+                border: done ? '1px solid rgba(203,255,1,0.3)' : '1px solid rgba(255,255,255,0.08)',
+                borderRadius: 40, padding: '6px 14px',
+                cursor: done ? 'default' : 'pointer',
+                fontSize: 11, fontWeight: 800, color: done ? 'var(--neon-lime)' : '#fff',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              <span>{task.icon}</span>
+              <span>{task.label}</span>
+              {done
+                ? <span style={{ color: 'var(--neon-lime)' }}>✓</span>
+                : <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10 }}>+{formatNumber(task.reward)}</span>
+              }
+            </motion.button>
+          );
+        })}
+        <motion.button
+          whileTap={{ scale: 0.95 }}
+          onClick={() => setActiveTab('tasks')}
+          style={{
+            flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4,
+            background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 40, padding: '6px 14px', cursor: 'pointer',
+            fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.5)', whiteSpace: 'nowrap'
+          }}
+        >
+          MORE TASKS →
+        </motion.button>
       </div>
 
       {/* Main Balance Display */}
@@ -168,10 +231,22 @@ export default function EarnScreen() {
             ))}
           </AnimatePresence>
 
-          <div className="boost-pill" onClick={() => setActiveTab('mine')} style={{ position: 'absolute', bottom: -10, cursor: 'pointer', zIndex: 20 }}>
-            <span>BOOST</span>
-            <div className="up-icon">⬆</div>
-          </div>
+          {/* Animated BOOST pill → links to Boost page */}
+          <motion.div
+            className="boost-pill"
+            onClick={() => setActiveTab('mine')}
+            animate={{ boxShadow: ['0 0 8px rgba(203,255,1,0.3)', '0 0 20px rgba(203,255,1,0.6)', '0 0 8px rgba(203,255,1,0.3)'] }}
+            transition={{ duration: 2, repeat: Infinity }}
+            style={{
+              position: 'absolute', bottom: -10, cursor: 'pointer', zIndex: 20,
+              background: 'var(--neon-lime)', borderRadius: 40,
+              padding: '6px 18px', display: 'flex', alignItems: 'center', gap: 8
+            }}
+          >
+            <span style={{ fontSize: 12, fontWeight: 900, color: '#000', letterSpacing: 1 }}>BOOST</span>
+            <span style={{ fontSize: 11, fontWeight: 900, color: '#000' }}>TIER {nodeTier || 1} →{(nodeTier || 1) + 1}</span>
+            <div style={{ fontSize: 14, color: '#000' }}>⬆</div>
+          </motion.div>
         </div>
       </div>
 
