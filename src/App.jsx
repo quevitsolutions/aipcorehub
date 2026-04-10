@@ -14,6 +14,7 @@ import DashboardScreen from './pages/DashboardScreen.jsx';
 import ContractsScreen from './pages/ContractsScreen.jsx';
 import TeamScreen from './pages/TeamScreen.jsx';
 import AdminScreen from './pages/AdminScreen.jsx';
+import MarketingScreen from './pages/MarketingScreen.jsx';
 import NodePopup from './components/NodePopup.jsx';
 import DailyPopup from './components/DailyPopup.jsx';
 
@@ -21,6 +22,7 @@ export default function App() {
   const {
     activeTab,
     isConnected,
+    hasNode,
     rechargeEnergy,
     showNodePopup,
     showDailyPopup,
@@ -70,12 +72,28 @@ export default function App() {
     return () => removeListeners();
   }, [isConnected, setupListeners, removeListeners]);
 
-  // Entrance Check
+  // Entrance Check: No wallet -> Login screen
   if (!isConnected) {
     return (
       <div className="app-container">
         <LoginScreen onConnect={connectWallet} />
         <Toaster position="top-center" />
+      </div>
+    );
+  }
+
+  // Node Gate: Wallet connected but no node -> Marketing page
+  if (isConnected && !hasNode) {
+    return (
+      <div className="app-container">
+        <Toaster position="top-center" toastOptions={{
+          style: {
+            background: 'rgba(20, 30, 51, 0.95)', color: '#fff',
+            border: '1px solid rgba(203, 255, 1, 0.2)', backdropFilter: 'blur(10px)',
+            fontFamily: 'Outfit, sans-serif', fontWeight: 800, borderRadius: '14px', fontSize: '13px'
+          }
+        }} />
+        <MarketingScreen onConnect={connectWallet} onDisconnect={disconnectWallet} />
       </div>
     );
   }
