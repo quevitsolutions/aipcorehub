@@ -1,20 +1,62 @@
 import React, { useState } from 'react';
 import { CONTRACTS } from '../config/constants.js';
 import { useGameStore } from '../store/gameStore.js';
+import { useContract } from '../hooks/useContract.js';
 import toast from 'react-hot-toast';
+import { getEthersSigner } from '../utils/ethers-adapter.js';
+import { ethers } from 'ethers';
+import { config } from '../config/wagmi.js';
+import { AIPCORE_ABI } from '../../contracts/abi.js';
 
+// Correct income percentages as per AIPCORE contract
 const INCOME_STREAMS = [
-  { icon: '👥', title: 'Referral Income', color: '#A3FF12', pct: '10%', desc: 'Earn 10% of every direct referral node purchase instantly on-chain.' },
-  { icon: '🌐', title: 'Matrix Bonus', color: '#00D4FF', pct: '40%', desc: '3×12 matrix positions fill automatically — spillover rewards to your team.' },
-  { icon: '🏆', title: 'Level Rewards', color: '#FF9500', pct: '40%', desc: 'Tiered reward pool — unlock higher payouts as your team grows.' },
-  { icon: '💎', title: 'Global Pool', color: '#FF2D55', pct: '10%', desc: 'Qualifiers receive proportional share of the global reward pool.' },
+  { icon: '👥', title: 'Referral Income',  color: '#A3FF12', pct: '10%', desc: 'Earn 10% of every direct referral node purchase instantly on-chain.' },
+  { icon: '🌐', title: 'Matrix Bonus',     color: '#00D4FF', pct: '70%', desc: '3×12 matrix positions fill automatically — spillover rewards to your team.' },
+  { icon: '🏆', title: 'Level Rewards',   color: '#FF9500', pct: '15%', desc: 'Tiered reward pool — unlock higher payouts as your team grows.' },
+  { icon: '💎', title: 'Global Pool',      color: '#FF2D55', pct: '5%',  desc: 'Qualifiers receive proportional share of the global reward pool.' },
 ];
 
 const REGISTER_URL = 'https://aipcore.online/';
 
 export default function ContractsScreen() {
-  const { setActiveTab, walletAddress, hasNode } = useGameStore();
-  const [activeSection, setActiveSection] = useState('about'); // 'about' | 'contracts'
+  const { setActiveTab, walletAddress, hasNode, referrerId } = useGameStore();
+  const [activeSection, setActiveSection] = useState('about');
+  const [registering, setRegistering] = useState(false);
+
+  // On-chain node registration via AIPCORE createNode(sponsorId)
+  const handleRegisterOnChain = async () => {
+    if (registering) return;
+    setRegistering(true);
+    try {
+      const signer = await getEthersSigner(config);
+      if (!signer) { toast.error('Please connect your wallet first'); setRegistering(false); return; }
+
+      const contract = new ethers.Contract(CONTRACTS.AIPCORE, AIPCORE_ABI, signer);
+
+      // Resolve sponsor nodeId — default to 1 (root) if no referrer or referrer has no node
+      let sponsorNodeId = 1n;
+      if (referrerId) {
+        try {
+          const refId = await contract.nodeId(referrerId);
+          if (refId && Number(refId) > 0) sponsorNodeId = refId;
+        } catch {}
+      }
+
+      // Get Tier 1 cost from contract
+      const tierCost = await contract.getTierCost(0);
+
+      toast.loading('Confirm transaction in your wallet...', { id: 'register' });
+      const tx = await contract.createNode(sponsorNodeId, { value: tierCost });
+      toast.loading(`Transaction sent: ${tx.hash.slice(0,10)}...`, { id: 'register' });
+      await tx.wait();
+      toast.success('Node registered! Refresh to see your stats.', { id: 'register', duration: 5000 });
+    } catch (err) {
+      console.error(err);
+      toast.error(err?.reason || err?.message?.slice(0, 80) || 'Transaction failed', { id: 'register' });
+    } finally {
+      setRegistering(false);
+    }
+  };
 
   const copyToClipboard = (text, label) => {
     navigator.clipboard.writeText(text);
@@ -30,6 +72,9 @@ export default function ContractsScreen() {
   ];
 
   const refLink = `${REGISTER_URL}?ref=${walletAddress || ''}`;
+
+  // Distribution bar: 10 / 70 / 15 / 5
+  const distBar = [['#A3FF12', 10], ['#00D4FF', 70], ['#FF9500', 15], ['#FF2D55', 5]];
 
   return (
     <div style={{ paddingBottom: 20 }}>
@@ -68,13 +113,17 @@ export default function ContractsScreen() {
               A fully decentralized node-mining network on BNB Chain. 100% of all protocol fees are distributed back to the community.
             </p>
 
-            {/* Distribution bar */}
+            {/* Distribution bar: Direct 10% | Matrix 70% | Level 15% | Pool 5% */}
             <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', marginBottom: 12, height: 10 }}>
-              {[['#A3FF12', 10], ['#00D4FF', 40], ['#FF9500', 40], ['#FF2D55', 10]].map(([color, pct], i) => (
+              {distBar.map(([color, pct], i) => (
                 <div key={i} style={{ width: `${pct}%`, background: color }} />
               ))}
             </div>
-            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', fontWeight: 700 }}>100% COMMUNITY DISTRIBUTION</p>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 4 }}>
+              {[['#A3FF12','Direct 10%'],['#00D4FF','Matrix 70%'],['#FF9500','Level 15%'],['#FF2D55','Pool 5%']].map(([c,l])=>(
+                <span key={l} style={{ fontSize: 9, fontWeight: 800, color: c }}>■ {l}</span>
+              ))}
+            </div>
           </div>
 
           {/* Income streams */}
@@ -93,37 +142,41 @@ export default function ContractsScreen() {
             ))}
           </div>
 
-          {/* Node tiers */}
-          <h3 style={{ fontSize: 13, fontWeight: 900, color: 'rgba(255,255,255,0.5)', letterSpacing: 1, marginBottom: 12 }}>NODE TIERS</h3>
+          {/* Node tiers — 18 tiers per contract getTierCosts() returns uint256[18] */}
+          <h3 style={{ fontSize: 13, fontWeight: 900, color: 'rgba(255,255,255,0.5)', letterSpacing: 1, marginBottom: 12 }}>NODE TIERS (1–18)</h3>
           <div style={{ background: 'var(--bg-card)', borderRadius: 16, padding: 16, marginBottom: 20 }}>
             {[
-              ['Tier 1', '100 coins/hr', '🟤'],
-              ['Tier 2-3', '200 coins/hr', '🔵'],
-              ['Tier 4-6', '300 coins/hr', '🟣'],
-              ['Tier 7-9', '500 coins/hr', '🟡'],
-              ['Tier 10-12', '1000+ coins/hr', '💎'],
-            ].map(([tier, rate, icon], i) => (
-              <div key={i} style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                padding: '8px 0', borderBottom: i < 4 ? '1px solid rgba(255,255,255,0.05)' : 'none'
-              }}>
+              ['Tier 1',     '100 coins/hr',   '🟤'],
+              ['Tier 2-3',   '200 coins/hr',   '🔵'],
+              ['Tier 4-6',   '300 coins/hr',   '🟣'],
+              ['Tier 7-9',   '500 coins/hr',   '🟡'],
+              ['Tier 10-12', '800 coins/hr',   '🟠'],
+              ['Tier 13-15', '1,200 coins/hr', '🔴'],
+              ['Tier 16-18', '2,000+ coins/hr','💎'],
+            ].map(([tier, rate, icon], i, arr) => (
+              <div key={i} style={
+                { display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '8px 0', borderBottom: i < arr.length-1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }
+              }>
                 <span style={{ fontSize: 12, fontWeight: 700 }}>{icon} {tier}</span>
                 <span style={{ fontSize: 12, fontWeight: 900, color: 'var(--neon-lime)' }}>{rate}</span>
               </div>
             ))}
           </div>
 
-          {/* Registration CTA */}
+          {/* Registration — ON-CHAIN via createNode() */}
           {!hasNode && (
-            <a href={refLink} target="_blank" rel="noreferrer" style={{ textDecoration: 'none', display: 'block', marginBottom: 12 }}>
-              <button style={{
-                width: '100%', background: 'var(--neon-lime)', border: 'none',
-                borderRadius: 16, padding: '16px', fontSize: 15, fontWeight: 900, color: '#000',
-                cursor: 'pointer', boxShadow: '0 0 25px rgba(163,255,18,0.3)'
+            <button
+              onClick={handleRegisterOnChain}
+              disabled={registering}
+              style={{
+                width: '100%', background: registering ? 'rgba(163,255,18,0.4)' : 'var(--neon-lime)',
+                border: 'none', borderRadius: 16, padding: '16px', fontSize: 15, fontWeight: 900,
+                color: '#000', cursor: registering ? 'wait' : 'pointer',
+                boxShadow: '0 0 25px rgba(163,255,18,0.3)', marginBottom: 12, display: 'block', width: '100%'
               }}>
-                🚀 REGISTER YOUR NODE →
-              </button>
-            </a>
+              {registering ? '⏳ Sending Transaction...' : '🚀 REGISTER NODE ON-CHAIN →'}
+            </button>
           )}
 
           <a href="https://t.me/AIPCoreOfficial" target="_blank" rel="noreferrer" style={{ textDecoration: 'none', display: 'block' }}>

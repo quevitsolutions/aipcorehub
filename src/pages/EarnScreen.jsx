@@ -2,6 +2,11 @@ import { useState, useEffect, useRef } from 'react';
 import { useGameStore } from '../store/gameStore.js';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
+import { getEthersSigner } from '../utils/ethers-adapter.js';
+import { ethers } from 'ethers';
+import { config } from '../config/wagmi.js';
+import { AIPCORE_ABI } from '../../contracts/abi.js';
+import { CONTRACTS } from '../config/constants.js';
 
 const MAX_SESSION = 86400000; // 24h
 
@@ -33,17 +38,38 @@ function useLocalMining(lastClaimTime, ratePerHour, hasNode) {
   return mined;
 }
 
-// ── Registration CTA for non-node users ──
+// ── Registration CTA for non-node users (on-chain) ──
 function RegistrationGate({ setActiveTab }) {
-  const { walletAddress } = useGameStore();
-  const REGISTER_URL = `https://aipcore.online/?ref=${walletAddress || ''}`;
+  const { referrerId } = useGameStore();
+  const [registering, setRegistering] = useState(false);
+
+  const handleRegister = async () => {
+    if (registering) return;
+    setRegistering(true);
+    try {
+      const signer = await getEthersSigner(config);
+      if (!signer) { toast.error('Connect wallet first'); setRegistering(false); return; }
+      const contract = new ethers.Contract(CONTRACTS.AIPCORE, AIPCORE_ABI, signer);
+      let sponsorNodeId = 1n;
+      if (referrerId) {
+        try { const ref = await contract.nodeId(referrerId); if (Number(ref) > 0) sponsorNodeId = ref; } catch {}
+      }
+      const tierCost = await contract.getTierCost(0);
+      toast.loading('Confirm transaction...', { id: 'reg' });
+      const tx = await contract.createNode(sponsorNodeId, { value: tierCost });
+      toast.loading(`Tx sent: ${tx.hash.slice(0,10)}...`, { id: 'reg' });
+      await tx.wait();
+      toast.success('Node registered! Pull to refresh.', { id: 'reg', duration: 5000 });
+    } catch (err) {
+      toast.error(err?.reason || err?.message?.slice(0, 80) || 'Failed', { id: 'reg' });
+    } finally { setRegistering(false); }
+  };
 
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       height: '100%', padding: '32px 20px', textAlign: 'center', gap: 20
     }}>
-      {/* Icon */}
       <div style={{
         width: 100, height: 100, borderRadius: '50%',
         background: 'linear-gradient(135deg, rgba(163,255,18,0.15), rgba(163,255,18,0.05))',
@@ -54,14 +80,13 @@ function RegistrationGate({ setActiveTab }) {
       <div>
         <h2 style={{ fontSize: 22, fontWeight: 900, marginBottom: 8 }}>Node Not Activated</h2>
         <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', lineHeight: 1.6, maxWidth: 300, margin: '0 auto' }}>
-          You need an active AIPCore node to mine coins. Register a node to start earning passive income.
+          You need an active AIPCore node to mine coins. Register on-chain to start earning passive income.
         </p>
       </div>
 
-      {/* Benefits */}
       {[
-        { icon: '💰', text: 'Earn 100–400+ coins/hr passively' },
-        { icon: '🚀', text: 'Boost up to Tier 12 — max rewards' },
+        { icon: '💰', text: 'Earn 100–2,000+ coins/hr passively' },
+        { icon: '🚀', text: 'Boost up to Tier 18 — max rewards' },
         { icon: '👥', text: 'Referral & team bonuses' },
         { icon: '🌐', text: 'Global reward pool participation' },
       ].map((b, i) => (
@@ -75,16 +100,18 @@ function RegistrationGate({ setActiveTab }) {
         </div>
       ))}
 
-      {/* CTA */}
-      <a href={REGISTER_URL} target="_blank" rel="noreferrer" style={{ width: '100%', maxWidth: 320, textDecoration: 'none' }}>
-        <button style={{
-          width: '100%', background: 'var(--neon-lime)', border: 'none',
-          borderRadius: 18, padding: '18px', fontSize: 16, fontWeight: 900,
-          color: '#000', cursor: 'pointer', boxShadow: '0 0 30px rgba(163,255,18,0.3)'
+      <button
+        onClick={handleRegister}
+        disabled={registering}
+        style={{
+          width: '100%', maxWidth: 320,
+          background: registering ? 'rgba(163,255,18,0.4)' : 'var(--neon-lime)',
+          border: 'none', borderRadius: 18, padding: '18px', fontSize: 16, fontWeight: 900,
+          color: '#000', cursor: registering ? 'wait' : 'pointer',
+          boxShadow: '0 0 30px rgba(163,255,18,0.3)'
         }}>
-          🚀 REGISTER A NODE →
-        </button>
-      </a>
+        {registering ? '⏳ Registering...' : '🚀 REGISTER NODE ON-CHAIN →'}
+      </button>
 
       <button onClick={() => setActiveTab('contracts')}
         style={{ background: 'none', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '10px 20px', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
