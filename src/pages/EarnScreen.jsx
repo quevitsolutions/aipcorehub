@@ -14,10 +14,14 @@ function useLocalMining(lastClaimTime, ratePerHour, hasNode) {
   const rafRef = useRef(null);
 
   useEffect(() => {
-    if (!hasNode) { setMined(0); return; }
+    // Always cancel old loop and reset to 0 first (critical after claim)
+    cancelAnimationFrame(rafRef.current);
+    setMined(0);
+    if (!hasNode) return;
+
     const tick = () => {
       const elapsed = (Date.now() - lastClaimTime) / 3600000; // hours
-      setMined(Math.max(0, parseFloat((elapsed * ratePerHour).toFixed(2))));
+      setMined(Math.max(0, parseFloat((elapsed * ratePerHour).toFixed(4))));
       rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
@@ -43,9 +47,7 @@ export default function EarnScreen() {
   // Use local real-time mining calc — no server dependency
   const localMined = useLocalMining(lastClaimTime, ratePerHour, hasNode);
   const MAX_SESSION = 86400000; // 24h in ms
-  const elapsed = Date.now() - lastClaimTime;
-  const timeRemaining = Math.max(0, MAX_SESSION - elapsed);
-  const maturity = hasNode ? Math.min(1, elapsed / MAX_SESSION) : 0;
+
 
   const formatTime = (ms) => {
     const h = Math.floor(ms / 3600000);
@@ -54,18 +56,27 @@ export default function EarnScreen() {
     return `${h}h ${m}m ${s}s`;
   };
 
-  // Keep time display updated
-  const [, setTick] = useState(0);
+  // Tick forces re-render every second so elapsed/maturity/timeRemaining stay live
+  const [tick, setTick] = useState(0);
   useEffect(() => {
     const t = setInterval(() => setTick(n => n + 1), 1000);
     return () => clearInterval(t);
   }, []);
 
+  // Recalculate every tick using CURRENT lastClaimTime from store
+  const now = Date.now();
+  const elapsed = now - lastClaimTime;
+  const timeRemaining = Math.max(0, MAX_SESSION - elapsed);
+  const maturity = hasNode ? Math.min(1, elapsed / MAX_SESSION) : 0;
+
   const onClaim = () => {
     if (localMined <= 0) return;
     const amount = Math.floor(localMined);
     setIsExploding(true);
+    // claimMined updates lastClaimTime → triggers re-render → elapsed resets to ~0
     claimMined(amount);
+    // Force immediate tick so timer display snaps to 24:00:00
+    setTick(0);
     toast.success('Hatched! +' + amount.toLocaleString('en-US') + ' coins collected!', { duration: 3000 });
     setTimeout(() => setIsExploding(false), 800);
   };
