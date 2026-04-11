@@ -8,6 +8,7 @@ services:
         - VITE_API_URL=${VITE_API_URL}
         - VITE_PROJECT_ID=${VITE_PROJECT_ID}
         - VITE_BSC_MAINNET_RPC=${VITE_BSC_MAINNET_RPC}
+        - VITE_ADMIN_WALLET=${VITE_ADMIN_WALLET}
     container_name: aipcore-frontend
     ports:
       - "80:80"
