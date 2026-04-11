@@ -85,7 +85,9 @@ function TaskManagementAdmin() {
               <span style={{ fontSize: '18px' }}>{t.icon}</span>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 <span style={{ fontSize: '12px', fontWeight: 800 }}>{t.name}</span>
-                <span style={{ fontSize: '10px', color: 'var(--neon-lime)' }}>+{formatNumber(t.reward)} | {t.type.toUpperCase()}</span>
+                <span style={{ fontSize: '10px', color: 'var(--neon-lime)' }}>
+                  +{formatNumber(t.reward)} | {(t.type || 'social').toUpperCase()}
+                </span>
               </div>
             </div>
             <button onClick={() => handleDelete(t.id)} style={{ background: 'rgba(255,0,0,0.2)', color: '#ff4444', border: 'none', padding: '6px 12px', borderRadius: '8px', fontSize: '10px', fontWeight: 900, cursor: 'pointer' }}>
@@ -236,7 +238,7 @@ export default function AdminScreen() {
       {/* Snapshot History */}
       <h3 style={{ fontSize: '12px', fontWeight: 900, color: 'var(--text-dim)', marginBottom: '16px', paddingLeft: '8px' }}>SNAPSHOT HISTORY</h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        {snapshotHistory.map(snap => (
+        {(snapshotHistory || []).map(snap => (
           <div key={snap.id} style={{ background: 'rgba(255,255,255,0.02)', padding: '16px 20px', borderRadius: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <div style={{ fontWeight: 800, fontSize: '14px' }}>{snap.name}</div>
