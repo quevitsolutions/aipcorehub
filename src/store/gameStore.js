@@ -383,7 +383,7 @@ export const useGameStore = create(
         if (!isAdmin) return;
         try {
           const list = await api.fetchSnapshots(walletAddress);
-          set({ snapshotHistory: list });
+          set({ snapshotHistory: Array.isArray(list) ? list : [] });
         } catch (e) { console.warn(e); }
       },
 
