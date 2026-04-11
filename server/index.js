@@ -137,6 +137,75 @@ app.post('/api/mining/upgrade', async (req, res) => {
   }
 });
 
+// ========================
+// TASKS SYSTEM ENDPOINTS
+// ========================
+
+// GET Active Tasks for User
+app.get('/api/tasks/:walletAddress', async (req, res) => {
+  try {
+    const result = await query(`
+      SELECT t.*, 
+             CASE WHEN ut.id IS NOT NULL THEN true ELSE false END as is_completed
+      FROM tasks t
+      LEFT JOIN user_tasks ut ON t.id = ut.task_id AND ut.wallet_address = $1
+      WHERE t.is_active = true
+      ORDER BY t.created_at ASC
+    `, [req.params.walletAddress]);
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch tasks' });
+  }
+});
+
+// POST Claim Task
+app.post('/api/tasks/claim', async (req, res) => {
+  const { walletAddress, taskId } = req.body;
+  if (!walletAddress || !taskId) return res.status(400).json({ error: 'Missing parameters' });
+
+  try {
+    // 1. Verify Task Exists
+    const taskResult = await query('SELECT * FROM tasks WHERE id = $1 AND is_active = true', [taskId]);
+    if (taskResult.rows.length === 0) return res.status(404).json({ error: 'Task not found or inactive' });
+    const task = taskResult.rows[0];
+
+    // 2. Prevent Duplicate Claim
+    const claimCheck = await query('SELECT id FROM user_tasks WHERE wallet_address = $1 AND task_id = $2', [walletAddress, taskId]);
+    if (claimCheck.rows.length > 0) return res.status(400).json({ error: 'Task already claimed' });
+
+    // 3. User & Business Logic Checks
+    const userResult = await query('SELECT * FROM users WHERE wallet_address = $1', [walletAddress]);
+    if (userResult.rows.length === 0) return res.status(404).json({ error: 'User mapping not found' });
+    const user = userResult.rows[0];
+
+    if (task.type === 'node' && user.node_tier < 1) {
+      return res.status(400).json({ error: 'You do not have an active node.' });
+    }
+    if (task.type === 'referral') {
+      const refs = await query('SELECT COUNT(*) FROM users WHERE referrer_id = $1', [user.id]);
+      const directCount = parseInt(refs.rows[0].count);
+      if (task.name.includes('1') && directCount < 1) return res.status(400).json({ error: 'Requires 1 referral' });
+      if (task.name.includes('3') && directCount < 3) return res.status(400).json({ error: 'Requires 3 referrals' });
+    }
+
+    // 4. Atomic Transaction: Record Claim & Pay Reward
+    await query('BEGIN');
+    await query('INSERT INTO user_tasks (wallet_address, task_id) VALUES ($1, $2)', [walletAddress, taskId]);
+    const updateResult = await query(
+      'UPDATE users SET local_reward = local_reward + $2 WHERE wallet_address = $1 RETURNING local_reward',
+      [walletAddress, task.reward]
+    );
+    await query('COMMIT');
+
+    res.json({ success: true, reward: task.reward, new_balance: updateResult.rows[0].local_reward });
+  } catch (err) {
+    await query('ROLLBACK');
+    console.error(err);
+    res.status(500).json({ error: 'Task claim failed' });
+  }
+});
+
 // Admin Middleware (Security)
 const checkAdmin = (req, res, next) => {
   const adminWallet = process.env.VITE_ADMIN_WALLET;
@@ -147,6 +216,77 @@ const checkAdmin = (req, res, next) => {
   }
   next();
 };
+
+// POST Create Task (Admin)
+app.post('/api/admin/tasks', checkAdmin, async (req, res) => {
+  const { name, reward, icon, url, type } = req.body;
+  if (!name || !reward) return res.status(400).json({ error: 'Name and reward required' });
+
+  try {
+    const task = await query(
+      'INSERT INTO tasks (name, reward, icon, url, type) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [name, reward, icon || '💎', url || null, type || 'social']
+    );
+    res.json(task.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to create task' });
+  }
+});
+
+// DELETE Task (Admin)
+app.delete('/api/admin/tasks/:id', checkAdmin, async (req, res) => {
+  try {
+    await query('DELETE FROM tasks WHERE id = $1', [req.params.id]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to delete task' });
+  }
+});
+
+// POST DB Migration Patch (Admin Trigger - One Time)
+app.post('/api/admin/init-tasks-db', checkAdmin, async (req, res) => {
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS tasks (
+          id SERIAL PRIMARY KEY,
+          name VARCHAR(255) NOT NULL,
+          reward NUMERIC(36, 18) DEFAULT 0,
+          icon VARCHAR(50) DEFAULT '💎',
+          url VARCHAR(500),
+          type VARCHAR(50) DEFAULT 'social',
+          is_active BOOLEAN DEFAULT TRUE,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await query(`
+      CREATE TABLE IF NOT EXISTS user_tasks (
+          id SERIAL PRIMARY KEY,
+          wallet_address VARCHAR(42) NOT NULL,
+          task_id INTEGER REFERENCES tasks(id) ON DELETE CASCADE,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(wallet_address, task_id)
+      )
+    `);
+    // Pre-seed default tasks if completely empty to keep things smooth
+    const count = await query('SELECT COUNT(*) FROM tasks');
+    if (parseInt(count.rows[0].count) === 0) {
+      await query(`
+        INSERT INTO tasks (name, reward, icon, url, type) VALUES
+        ('Join AIPCore Telegram', 200000, '✈️', 'https://t.me/AIPCoreOfficial', 'social'),
+        ('Join AIPCore Chat', 150000, '💬', 'https://t.me/AIPCoreChat', 'social'),
+        ('Follow on X/Twitter', 100000, '𝕏', 'https://x.com/AIPCore', 'social'),
+        ('Activate Node', 1000000, '⬡', null, 'node')
+      `);
+    }
+    
+    res.json({ success: true, message: 'Tasks database tables verified and initialized.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'DB init failed' });
+  }
+});
 
 // GET Admin Overview Stats
 app.get('/api/admin/overview', checkAdmin, async (req, res) => {

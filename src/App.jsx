@@ -84,8 +84,11 @@ export default function App() {
   useEffect(() => {
     if (!isConnected) return;
     setupListeners();
-    const { fetchUserData, walletAddress } = useGameStore.getState();
-    if (walletAddress) fetchUserData().catch(() => {});
+    const { fetchUserData, fetchTasksData, walletAddress } = useGameStore.getState();
+    if (walletAddress) {
+      fetchUserData().catch(() => {});
+      fetchTasksData().catch(() => {});
+    }
     return () => removeListeners();
   }, [isConnected, setupListeners, removeListeners]);
 

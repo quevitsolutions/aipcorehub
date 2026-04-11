@@ -61,6 +61,27 @@ class ApiService {
     return res.json();
   }
 
+  // Task Endpoints
+  async fetchTasks(walletAddress) {
+    const res = await fetch(`${this.baseUrl}/tasks/${walletAddress}`);
+    if (!res.ok) throw new Error('Failed to fetch tasks');
+    return res.json();
+  }
+
+  async claimTask(walletAddress, taskId) {
+    const res = await fetch(`${this.baseUrl}/tasks/claim`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ walletAddress, taskId })
+    });
+    
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.error || 'Task claim failed');
+    }
+    return res.json();
+  }
+
   // Admin Endpoints
   async fetchAdminOverview(adminWallet) {
     const res = await fetch(`${this.baseUrl}/admin/overview`, {
@@ -91,6 +112,34 @@ class ApiService {
 
   async fetchSnapshotData(adminWallet, id) {
     const res = await fetch(`${this.baseUrl}/admin/snapshot/${id}`, {
+      headers: { 'x-admin-wallet': adminWallet }
+    });
+    return res.json();
+  }
+
+  async createAdminTask(adminWallet, payload) {
+    const res = await fetch(`${this.baseUrl}/admin/tasks`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'x-admin-wallet': adminWallet 
+      },
+      body: JSON.stringify(payload)
+    });
+    return res.json();
+  }
+
+  async deleteAdminTask(adminWallet, taskId) {
+    const res = await fetch(`${this.baseUrl}/admin/tasks/${taskId}`, {
+      method: 'DELETE',
+      headers: { 'x-admin-wallet': adminWallet }
+    });
+    return res.json();
+  }
+
+  async initAdminTasksDB(adminWallet) {
+    const res = await fetch(`${this.baseUrl}/admin/init-tasks-db`, {
+      method: 'POST',
       headers: { 'x-admin-wallet': adminWallet }
     });
     return res.json();

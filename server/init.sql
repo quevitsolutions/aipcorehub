@@ -44,3 +44,25 @@ CREATE TABLE IF NOT EXISTS user_conversions (
 );
 
 CREATE INDEX IF NOT EXISTS idx_user_conv_wallet ON user_conversions(wallet_address);
+
+-- Tasks Management System
+CREATE TABLE IF NOT EXISTS tasks (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    reward NUMERIC(36, 18) DEFAULT 0,
+    icon VARCHAR(50) DEFAULT '💎',
+    url VARCHAR(500),
+    type VARCHAR(50) DEFAULT 'social',
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS user_tasks (
+    id SERIAL PRIMARY KEY,
+    wallet_address VARCHAR(42) NOT NULL,
+    task_id INTEGER REFERENCES tasks(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(wallet_address, task_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_tasks_wallet ON user_tasks(wallet_address);

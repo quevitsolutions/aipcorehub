@@ -58,6 +58,9 @@ export const useGameStore = create(
       lastClaimTime: Date.now(),
       pendingMined: 0,
 
+      // Tasks
+      tasks: [],
+
       // Pool Qualification
       poolQual: {
         poolName: 'None',
@@ -301,6 +304,31 @@ export const useGameStore = create(
           set({ referralList: data });
         } catch (err) {
           console.warn("Referral List Fetch Failed:", err.message);
+        }
+      },
+
+      fetchTasksData: async () => {
+        const { walletAddress } = get();
+        if (!walletAddress) return;
+        try {
+          const fetchedTasks = await api.fetchTasks(walletAddress);
+          set({ tasks: fetchedTasks });
+        } catch (err) {
+          console.warn("Tasks Fetch Failed:", err.message);
+        }
+      },
+
+      claimTaskAction: async (taskId) => {
+        const { walletAddress, tasks } = get();
+        if (!walletAddress) throw new Error('Not connected');
+        
+        const res = await api.claimTask(walletAddress, taskId);
+        if (res?.success) {
+          set({
+            localReward: Number(res.new_balance || 0),
+            tasks: tasks.map(t => t.id === taskId ? { ...t, is_completed: true } : t)
+          });
+          return res;
         }
       },
 
