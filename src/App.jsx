@@ -28,7 +28,12 @@ const NAV_ITEMS = [
   { id: 'tasks',     icon: '✅',  label: 'Tasks' },
 ];
 
-function DesktopSidebar({ activeTab, setActiveTab, nodeId, nodeTier }) {
+function DesktopSidebar({ activeTab, setActiveTab, nodeId, nodeTier, isAdmin }) {
+  const tabs = [...NAV_ITEMS];
+  if (isAdmin) {
+    tabs.push({ id: 'admin', icon: '⚡', label: 'Master Admin' });
+  }
+
   return (
     <aside className="desktop-sidebar">
       <div className="sidebar-logo">
@@ -39,7 +44,7 @@ function DesktopSidebar({ activeTab, setActiveTab, nodeId, nodeTier }) {
         </div>
       </div>
 
-      {NAV_ITEMS.map(item => (
+      {tabs.map(item => (
         <button key={item.id} className={`sidebar-item ${activeTab === item.id ? 'active' : ''}`}
           onClick={() => setActiveTab(item.id)}>
           <span className="sidebar-icon">{item.icon}</span>
@@ -63,7 +68,7 @@ export default function App() {
     rechargeEnergy,
     showNodePopup, showDailyPopup, lastClaimDate,
     setShowDailyPopup, setReferrerId,
-    nodeId, nodeTier
+    nodeId, nodeTier, isAdmin
   } = useGameStore();
 
   const { connectWallet, disconnectWallet } = useContract();
@@ -113,6 +118,7 @@ export default function App() {
         setActiveTab={setActiveTab}
         nodeId={nodeId}
         nodeTier={nodeTier}
+        isAdmin={isAdmin}
       />
 
       {/* TopBar — fixed on mobile/tablet, grid on desktop */}
