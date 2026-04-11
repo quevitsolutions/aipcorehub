@@ -77,7 +77,15 @@ export const useContract = () => {
         } else if (e?.code === 4001 || e?.message?.includes('rejected')) {
           toast.error('Transaction cancelled.', { id: tid });
         } else {
-          toast.error(e?.shortMessage || e?.message || 'Activation failed.', { id: tid });
+          let errMsg = e?.shortMessage || e?.message || 'Activation failed.';
+        if (errMsg.toLowerCase().includes('insufficient funds')) {
+          errMsg = 'Insufficient BNB balance for transaction & gas.';
+        } else if (errMsg.includes('user rejected')) {
+          errMsg = 'Transaction rejected by user.';
+        } else {
+          errMsg = errMsg.slice(0, 80);
+        }
+        toast.error(errMsg, { id: tid });
         }
         return false;
       }

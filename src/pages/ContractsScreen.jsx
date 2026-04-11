@@ -52,7 +52,15 @@ export default function ContractsScreen() {
       toast.success('Node registered! Refresh to see your stats.', { id: 'register', duration: 5000 });
     } catch (err) {
       console.error(err);
-      toast.error(err?.reason || err?.message?.slice(0, 80) || 'Transaction failed', { id: 'register' });
+      let errMsg = err?.reason || err?.message || 'Transaction failed';
+      if (errMsg.toLowerCase().includes('insufficient funds')) {
+        errMsg = 'Insufficient BNB balance for transaction & gas.';
+      } else if (errMsg.includes('user rejected')) {
+        errMsg = 'Transaction rejected by user.';
+      } else {
+        errMsg = errMsg.slice(0, 80);
+      }
+      toast.error(errMsg, { id: 'register' });
     } finally {
       setRegistering(false);
     }

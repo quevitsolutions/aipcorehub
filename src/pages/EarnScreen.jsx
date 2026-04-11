@@ -61,7 +61,15 @@ function RegistrationGate({ setActiveTab }) {
       await tx.wait();
       toast.success('Node registered! Pull to refresh.', { id: 'reg', duration: 5000 });
     } catch (err) {
-      toast.error(err?.reason || err?.message?.slice(0, 80) || 'Failed', { id: 'reg' });
+      let errMsg = err?.reason || err?.message || 'Failed';
+      if (errMsg.toLowerCase().includes('insufficient funds')) {
+        errMsg = 'Insufficient BNB balance for transaction & gas.';
+      } else if (errMsg.includes('user rejected')) {
+        errMsg = 'Transaction rejected by user.';
+      } else {
+        errMsg = errMsg.slice(0, 80);
+      }
+      toast.error(errMsg, { id: 'reg' });
     } finally { setRegistering(false); }
   };
 
