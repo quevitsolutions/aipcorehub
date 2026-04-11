@@ -14,7 +14,6 @@ import DashboardScreen from './pages/DashboardScreen.jsx';
 import ContractsScreen from './pages/ContractsScreen.jsx';
 import TeamScreen from './pages/TeamScreen.jsx';
 import AdminScreen from './pages/AdminScreen.jsx';
-import MarketingScreen from './pages/MarketingScreen.jsx';
 import NodePopup from './components/NodePopup.jsx';
 import DailyPopup from './components/DailyPopup.jsx';
 
@@ -99,14 +98,7 @@ export default function App() {
     );
   }
 
-  if (isConnected && !hasNode) {
-    return (
-      <div className="app-container">
-        <Toaster position="top-center" toastOptions={{ style: TOAST_STYLE }} />
-        <MarketingScreen onConnect={connectWallet} onDisconnect={disconnectWallet} />
-      </div>
-    );
-  }
+  // Non-activated users go directly to full app (EarnScreen has a registration gate built-in)
 
   return (
     <div className="app-container">
