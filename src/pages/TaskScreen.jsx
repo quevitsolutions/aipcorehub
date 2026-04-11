@@ -62,7 +62,7 @@ export default function TaskScreen() {
       <h3 style={{ fontSize: '14px', fontWeight: 800, margin: '24px 0 16px', color: 'var(--text-dim)' }}>GLOBAL TASKS</h3>
 
       <div className="flex-column" style={{ gap: 12, paddingBottom: 60 }}>
-        {tasks.length === 0 ? (
+        {!Array.isArray(tasks) || tasks.length === 0 ? (
           <div style={{ textAlign: 'center', color: 'var(--text-dim)', fontSize: 13, padding: '20px' }}>
             No active tasks available right now.
           </div>

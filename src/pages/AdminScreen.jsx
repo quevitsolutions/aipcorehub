@@ -78,8 +78,8 @@ function TaskManagementAdmin() {
 
       {/* Active Tasks List */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        <h4 style={{ fontSize: '11px', color: 'var(--text-dim)', fontWeight: 800 }}>LIVE SYSTEM TASKS ({tasks.length})</h4>
-        {tasks.map(t => (
+        <h4 style={{ fontSize: '11px', color: 'var(--text-dim)', fontWeight: 800 }}>LIVE SYSTEM TASKS ({Array.isArray(tasks) ? tasks.length : 0})</h4>
+        {Array.isArray(tasks) && tasks.map(t => (
           <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <span style={{ fontSize: '18px' }}>{t.icon}</span>

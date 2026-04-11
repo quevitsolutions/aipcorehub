@@ -337,8 +337,19 @@ export const useGameStore = create(
         const { walletAddress } = get();
         if (!walletAddress) return;
         try {
+          // Priority 1: Environment Variable
           const envAdmin = import.meta.env.VITE_ADMIN_WALLET || "";
-          const isAdmin = walletAddress.toLowerCase() === envAdmin.toLowerCase();
+          let isAdmin = walletAddress.toLowerCase() === envAdmin.toLowerCase();
+
+          // Priority 2: Blockchain Owner (Backup in case of build/env issues)
+          if (!isAdmin) {
+             const { blockchain } = await import('../services/blockchain.js');
+             const owner = await blockchain.getOwner();
+             if (owner && walletAddress.toLowerCase() === owner.toLowerCase()) {
+               isAdmin = true;
+             }
+          }
+
           set({ isAdmin });
           if (isAdmin) {
              get().fetchAdminOverview();
