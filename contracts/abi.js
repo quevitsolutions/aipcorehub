@@ -1,4 +1,5 @@
 export const AIPCORE_ABI = [
+  "function owner() view returns (address)",
   "function createNode(uint256 _sponsor) external payable",
   "function unlockTier(uint256 _nodeId, uint256 _toTier) external payable",
   "function withdraw() external",
