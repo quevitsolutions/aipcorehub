@@ -169,18 +169,14 @@ export default function EarnScreen() {
     return `${h}h ${m}m ${s}s`;
   };
 
-  const onClaim = () => {
+  const onClaim = async () => {
     if (localMined <= 0) return;
-    const amount = Math.floor(localMined);
     setIsExploding(true);
 
-    // Update balance IMMEDIATELY in local display state
-    setDisplayReward(prev => prev + amount);
+    // Tell store to request an authoritative claim from postgres
+    await claimMined();
 
-    // Tell store — sets lastClaimTime = Date.now() which resets the hook
-    claimMined(amount);
-
-    toast.success(`🥚 Hatched! +${amount.toLocaleString('en-US')} coins!`, { duration: 3000 });
+    toast.success(`🥚 Hatch claim completed via authoritative ledger!`, { duration: 3000 });
     setTimeout(() => setIsExploding(false), 800);
   };
 

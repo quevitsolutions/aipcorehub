@@ -180,29 +180,23 @@ export const useGameStore = create(
         set({ pendingMined: totalMined });
       },
 
-      claimMined: async (amount = 0) => {
-        const { walletAddress, localReward } = get();
+      claimMined: async () => {
+        const { walletAddress } = get();
         if (!walletAddress) return;
 
-        // ── Optimistic local update IMMEDIATELY (no waiting for API) ──
-        const coinsToAdd = amount > 0 ? amount : 0;
-        set({
-          localReward: localReward + coinsToAdd,
-          pendingMined: 0,
-          lastClaimTime: Date.now()   // resets the mining clock
-        });
+        // Optionally show immediate UI burst if desired, but we enforce server math
+        set({ pendingMined: 0 }); // visually reset while awaiting network
 
-        // ── Background API sync (best-effort, won't block UI) ──
         try {
           const res = await api.claimMining(walletAddress);
-          if (res?.success && res?.user?.local_reward !== undefined) {
-            // Reconcile with server value only if server is higher (prevents rollback)
-            set(s => ({
-              localReward: Math.max(s.localReward, Number(res.user.local_reward))
-            }));
+          if (res?.success && res?.user) {
+            set({
+              localReward: Number(res.user.local_reward || 0),
+              lastClaimTime: new Date(res.user.last_claim_time).getTime()
+            });
           }
         } catch (err) {
-          console.warn('Claim API failed (local update retained):', err.message);
+          console.warn('Claim API failed:', err.message);
         }
       },
 
@@ -248,7 +242,6 @@ export const useGameStore = create(
           await api.syncState({
             walletAddress: state.walletAddress,
             taps: state.taps,
-            localReward: state.localReward,
             energy: state.energy,
             nodeTier: state.nodeTier
           });
