@@ -122,8 +122,14 @@ export const useGameStore = create(
           maxEnergy:  newMaxEnergy,
           energy:     Math.min(newMaxEnergy, get().energy),
           isLocked:   !isActuallyActive,
+// ...
           demoTaps:   0
         });
+
+        // Instantly inform the server of the authoritative blockchain tier
+        if (isActuallyActive) {
+          get().syncWithBackend();
+        }
       },
 
       handleTap: () => {

@@ -288,9 +288,9 @@ app.get('/api/referrals/:walletAddress', async (req, res) => {
   }
 });
 
-// Sync game state via wallet address (taps & energy only, coins are strict server-side)
+// Sync game state via wallet address (taps, energy & node tier sync)
 app.post('/api/sync', async (req, res) => {
-  const { walletAddress, taps, energy } = req.body;
+  const { walletAddress, taps, energy, nodeTier } = req.body;
   
   if (!walletAddress) return res.status(400).json({ error: 'Wallet address required' });
 
@@ -299,17 +299,18 @@ app.post('/api/sync', async (req, res) => {
       `UPDATE users 
        SET taps = COALESCE($2, taps), 
            energy = COALESCE($3, energy), 
+           node_tier = GREATEST(COALESCE($4, node_tier), node_tier),
            updated_at = CURRENT_TIMESTAMP
        WHERE wallet_address = $1
        RETURNING *`,
-      [walletAddress, taps, energy]
+      [walletAddress, taps, energy, nodeTier]
     );
     
     if (result.rows.length === 0) {
       // If user doesn't exist yet, create them during sync
       const newUser = await query(
-        'INSERT INTO users (wallet_address, taps, energy) VALUES ($1, $2, $3) RETURNING *',
-        [walletAddress, taps, energy]
+        'INSERT INTO users (wallet_address, taps, energy, node_tier) VALUES ($1, $2, $3, COALESCE($4, 0)) RETURNING *',
+        [walletAddress, taps, energy, nodeTier]
       );
       return res.json(newUser.rows[0]);
     }
