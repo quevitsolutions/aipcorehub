@@ -1,29 +1,46 @@
 import React, { useState } from 'react';
 import { CONTRACTS } from '../config/constants.js';
 import { useGameStore } from '../store/gameStore.js';
-import { useContract } from '../hooks/useContract.js';
-import toast from 'react-hot-toast';
 import { getEthersSigner } from '../utils/ethers-adapter.js';
 import { ethers } from 'ethers';
 import { config } from '../config/wagmi.js';
 import { AIPCORE_ABI } from '../../contracts/abi.js';
+import toast from 'react-hot-toast';
+import { motion, AnimatePresence } from 'framer-motion';
 
-// Correct income percentages as per AIPCORE contract
+// ── DATA ─────────────────────────────────────────────────────────────
 const INCOME_STREAMS = [
-  { icon: '👥', title: 'Referral Income',  color: '#A3FF12', pct: '10%', desc: 'Earn 10% of every direct referral node purchase instantly on-chain.' },
-  { icon: '🌐', title: 'Matrix Bonus',     color: '#00D4FF', pct: '70%', desc: '3×12 matrix positions fill automatically — spillover rewards to your team.' },
-  { icon: '🏆', title: 'Level Rewards',   color: '#FF9500', pct: '15%', desc: 'Tiered reward pool — unlock higher payouts as your team grows.' },
-  { icon: '💎', title: 'Global Pool',      color: '#FF2D55', pct: '5%',  desc: 'Qualifiers receive proportional share of the global reward pool.' },
+  { icon: '👥', title: 'Referral Income', pct: '10%', desc: 'Earn 10% of every direct referral node purchase instantly on-chain. Built for viral scaling and immediate rewards.', color: '#A3FF12' },
+  { icon: '🌐', title: 'Matrix Bonus', pct: '70%', desc: 'A vast 3×12 matrix positions nodes automatically. Capture immense spillover rewards as your team and upline grows.', color: '#00D4FF' },
+  { icon: '🏆', title: 'Level Rewards', pct: '15%', desc: 'Progressive tiered reward pool — unlock higher percentages and compounding payouts as your global team expands.', color: '#FF9500' },
+  { icon: '💎', title: 'Global Pool', pct: '5%', desc: 'Elite qualifiers receive a proportional share of the global reward pool, funded by every transaction network-wide.', color: '#FF2D55' },
 ];
 
-const REGISTER_URL = 'https://aipcore.online/';
+const NODE_TIERS = [
+  ['Tier 1', '100', '🟤'],       ['Tier 2', '200', '🔵'],       ['Tier 3', '200', '🔵'], 
+  ['Tier 4', '300', '🟣'],       ['Tier 5', '300', '🟣'],       ['Tier 6', '300', '🟣'], 
+  ['Tier 7', '500', '🟡'],       ['Tier 8', '500', '🟡'],       ['Tier 9', '500', '🟡'], 
+  ['Tier 10', '800', '🟠'],      ['Tier 11', '800', '🟠'],      ['Tier 12', '800', '🟠'], 
+  ['Tier 13', '1,200', '🔴'],    ['Tier 14', '1,200', '🔴'],    ['Tier 15', '1,200', '🔴'], 
+  ['Tier 16', '2,000+', '💎'],   ['Tier 17', '2,000+', '💎'],   ['Tier 18', 'MAX', '💎']
+];
+
+const CONTRACTS_LIST = [
+  { label: 'AIPCORE ENGINE', address: CONTRACTS.AIPCORE, desc: 'Core node logic, matrix positioning & rewards distribution' },
+  { label: 'AIPVIEW HELPER', address: CONTRACTS.AIPVIEW, desc: 'On-chain data aggregation and dashboard helper' },
+  { label: 'REWARD POOL', address: CONTRACTS.REWARDPOOL, desc: 'Global staking & dynamic global reward pool contract' }
+];
 
 export default function ContractsScreen() {
-  const { setActiveTab, walletAddress, hasNode, referrerId } = useGameStore();
-  const [activeSection, setActiveSection] = useState('about');
+  const { walletAddress, hasNode, referrerId } = useGameStore();
   const [registering, setRegistering] = useState(false);
 
-  // On-chain node registration via AIPCORE createNode(sponsorId)
+  // ── LOGIC ───────────────────────────────────────────────────────────
+  const copyToClipboard = (text, label) => {
+    navigator.clipboard.writeText(text);
+    toast.success(`${label} copied!`, { style: { background: '#1A1F26', color: '#A3FF12', border: '1px solid rgba(163, 255, 18, 0.2)' } });
+  };
+
   const handleRegisterOnChain = async () => {
     if (registering) return;
     setRegistering(true);
@@ -32,8 +49,6 @@ export default function ContractsScreen() {
       if (!signer) { toast.error('Please connect your wallet first'); setRegistering(false); return; }
 
       const contract = new ethers.Contract(CONTRACTS.AIPCORE, AIPCORE_ABI, signer);
-
-      // Resolve sponsor nodeId — default to 1 (root) if no referrer or referrer has no node
       let sponsorNodeId = 1n;
       if (referrerId) {
         try {
@@ -42,14 +57,13 @@ export default function ContractsScreen() {
         } catch {}
       }
 
-      // Get Tier 1 cost from contract
       const tierCost = await contract.getTierCost(0);
-
       toast.loading('Confirm transaction in your wallet...', { id: 'register' });
       const tx = await contract.createNode(sponsorNodeId, { value: tierCost });
       toast.loading(`Transaction sent: ${tx.hash.slice(0,10)}...`, { id: 'register' });
       await tx.wait();
-      toast.success('Node registered! Refresh to see your stats.', { id: 'register', duration: 5000 });
+      toast.success('Node registered! Welcome to AIPCore.', { id: 'register', duration: 5000 });
+      window.location.reload(); // Hard reload to hydrate node states
     } catch (err) {
       console.error(err);
       let errMsg = err?.reason || err?.message || 'Transaction failed';
@@ -66,172 +80,193 @@ export default function ContractsScreen() {
     }
   };
 
-  const copyToClipboard = (text, label) => {
-    navigator.clipboard.writeText(text);
-    toast.success(`${label} copied!`, {
-      style: { background: '#1A1F26', color: '#A3FF12', border: '1px solid rgba(163, 255, 18, 0.2)' }
-    });
-  };
-
-  const contractsList = [
-    { label: 'AIPCORE ENGINE', address: CONTRACTS.AIPCORE, desc: 'Core node logic & rewards distribution' },
-    { label: 'AIPVIEW HELPER', address: CONTRACTS.AIPVIEW, desc: 'On-chain data aggregation helper' },
-    { label: 'REWARD POOL', address: CONTRACTS.REWARDPOOL, desc: 'Global staking & reward pool contract' }
-  ];
-
-  const refLink = `${REGISTER_URL}?ref=${walletAddress || ''}`;
-
-  // Distribution bar: 10 / 70 / 15 / 5
-  const distBar = [['#A3FF12', 10], ['#00D4FF', 70], ['#FF9500', 15], ['#FF2D55', 5]];
-
   return (
-    <div style={{ paddingBottom: 20 }}>
-
-      {/* ── Header ── */}
-      <div style={{ padding: '10px 0 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
-        <h2 style={{ flex: 1, fontSize: '18px', fontWeight: 900 }}>📄 DOCS & PROTOCOL</h2>
-      </div>
-
-      {/* ── Tab switcher ── */}
-      <div style={{ display: 'flex', background: 'rgba(255,255,255,0.04)', borderRadius: 14, padding: 4, marginBottom: 20 }}>
-        {[['about', '🌐 About'], ['contracts', '📑 Contracts']].map(([id, label]) => (
-          <button key={id} onClick={() => setActiveSection(id)} style={{
-            flex: 1, background: activeSection === id ? 'rgba(163,255,18,0.12)' : 'none',
-            border: activeSection === id ? '1px solid rgba(163,255,18,0.3)' : '1px solid transparent',
-            borderRadius: 10, padding: '8px', color: activeSection === id ? 'var(--neon-lime)' : 'rgba(255,255,255,0.5)',
-            fontFamily: 'Outfit, sans-serif', fontWeight: 800, fontSize: 12, cursor: 'pointer', transition: 'all 0.2s'
-          }}>{label}</button>
-        ))}
-      </div>
-
-      {/* ══ ABOUT / MARKETING SECTION ══ */}
-      {activeSection === 'about' && (
-        <div>
-          {/* Hero */}
-          <div style={{
-            background: 'linear-gradient(135deg, rgba(163,255,18,0.08) 0%, rgba(0,212,255,0.05) 100%)',
-            border: '1px solid rgba(163,255,18,0.15)', borderRadius: 20, padding: '24px 20px',
-            textAlign: 'center', marginBottom: 20
+    <div style={{ fontFamily: 'Outfit, sans-serif', paddingBottom: 60 }}>
+      
+      {/* ═ HERO SECTION ═ */}
+      <section style={{
+        position: 'relative',
+        padding: '60px 20px 40px',
+        textAlign: 'center',
+        background: 'radial-gradient(ellipse at top, rgba(0,210,255,0.08) 0%, transparent 70%)',
+        marginBottom: 24,
+        overflow: 'hidden'
+      }}>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
+          <div style={{ 
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            background: 'rgba(155,81,255,0.1)', border: '1px solid rgba(155,81,255,0.3)',
+            borderRadius: 40, padding: '6px 16px', fontSize: 10, fontWeight: 800, 
+            letterSpacing: 2, color: '#C084FC', marginBottom: 24
           }}>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>⚡</div>
-            <h1 style={{ fontSize: 22, fontWeight: 900, marginBottom: 8, lineHeight: 1.2 }}>
-              AIPCore Protocol
-            </h1>
-            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', lineHeight: 1.7, marginBottom: 20 }}>
-              A fully decentralized node-mining network on BNB Chain. 100% of all protocol fees are distributed back to the community.
-            </p>
-
-            {/* Distribution bar: Direct 10% | Matrix 70% | Level 15% | Pool 5% */}
-            <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', marginBottom: 12, height: 10 }}>
-              {distBar.map(([color, pct], i) => (
-                <div key={i} style={{ width: `${pct}%`, background: color }} />
-              ))}
-            </div>
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 4 }}>
-              {[['#A3FF12','Direct 10%'],['#00D4FF','Matrix 70%'],['#FF9500','Level 15%'],['#FF2D55','Pool 5%']].map(([c,l])=>(
-                <span key={l} style={{ fontSize: 9, fontWeight: 800, color: c }}>■ {l}</span>
-              ))}
-            </div>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#00D2FF', boxShadow: '0 0 8px #00D2FF' }} />
+            AIPCORE PROTOCOL
           </div>
 
-          {/* Income streams */}
-          <h3 style={{ fontSize: 13, fontWeight: 900, color: 'rgba(255,255,255,0.5)', letterSpacing: 1, marginBottom: 12 }}>4 INCOME STREAMS</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
-            {INCOME_STREAMS.map((stream, i) => (
-              <div key={i} style={{
-                background: 'var(--bg-card)', borderRadius: 16, padding: '14px 12px',
-                border: `1px solid ${stream.color}22`, position: 'relative', overflow: 'hidden'
-              }}>
-                <div style={{ fontSize: 24, marginBottom: 6 }}>{stream.icon}</div>
-                <div style={{ fontSize: 12, fontWeight: 900, color: stream.color, marginBottom: 2 }}>{stream.pct}</div>
-                <div style={{ fontSize: 11, fontWeight: 800, color: '#fff', marginBottom: 4 }}>{stream.title}</div>
-                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)', lineHeight: 1.5 }}>{stream.desc}</div>
-              </div>
-            ))}
-          </div>
+          <h1 style={{
+            fontSize: 'clamp(32px, 8vw, 42px)', fontWeight: 900, lineHeight: 1.1,
+            marginBottom: 16, letterSpacing: '-0.02em',
+          }}>
+            MINING THE <br/>
+            <span style={{
+              background: 'linear-gradient(90deg, #00D2FF 0%, #A3FF12 100%)',
+              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+            }}>FUTURE OF AI</span>
+          </h1>
 
-          {/* Node tiers — 18 tiers per contract getTierCosts() returns uint256[18] */}
-          <h3 style={{ fontSize: 13, fontWeight: 900, color: 'rgba(255,255,255,0.5)', letterSpacing: 1, marginBottom: 12 }}>NODE TIERS (1–18)</h3>
-          <div style={{ background: 'var(--bg-card)', borderRadius: 16, padding: 16, marginBottom: 20 }}>
-            {[
-              ['Tier 1',     '100 coins/hr',   '🟤'],
-              ['Tier 2-3',   '200 coins/hr',   '🔵'],
-              ['Tier 4-6',   '300 coins/hr',   '🟣'],
-              ['Tier 7-9',   '500 coins/hr',   '🟡'],
-              ['Tier 10-12', '800 coins/hr',   '🟠'],
-              ['Tier 13-15', '1,200 coins/hr', '🔴'],
-              ['Tier 16-18', '2,000+ coins/hr','💎'],
-            ].map(([tier, rate, icon], i, arr) => (
-              <div key={i} style={
-                { display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '8px 0', borderBottom: i < arr.length-1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }
-              }>
-                <span style={{ fontSize: 12, fontWeight: 700 }}>{icon} {tier}</span>
-                <span style={{ fontSize: 12, fontWeight: 900, color: 'var(--neon-lime)' }}>{rate}</span>
-              </div>
-            ))}
-          </div>
+          <p style={{
+            fontSize: 14, color: 'rgba(255,255,255,0.5)', lineHeight: 1.6,
+            maxWidth: 340, margin: '0 auto 32px', fontWeight: 500
+          }}>
+            A fully decentralized, node-driven passive mining network on BNB Chain. Turn your wallet into a high-yield mining rig.
+          </p>
 
-          {/* Registration — ON-CHAIN via createNode() */}
           {!hasNode && (
             <button
               onClick={handleRegisterOnChain}
               disabled={registering}
               style={{
-                width: '100%', background: registering ? 'rgba(163,255,18,0.4)' : 'var(--neon-lime)',
-                border: 'none', borderRadius: 16, padding: '16px', fontSize: 15, fontWeight: 900,
+                background: registering ? 'rgba(163,255,18,0.4)' : 'linear-gradient(90deg, #A3FF12 0%, #00D2FF 100%)',
+                border: 'none', borderRadius: 16, padding: '18px 32px', fontSize: 16, fontWeight: 900,
                 color: '#000', cursor: registering ? 'wait' : 'pointer',
-                boxShadow: '0 0 25px rgba(163,255,18,0.3)', marginBottom: 12, display: 'block', width: '100%'
+                boxShadow: '0 0 30px rgba(163,255,18,0.3)', width: '100%', maxWidth: 340,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, margin: '0 auto'
               }}>
-              {registering ? '⏳ Sending Transaction...' : '🚀 REGISTER NODE ON-CHAIN →'}
+              {registering ? '⏳ PENDING...' : '🚀 REGISTER NODE ON-CHAIN'}
             </button>
           )}
 
-          <a href="https://t.me/AIPCoreOfficial" target="_blank" rel="noreferrer" style={{ textDecoration: 'none', display: 'block' }}>
-            <button style={{
-              width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: 16, padding: '12px', fontSize: 13, fontWeight: 800, color: '#fff', cursor: 'pointer'
+          <div style={{
+            display: 'flex', justifyContent: 'center', gap: 12, marginTop: 40, flexWrap: 'wrap'
+          }}>
+            {['18 TIERS', '100% COMMUNITY DISTRIBUTION', 'BSC SMART CONTRACTS'].map((tag, i) => (
+              <div key={i} style={{
+                fontSize: 10, fontWeight: 800, color: 'rgba(255,255,255,0.4)',
+                background: 'rgba(255,255,255,0.03)', padding: '6px 12px', borderRadius: 8,
+                border: '1px solid rgba(255,255,255,0.05)'
+              }}>{tag}</div>
+            ))}
+          </div>
+        </motion.div>
+      </section>
+
+      {/* ═ FEATURES / INCOME STREAMS ═ */}
+      <section style={{ padding: '0 20px', marginBottom: 48 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 900, marginBottom: 20, textAlign: 'center' }}>
+          <span style={{ color: '#fff' }}>4 PROTOCOL </span>
+          <span style={{ color: '#9B51FF' }}>INCOME STREAMS</span>
+        </h2>
+        
+        {/* Distribution Bar */}
+        <div style={{ background: 'rgba(255,255,255,0.02)', padding: 16, borderRadius: 16, marginBottom: 20, border: '1px solid rgba(255,255,255,0.05)' }}>
+          <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', height: 12, marginBottom: 12 }}>
+            {INCOME_STREAMS.map((s, i) => (
+              <div key={i} style={{ width: s.pct, background: s.color }} />
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: '8px 16px', justifyContent: 'center', flexWrap: 'wrap' }}>
+            {INCOME_STREAMS.map((s) => (
+              <span key={s.title} style={{ fontSize: 10, fontWeight: 800, color: 'rgba(255,255,255,0.6)' }}>
+                <span style={{ color: s.color }}>■</span> {s.title} ({s.pct})
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Feature Cards Matrix */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          {INCOME_STREAMS.map((stream, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}
+              style={{
+                background: 'linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)',
+                borderRadius: 16, padding: '20px 16px', border: '1px solid rgba(255,255,255,0.05)',
+                borderTop: `1px solid ${stream.color}55`, position: 'relative', overflow: 'hidden'
+              }}>
+              <div style={{ fontSize: 28, marginBottom: 12 }}>{stream.icon}</div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: '#fff', marginBottom: 6 }}>{stream.title}</div>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', lineHeight: 1.5, fontWeight: 500 }}>{stream.desc}</div>
+              <div style={{ position: 'absolute', top: -10, right: -10, fontSize: 60, opacity: 0.03, fontWeight: 900 }}>{stream.pct}</div>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* ═ NODE TIERS GRID ═ */}
+      <section style={{ padding: '0 20px', marginBottom: 48 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 900, marginBottom: 20, textAlign: 'center' }}>
+          <span style={{ color: '#fff' }}>MASSIVE SCALING </span>
+          <span style={{ color: '#00D2FF' }}>18 TIERS</span>
+        </h2>
+
+        <div style={{ 
+          background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(0,210,255,0.1)', 
+          borderRadius: 20, padding: 16, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 
+        }}>
+          {NODE_TIERS.map(([tier, rate, icon], i) => (
+            <div key={i} style={{
+              background: 'rgba(255,255,255,0.03)', borderRadius: 12, padding: '12px 8px',
+              textAlign: 'center', border: '1px solid rgba(255,255,255,0.03)'
             }}>
-              ✈️ Join Telegram Community →
+              <div style={{ fontSize: 18, marginBottom: 4 }}>{icon}</div>
+              <div style={{ fontSize: 10, fontWeight: 800, color: 'rgba(255,255,255,0.6)', marginBottom: 2 }}>{tier}</div>
+              <div style={{ fontSize: 11, fontWeight: 900, color: 'var(--neon-lime)' }}>{rate} <span style={{ fontSize: 8, opacity: 0.5}}>/hr</span></div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ═ SMART CONTRACTS ═ */}
+      <section style={{ padding: '0 20px', marginBottom: 40 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 900, marginBottom: 20, textAlign: 'center' }}>
+          <span style={{ color: '#fff' }}>VERIFIED </span>
+          <span style={{ color: '#A3FF12' }}>CONTRACTS</span>
+        </h2>
+        
+        <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', textAlign: 'center', marginBottom: 24, lineHeight: 1.5 }}>
+          Code is law. All distribution mechanics and pools run autonomously on the Binance Smart Chain. No central admin can alter payouts.
+        </p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {CONTRACTS_LIST.map((c, i) => (
+            <div key={i} onClick={() => copyToClipboard(c.address, c.label)} style={{
+              background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)',
+              borderRadius: 16, padding: 16, cursor: 'pointer', position: 'relative'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, fontWeight: 800, color: '#fff' }}>{c.label}</span>
+                <span style={{ fontSize: 9, background: 'rgba(255,255,255,0.1)', padding: '4px 8px', borderRadius: 12, fontWeight: 700 }}>COPY</span>
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--neon-lime)', fontFamily: 'monospace', wordBreak: 'break-all', marginBottom: 8 }}>
+                {c.address}
+              </div>
+              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', lineHeight: 1.4 }}>{c.desc}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ═ FOOTER ═ */}
+      <section style={{ padding: '0 20px' }}>
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(163,255,18,0.1) 0%, rgba(0,210,255,0.05) 100%)',
+          border: '1px solid rgba(163,255,18,0.15)', borderRadius: 20, padding: 24, textAlign: 'center'
+        }}>
+          <h3 style={{ fontSize: 16, fontWeight: 900, marginBottom: 12 }}>JOIN THE COMMUNITY</h3>
+          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 20 }}>
+            Connect with thousands of other node operators in our official Telegram group to share strategies and earn together.
+          </p>
+          <a href="https://t.me/AIPCoreOfficial" target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>
+            <button style={{
+              background: '#fff', color: '#000', border: 'none', borderRadius: 12,
+              padding: '12px 24px', fontSize: 13, fontWeight: 900, cursor: 'pointer',
+              display: 'inline-flex', alignItems: 'center', gap: 8
+            }}>
+              ✈️ TELEGRAM
             </button>
           </a>
         </div>
-      )}
+      </section>
 
-      {/* ══ CONTRACTS SECTION ══ */}
-      {activeSection === 'contracts' && (
-        <div>
-          <p style={{ fontSize: '13px', color: 'var(--text-dim)', marginBottom: '20px', lineHeight: '1.5' }}>
-            Verifiable on-chain smart contracts powering the AIPCore ecosystem. Tap any to copy address.
-          </p>
-
-          {contractsList.map((c, i) => (
-            <div key={i} className="contract-row" onClick={() => copyToClipboard(c.address, c.label)} style={{ cursor: 'pointer' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span className="contract-label">{c.label}</span>
-                <span style={{ fontSize: '10px', opacity: 0.5, background: 'rgba(163,255,18,0.1)', color: 'var(--neon-lime)', padding: '2px 8px', borderRadius: 20, fontWeight: 800 }}>COPY</span>
-              </div>
-              <span className="contract-addr">{c.address}</span>
-              <span style={{ fontSize: '11px', color: 'var(--text-dim)', marginTop: '4px' }}>{c.desc}</span>
-              <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', gap: '16px' }}>
-                <a
-                  href={`https://bscscan.com/address/${c.address}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  style={{ fontSize: '11px', color: 'var(--neon-lime)', textDecoration: 'none', fontWeight: 700 }}
-                  onClick={(e) => e.stopPropagation()}
-                >VIEW ON BSCSCAN ↗</a>
-              </div>
-            </div>
-          ))}
-
-          <div style={{ marginTop: '24px', padding: '16px', borderRadius: '16px', border: '1px dashed rgba(255,255,255,0.1)', textAlign: 'center' }}>
-            <span style={{ fontSize: '12px', color: 'var(--text-dim)' }}>
-              All rewards are distributed algorithmically. No admin can manually trigger payouts.
-            </span>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
