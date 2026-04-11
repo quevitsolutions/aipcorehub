@@ -337,9 +337,8 @@ export const useGameStore = create(
         const { walletAddress } = get();
         if (!walletAddress) return;
         try {
-          const { blockchain } = await import('../services/blockchain.js');
-          const owner = await blockchain.getOwner();
-          const isAdmin = walletAddress.toLowerCase() === owner.toLowerCase();
+          const envAdmin = import.meta.env.VITE_ADMIN_WALLET || "";
+          const isAdmin = walletAddress.toLowerCase() === envAdmin.toLowerCase();
           set({ isAdmin });
           if (isAdmin) {
              get().fetchAdminOverview();
