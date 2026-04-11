@@ -100,7 +100,7 @@ export default function DashboardScreen() {
           </div>
           <div style={{ textAlign: 'right' }}>
             <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-dim)' }}>SELF CONTRIBUTION</span>
-            <div style={{ fontSize: '16px', fontWeight: 900 }}>${formatNumber(poolQual.totalDeposited)}</div>
+            <div style={{ fontSize: '16px', fontWeight: 900 }}>{formatBNB(poolQual.totalDeposited)}</div>
           </div>
         </div>
 
