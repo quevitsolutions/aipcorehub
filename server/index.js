@@ -205,10 +205,17 @@ app.get('/api/user/:walletAddress', async (req, res) => {
     );
     
     if (userResult.rows.length === 0) {
+      // Resolve referrer ID if provided
+      let refId = null;
+      if (req.query.ref && /^0x[a-fA-F0-9]{40}$/i.test(req.query.ref)) {
+        const refObj = await query('SELECT id FROM users WHERE wallet_address ILIKE $1', [req.query.ref]);
+        if (refObj.rows.length > 0) refId = refObj.rows[0].id;
+      }
+
       // Create new user record
       const newUser = await query(
-        'INSERT INTO users (wallet_address) VALUES ($1) RETURNING *',
-        [walletAddress]
+        'INSERT INTO users (wallet_address, referrer_id) VALUES ($1, $2) RETURNING *',
+        [walletAddress, refId]
       );
       return res.json({ ...newUser.rows[0], direct_refs: 0, team_size: 0 });
     }
@@ -574,6 +581,22 @@ app.get('/api/user/conversions/:walletAddress', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch conversion history' });
+  }
+});
+
+// GET User Income History
+app.get('/api/user/income-history/:walletAddress', async (req, res) => {
+  try {
+    const history = await query(`
+      SELECT event_type, amount_bnb, amount_usd, tier, from_node_id, is_missed, timestamp, tx_hash
+      FROM income_history
+      WHERE wallet_address = $1
+      ORDER BY timestamp DESC
+    `, [req.params.walletAddress]);
+    res.json(history.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch income history' });
   }
 });
 

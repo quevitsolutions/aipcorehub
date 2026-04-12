@@ -4,7 +4,7 @@ import { formatNumber } from '../utils/format.js';
 import toast from 'react-hot-toast';
 
 export default function TaskScreen() {
-  const { tasks, claimTaskAction, setActiveTab, fetchTasksData } = useGameStore();
+  const { tasks, claimTaskAction, setActiveTab, fetchTasksData, directRefs } = useGameStore();
   const [claimingId, setClaimingId] = useState(null);
 
   // Refresh tasks whenever the screen is opened
@@ -71,36 +71,70 @@ export default function TaskScreen() {
             const done = task.is_completed;
             const isClaiming = claimingId === task.id;
 
+            let targetCount = 0;
+            let currentCount = 0;
+            let locked = false;
+
+            if (task.type === 'referral_count') {
+              const match = task.name.match(/\d+/);
+              targetCount = match ? parseInt(match[0]) : 0;
+              currentCount = directRefs || 0;
+              if (currentCount < targetCount) locked = true;
+            }
+
             return (
-              <div key={task.id} className="partner-card" style={{ gap: 16, padding: 16 }}>
-                <div style={{ 
-                  width: '44px', height: '44px', 
-                  background: 'rgba(255,255,255,0.05)', 
-                  borderRadius: '10px', 
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '20px'
-                }}>
-                  {task.icon}
+              <div key={task.id} className="partner-card" style={{ gap: 16, padding: 16, flexDirection: 'column', alignItems: 'stretch' }}>
+                <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                  <div style={{ 
+                    width: '44px', height: '44px', 
+                    background: 'rgba(255,255,255,0.05)', 
+                    borderRadius: '10px', 
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '20px'
+                  }}>
+                    {task.icon}
+                  </div>
+                  <div className="flex-column" style={{ flex: 1 }}>
+                    <span style={{ fontSize: '13px', fontWeight: 800 }}>{task.name}</span>
+                    <span style={{ fontSize: '11px', color: 'var(--neon-lime)', fontWeight: 700 }}>+{formatNumber(task.reward)}</span>
+                  </div>
+                  {done ? (
+                    <span style={{ color: 'var(--neon-lime)', fontWeight: 900, fontSize: '18px' }}>✓</span>
+                  ) : (
+                    <button 
+                      onClick={() => {
+                        if (locked) toast.error(`You need ${targetCount} direct referrals to claim this!`);
+                        else handleClaim(task);
+                      }}
+                      disabled={isClaiming || locked}
+                      style={{ 
+                        background: isClaiming || locked ? 'rgba(255,255,255,0.1)' : 'var(--neon-lime)', 
+                        color: isClaiming || locked ? 'rgba(255,255,255,0.4)' : '#000', border: 'none',
+                        padding: '6px 14px', borderRadius: '40px', fontSize: '11px', fontWeight: 900,
+                        cursor: isClaiming || locked ? 'not-allowed' : 'pointer'
+                      }}
+                    >
+                      {isClaiming ? 'WAIT' : (locked ? 'LOCKED' : (task.type === 'social' ? 'JOIN' : 'CLAIM'))}
+                    </button>
+                  )}
                 </div>
-                <div className="flex-column" style={{ flex: 1 }}>
-                  <span style={{ fontSize: '13px', fontWeight: 800 }}>{task.name}</span>
-                  <span style={{ fontSize: '11px', color: 'var(--neon-lime)', fontWeight: 700 }}>+{formatNumber(task.reward)}</span>
-                </div>
-                {done ? (
-                  <span style={{ color: 'var(--neon-lime)', fontWeight: 900, fontSize: '18px' }}>✓</span>
-                ) : (
-                  <button 
-                    onClick={() => handleClaim(task)}
-                    disabled={isClaiming}
-                    style={{ 
-                      background: isClaiming ? 'var(--text-dim)' : 'var(--neon-lime)', 
-                      color: '#000', border: 'none',
-                      padding: '6px 14px', borderRadius: '40px', fontSize: '11px', fontWeight: 900,
-                      cursor: isClaiming ? 'wait' : 'pointer'
-                    }}
-                  >
-                    {isClaiming ? 'WAIT' : (task.type === 'social' ? 'JOIN' : 'CLAIM')}
-                  </button>
+                
+                {/* Visual Progress Bar for Referral Tasks */}
+                {task.type === 'referral_count' && (
+                  <div style={{ marginTop: 8 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.5)', marginBottom: 6 }}>
+                      <span>{Math.min(currentCount, targetCount)} / {targetCount} Peers Recruited</span>
+                      <span>{targetCount > 0 ? Math.floor(Math.min((currentCount / targetCount) * 100, 100)) : 0}%</span>
+                    </div>
+                    <div style={{ height: 6, background: 'rgba(255,255,255,0.05)', borderRadius: 4, overflow: 'hidden' }}>
+                      <div style={{ 
+                        height: '100%', 
+                        background: done ? 'var(--neon-lime)' : 'linear-gradient(90deg, #FF9500, var(--neon-lime))',
+                        width: `${targetCount > 0 ? Math.min((currentCount / targetCount) * 100, 100) : 0}%`,
+                        transition: 'width 0.5s ease-out'
+                      }} />
+                    </div>
+                  </div>
                 )}
               </div>
             );

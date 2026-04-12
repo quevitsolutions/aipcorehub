@@ -270,11 +270,11 @@ export const useGameStore = create(
       },
  
       fetchUserData: async () => {
-        const { walletAddress } = get();
+        const { walletAddress, referrerId } = get();
         if (!walletAddress) return;
         
         try {
-           const data = await api.fetchUser(walletAddress);
+           const data = await api.fetchUser(walletAddress, referrerId);
            if (data) {
              const currentTier = get().nodeTier || 0;
              const backendTier = Number(data.node_tier || 0);

@@ -7,8 +7,11 @@ class ApiService {
     this.baseUrl = baseUrl;
   }
 
-  async fetchUser(walletAddress) {
-    const res = await fetch(`${this.baseUrl}/user/${walletAddress}`);
+  async fetchUser(walletAddress, referrerId = null) {
+    const url = referrerId 
+      ? `${this.baseUrl}/user/${walletAddress}?ref=${referrerId}` 
+      : `${this.baseUrl}/user/${walletAddress}`;
+    const res = await fetch(url);
     if (!res.ok) throw new Error('Failed to fetch user');
     return res.json();
   }

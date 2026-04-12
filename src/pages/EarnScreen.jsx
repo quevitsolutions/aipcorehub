@@ -369,75 +369,94 @@ export default function EarnScreen() {
                 <p style={{ fontSize: 12, fontWeight: 600 }}>No team income found yet.</p>
               </motion.div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {teamHistory.map((item, idx) => {
-                  const getIcon = (type) => {
-                    if (item.is_missed) return '⚠️';
-                    switch(type) {
-                      case 'Referral': return '🤝';
-                      case 'Direct Upgrade': return '⚡';
-                      case 'Layer Income': return '🪜';
-                      case 'Matrix Income': return '🌀';
-                      case 'Global Pool': return '🏆';
-                      default: return '💰';
-                    }
-                  };
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                {Object.entries(teamHistory.reduce((acc, item) => {
+                  const dateStr = new Date(item.timestamp).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+                  if (!acc[dateStr]) acc[dateStr] = [];
+                  acc[dateStr].push(item);
+                  return acc;
+                }, {})).map(([dateLabel, items], groupIdx) => (
+                  <div key={dateLabel} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {/* Day divider */}
+                    <div style={{ fontSize: 11, fontWeight: 900, color: 'rgba(255,255,255,0.4)', letterSpacing: 1, paddingLeft: 4, textTransform: 'uppercase' }}>
+                      {dateLabel}
+                    </div>
 
-                  const isMissed = !!item.is_missed;
+                    {items.map((item, idx) => {
+                      const getIcon = (type) => {
+                        if (item.is_missed) return '⚠️';
+                        switch(type) {
+                          case 'Referral': return '🤝';
+                          case 'Direct Upgrade': return '⚡';
+                          case 'Layer Income': return '🪜';
+                          case 'Matrix Income': return '🌀';
+                          case 'Global Pool': return '🏆';
+                          default: return '💰';
+                        }
+                      };
 
-                  return (
-                    <motion.div 
-                      key={item.id || idx}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: idx * 0.05 }}
-                      style={{ 
-                        background: isMissed ? 'rgba(255,160,0,0.05)' : 'rgba(255,255,255,0.03)', 
-                        border: isMissed ? '1px solid rgba(255,160,0,0.2)' : '1px solid rgba(255,255,255,0.06)', 
-                        borderRadius: 16, padding: '12px 14px',
-                        display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-                      }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ 
-                          width: 32, height: 32, borderRadius: 8, 
-                          background: isMissed ? 'rgba(255,160,0,0.1)' : 'rgba(163,255,18,0.1)', 
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 
-                        }}>
-                          {getIcon(item.event_type)}
-                        </div>
-                        <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ fontSize: 12, fontWeight: 800, color: isMissed ? '#FFA000' : '#fff' }}>
-                              {item.event_type}
-                            </span>
-                            {isMissed && (
-                              <span style={{ fontSize: 8, background: '#FFA000', color: '#000', padding: '1px 4px', borderRadius: 4, fontWeight: 900 }}>MISSED</span>
-                            )}
+                      const isMissed = !!item.is_missed;
+
+                      return (
+                        <motion.div 
+                          key={item.id || item.tx_hash || idx}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: (groupIdx * 0.1) + (idx * 0.05) }}
+                          style={{ 
+                            background: isMissed ? 'rgba(255,59,48,0.05)' : 'rgba(255,255,255,0.03)', 
+                            border: isMissed ? '1px solid rgba(255,59,48,0.2)' : '1px solid rgba(255,255,255,0.06)', 
+                            borderRadius: 16, padding: '12px 14px',
+                            display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                          }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div style={{ 
+                              width: 32, height: 32, borderRadius: 8, 
+                              background: isMissed ? 'rgba(255,59,48,0.1)' : 'rgba(163,255,18,0.1)', 
+                              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 
+                            }}>
+                              {getIcon(item.event_type)}
+                            </div>
+                            <div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{ fontSize: 12, fontWeight: 800, color: isMissed ? '#FF3B30' : '#fff' }}>
+                                  {item.event_type}
+                                </span>
+                                {isMissed && (
+                                  <span style={{ fontSize: 9, background: '#FF3B30', color: '#fff', padding: '2px 5px', borderRadius: 4, fontWeight: 900 }}>MISSED</span>
+                                )}
+                              </div>
+                              
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                                {item.from_node_id > 0 && (
+                                  <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', fontWeight: 600 }}>From #{item.from_node_id}</span>
+                                )}
+                                {item.tier > 0 && (
+                                  <span style={{ fontSize: 9, color: 'var(--neon-lime)', opacity: 0.8 }}>Tier {item.tier}</span>
+                                )}
+                                {item.layer > 0 && (
+                                  <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)' }}>Lvl {item.layer}</span>
+                                )}
+                                <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.2)' }}>
+                                  {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              </div>
+                            </div>
                           </div>
-                          
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', fontWeight: 600 }}>#{item.from_node_id}</span>
-                            {item.tier > 0 && (
-                              <span style={{ fontSize: 9, color: 'var(--neon-lime)', opacity: 0.8 }}>Tier {item.tier}</span>
-                            )}
-                            {item.layer > 0 && (
-                              <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)' }}>Lvl {item.layer}</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
 
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: 13, fontWeight: 900, color: isMissed ? 'rgba(255,255,255,0.3)' : 'var(--neon-lime)' }}>
-                          {isMissed ? '' : '+'}{Number(item.amount_bnb).toFixed(4)} BNB
-                        </div>
-                        <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.2)', fontWeight: 700 }}>
-                          ~${Number(item.amount_usd).toFixed(2)}
-                        </div>
-                      </div>
-                    </motion.div>
-                  );
-                })}
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: 13, fontWeight: 900, color: isMissed ? '#FF3B30' : 'var(--neon-lime)' }}>
+                              {isMissed ? '' : '+'}{Number(item.amount_bnb).toFixed(4)} BNB
+                            </div>
+                            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.2)', fontWeight: 700 }}>
+                              ~${Number(item.amount_usd).toFixed(2)}
+                            </div>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                ))}
               </div>
             )}
           </AnimatePresence>
