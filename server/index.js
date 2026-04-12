@@ -575,6 +575,8 @@ app.get('/api/user/conversions/:walletAddress', async (req, res) => {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch conversion history' });
   }
+});
+
 // GET User Details (Admin)
 app.get('/api/admin/user/:walletAddress', checkAdmin, async (req, res) => {
   const { walletAddress } = req.params;
