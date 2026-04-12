@@ -315,7 +315,6 @@ export default function EarnScreen() {
                 </div>
               )}
             </div>
-          </div>
 
           {/* ── Claim Module ── */}
           <div style={{ flexShrink: 0, padding: '12px 0 0px', background: 'linear-gradient(to top, var(--bg-dark) 60%, transparent)' }}>
