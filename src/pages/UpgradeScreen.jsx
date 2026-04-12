@@ -86,18 +86,65 @@ export default function UpgradeScreen() {
         <h2 style={{ flex: 1, textAlign: 'center', fontSize: '20px', fontWeight: 900 }}>MINING BOOSTERS</h2>
       </div>
 
-      {/* ─ Registration CTA if not registered ─ */}
+      {/* ─ Registration CTA & Sales Page if not registered ─ */}
       {!nodeId && (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-          style={{ background: 'var(--neon-lime)', borderRadius: 24, padding: 24, marginBottom: 24 }}>
-          <div style={{ fontSize: 20, fontWeight: 900, color: '#000', marginBottom: 4 }}>INITIALIZE NODE</div>
-          <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(0,0,0,0.6)', marginBottom: 16 }}>REGISTER TIER 1 & UNLOCK ALL BOOSTERS</div>
-          <button className="giant-btn" onClick={handleRegister} disabled={isLoading}
-            style={{ background: '#000', color: '#fff', width: '100%', display: 'flex', flexDirection: 'column', height: 'auto', padding: 14, borderRadius: 14, gap: 4 }}>
-            <span style={{ fontSize: 15 }}>REGISTER (LEVEL 1) — {parseFloat(tierCosts[0]).toFixed(3)} BNB</span>
-            <span style={{ fontSize: 11, opacity: 0.6 }}>≈ ${(parseFloat(tierCosts[0]) * bnbPriceUsd).toFixed(2)} USD</span>
-          </button>
-        </motion.div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          {/* Hero Section */}
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+            style={{ textAlign: 'center', padding: '10px 0' }}>
+            <h1 style={{ fontSize: 28, fontWeight: 900, color: '#fff', letterSpacing: '-0.02em', marginBottom: 8 }}>
+              SUPERCHARGE YOUR MINING
+            </h1>
+            <p style={{ fontSize: 13, color: 'var(--text-dim)', fontWeight: 600, lineHeight: 1.5, maxWidth: 300, margin: '0 auto' }}>
+              Upgrade to an Active Node and unlock the full potential of the AIPCore ecosystem.
+            </p>
+          </motion.div>
+
+          {/* Benefits Grid */}
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+            style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 12 }}>
+            {[
+              { icon: '🪙', title: '10x Mining Speed', desc: 'Boost your base rate from 10 coins/hr to 100+ coins/hr instantly.' },
+              { icon: '💎', title: 'Earn Real BNB', desc: 'Unlock smart contract payouts. Start earning real BNB directly to your wallet.' },
+              { icon: '🌐', title: '18-Level Commission', desc: 'Get paid when your community upgrades, up to 18 layers deep.' },
+              { icon: '🏆', title: 'Global Pool Rewards', desc: 'Qualify for the global matrix and premium reward pools.' },
+            ].map((benefit, i) => (
+              <div key={i} style={{ 
+                background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', 
+                borderRadius: 16, padding: 16, display: 'flex', alignItems: 'flex-start', gap: 16 
+              }}>
+                <div style={{ fontSize: 24 }}>{benefit.icon}</div>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: '#fff', marginBottom: 4 }}>{benefit.title}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-dim)', lineHeight: 1.4, fontWeight: 600 }}>{benefit.desc}</div>
+                </div>
+              </div>
+            ))}
+          </motion.div>
+
+          {/* Upgraded CTA */}
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+            style={{ 
+              background: 'linear-gradient(135deg, rgba(203,255,1,0.15) 0%, rgba(203,255,1,0.05) 100%)', 
+              border: '1px solid rgba(203,255,1,0.3)', borderRadius: 24, padding: 24, 
+              display: 'flex', flexDirection: 'column', alignItems: 'center' 
+            }}>
+            <button className="giant-btn" onClick={handleRegister} disabled={isLoading}
+              style={{ 
+                background: 'var(--neon-lime)', color: '#000', width: '100%', display: 'flex', flexDirection: 'column', 
+                height: 'auto', padding: '16px 20px', borderRadius: 16, gap: 4, letterSpacing: '0.5px' 
+              }}>
+              <span style={{ fontSize: 15, fontWeight: 900 }}>ACTIVATE NODE (LEVEL 1)</span>
+              <span style={{ fontSize: 13, fontWeight: 800, opacity: 0.8 }}>
+                {parseFloat(tierCosts[0]).toFixed(3)} BNB <span style={{ fontSize: 11, fontWeight: 700, marginLeft: 4 }}>≈ ${(parseFloat(tierCosts[0]) * bnbPriceUsd).toFixed(2)} USD</span>
+              </span>
+            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 16, color: 'rgba(255,255,255,0.5)' }}>
+              <span style={{ fontSize: 14 }}>🔒</span>
+              <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '1px' }}>100% ON-CHAIN SECURE & TRANSPARENT</span>
+            </div>
+          </motion.div>
+        </div>
       )}
 
       {/* ─ Current Mining Rate Hero ─ */}

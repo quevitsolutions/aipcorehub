@@ -100,6 +100,107 @@ function TaskManagementAdmin() {
   );
 }
 
+function UserManagementAdmin({ adminWallet }) {
+  const [searchWallet, setSearchWallet] = useState('');
+  const [targetUser, setTargetUser] = useState(null);
+  const [adjustAmount, setAdjustAmount] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [isAdjusting, setIsAdjusting] = useState(false);
+
+  const handleSearch = async () => {
+    if (!searchWallet) return;
+    setIsSearching(true);
+    setTargetUser(null);
+    try {
+      const user = await api.fetchAdminUserDetails(adminWallet, searchWallet);
+      setTargetUser(user);
+    } catch (e) {
+      toast.error('User not found in system');
+    }
+    setIsSearching(false);
+  };
+
+  const handleAdjust = async () => {
+    if (!targetUser || !adjustAmount) return;
+    const amount = Number(adjustAmount);
+    if (isNaN(amount)) return toast.error('Invalid amount');
+
+    setIsAdjusting(true);
+    try {
+      const res = await api.adjustUserReward(adminWallet, targetUser.wallet_address, amount);
+      if (res.success) {
+        toast.success(`Balance adjusted by ${amount > 0 ? '+' : ''}${amount} coins`);
+        setTargetUser(res.user);
+        setAdjustAmount('');
+      }
+    } catch (e) {
+      toast.error('Failed to update balance');
+    }
+    setIsAdjusting(false);
+  };
+
+  return (
+    <div style={{ background: 'var(--bg-card)', padding: '24px', borderRadius: '32px', marginBottom: '32px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+      <h3 style={{ fontSize: '14px', fontWeight: 900, marginBottom: '20px', letterSpacing: '0.5px' }}>USER MANAGEMENT & ADJUSTMENTS</h3>
+      
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+        <input 
+          placeholder="Search User Wallet (0x...)" 
+          value={searchWallet} 
+          onChange={e => setSearchWallet(e.target.value)} 
+          style={{ ...inputStyle, flex: 1 }} 
+        />
+        <button 
+          onClick={handleSearch} disabled={isSearching}
+          style={{ background: 'var(--neon-lime)', color: '#000', fontWeight: 900, padding: '0 20px', borderRadius: '12px', fontSize: '12px' }}>
+          {isSearching ? '...' : 'SEARCH'}
+        </button>
+      </div>
+
+      <AnimatePresence>
+        {targetUser && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+            style={{ padding: '16px', borderRadius: '16px', background: 'rgba(203,255,1,0.05)', border: '1px solid rgba(203,255,1,0.2)', marginBottom: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+              <div>
+                <div style={{ fontSize: '10px', color: 'var(--text-dim)', fontWeight: 800 }}>NODE ID</div>
+                <div style={{ fontSize: '14px', fontWeight: 900 }}>#{targetUser.id}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '10px', color: 'var(--text-dim)', fontWeight: 800 }}>CURRENT TIER</div>
+                <div style={{ fontSize: '14px', fontWeight: 900, color: 'var(--neon-lime)' }}>TIER {targetUser.node_tier}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '10px', color: 'var(--text-dim)', fontWeight: 800 }}>COIN BALANCE</div>
+                <div style={{ fontSize: '14px', fontWeight: 900 }}>{formatNumber(targetUser.local_reward)} 🪙</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '10px', color: 'var(--text-dim)', fontWeight: 800 }}>DIRECT REFS</div>
+                <div style={{ fontSize: '14px', fontWeight: 900 }}>{targetUser.direct_refs}</div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <input 
+                type="number" 
+                placeholder="Amount (e.g. 500000 or -100000)" 
+                value={adjustAmount} 
+                onChange={e => setAdjustAmount(e.target.value)} 
+                style={{ ...inputStyle, flex: 1 }} 
+              />
+              <button 
+                onClick={handleAdjust} disabled={isAdjusting}
+                style={{ background: '#fff', color: '#000', fontWeight: 900, padding: '0 20px', borderRadius: '12px', fontSize: '11px' }}>
+                {isAdjusting ? '...' : 'APPLY ADJUSTMENT'}
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 const inputStyle = { background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '12px', color: '#fff', fontSize: '12px' };
 
 export default function AdminScreen() {
@@ -184,6 +285,32 @@ export default function AdminScreen() {
 
       {/* Task Creation & Management Controller */}
       <TaskManagementAdmin />
+
+      {/* User Management Controller */}
+      <UserManagementAdmin adminWallet={walletAddress} />
+
+      {/* Admin Audit Logs */}
+      <div style={{ background: 'var(--bg-card)', padding: '24px', borderRadius: '32px', marginBottom: '32px', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
+        <h3 style={{ fontSize: '13px', fontWeight: 900, marginBottom: '20px', letterSpacing: '0.5px', color: 'var(--text-dim)' }}>RECENT COMMAND ADJUSTMENTS</h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {adjustmentLogs.length > 0 ? adjustmentLogs.slice(0, 10).map((log, idx) => (
+            <div key={log.id || idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <div>
+                <div style={{ fontSize: '12px', fontWeight: 800 }}>{shortAddr(log.target_wallet)}</div>
+                <div style={{ fontSize: '10px', color: 'var(--text-dim)', marginTop: '2px' }}>{log.reason}</div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: '13px', fontWeight: 900, color: log.amount > 0 ? 'var(--neon-lime)' : '#ff6262' }}>
+                  {log.amount > 0 ? '+' : ''}{formatNumber(log.amount)}
+                </div>
+                <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.3)' }}>{new Date(log.timestamp).toLocaleDateString()}</div>
+              </div>
+            </div>
+          )) : (
+            <div style={{ textAlign: 'center', fontSize: '11px', color: 'var(--text-dim)', padding: '20px' }}>No recent adjustments found.</div>
+          )}
+        </div>
+      </div>
 
       {/* Snapshot Controller */}
       <div style={{ background: 'var(--bg-card)', padding: '24px', borderRadius: '32px', marginBottom: '32px', border: '1px solid rgba(203, 255, 1, 0.1)' }}>

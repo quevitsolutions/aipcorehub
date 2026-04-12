@@ -11,7 +11,7 @@ import { CONTRACTS } from '../config/constants.js';
 const MAX_SESSION = 86400000; // 24h
 
 // ── Local mining hook — uses a ref snapshot of claimTime so reset is instant ──
-function useLocalMining(lastClaimTime, ratePerHour, hasNode) {
+function useLocalMining(lastClaimTime, ratePerHour, isEligible) {
   const [mined, setMined] = useState(0);
   const rafRef = useRef(null);
   const claimTimeRef = useRef(lastClaimTime); // tracks the LATEST claim time without closure lag
@@ -24,7 +24,7 @@ function useLocalMining(lastClaimTime, ratePerHour, hasNode) {
 
   useEffect(() => {
     cancelAnimationFrame(rafRef.current);
-    if (!hasNode) { setMined(0); return; }
+    if (!isEligible) { setMined(0); return; }
 
     const tick = () => {
       const elapsed = (Date.now() - claimTimeRef.current) / 3600000;
@@ -33,7 +33,7 @@ function useLocalMining(lastClaimTime, ratePerHour, hasNode) {
     };
     rafRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [ratePerHour, hasNode]);
+  }, [ratePerHour, isEligible]);
 
   return mined;
 }
@@ -131,11 +131,13 @@ function RegistrationGate({ setActiveTab }) {
 
 export default function EarnScreen() {
   const {
-    localReward, nodeTier, isPremium,
-    hasNode, lastClaimTime,
-    claimMined, setActiveTab, addLocalReward
+    walletAddress, localReward, nodeTier, isPremium,
+    hasNode, lastClaimTime, teamHistory, isHistoryLoading,
+    claimMined, setActiveTab, addLocalReward, fetchTeamHistory,
+    isFreeActive, createdAt
   } = useGameStore();
 
+  const [view, setView] = useState('mining'); // 'mining' | 'history'
   const [isExploding, setIsExploding] = useState(false);
   const [displayReward, setDisplayReward] = useState(localReward);
   const [claimedTasks, setClaimedTasks] = useState(() => {
@@ -147,8 +149,11 @@ export default function EarnScreen() {
     setDisplayReward(localReward);
   }, [localReward]);
 
-  const ratePerHour = (nodeTier >= 2 ? 200 : 100) * (isPremium ? 2 : 1);
-  const localMined = useLocalMining(lastClaimTime, ratePerHour, hasNode);
+  const hourlyBase = hasNode ? (nodeTier >= 2 ? 200 : 100) : 10;
+  const multiplier = isPremium ? 2 : 1;
+  const ratePerHour = hourlyBase * multiplier;
+  
+  const localMined = useLocalMining(lastClaimTime, ratePerHour, hasNode || isFreeActive);
 
   // Live timer — re-renders every second
   const [, setTick] = useState(0);
@@ -178,6 +183,16 @@ export default function EarnScreen() {
 
     toast.success(`🥚 Hatch claim completed via authoritative ledger!`, { duration: 3000 });
     setTimeout(() => setIsExploding(false), 800);
+
+    if (!hasNode) {
+      setTimeout(() => {
+        toast('Activate an AIPCore Node to earn real BNB, 10x more coins, and massive pool rewards!', {
+          icon: '💎',
+          duration: 6000,
+          style: { border: '1px solid var(--neon-lime)' }
+        });
+      }, 800);
+    }
   };
 
   const handleTaskClaim = (task) => {
@@ -190,101 +205,245 @@ export default function EarnScreen() {
   };
 
   const displayTier = Math.max(1, nodeTier || 1);
+  const daysLeft = createdAt ? Math.max(0, 30 - Math.floor((now - new Date(createdAt).getTime()) / (24 * 3600000))) : 0;
+  const isExpired = !hasNode && daysLeft <= 0;
 
-  // ── Non-activated users see registration gate ──
-  if (!hasNode) {
+  // Render the gate ONLY if we have no node AND we aren't a free active member
+  if (!hasNode && !isFreeActive && !isExpired) {
     return <RegistrationGate setActiveTab={setActiveTab} />;
   }
 
   return (
     <div className="page-earn" style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', overflowY: 'auto', overflowX: 'hidden' }}>
 
-      {/* Tasks button */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '4px 0 8px' }}>
+      {/* ── Tab Switcher Header ── */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', marginBottom: 12 }}>
+        <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: 4 }}>
+          <button 
+            onClick={() => setView('mining')}
+            style={{ 
+              padding: '6px 16px', borderRadius: 10, border: 'none', fontSize: 11, fontWeight: 800, cursor: 'pointer',
+              background: view === 'mining' ? 'var(--neon-lime)' : 'transparent',
+              color: view === 'mining' ? '#000' : 'rgba(255,255,255,0.5)',
+              transition: 'all 0.2s'
+            }}>⛏️ MINING</button>
+          <button 
+            onClick={() => { setView('history'); fetchTeamHistory(); }}
+            style={{ 
+              padding: '6px 16px', borderRadius: 10, border: 'none', fontSize: 11, fontWeight: 800, cursor: 'pointer',
+              background: view === 'history' ? 'var(--neon-lime)' : 'transparent',
+              color: view === 'history' ? '#000' : 'rgba(255,255,255,0.5)',
+              transition: 'all 0.2s'
+            }}>📜 HISTORY</button>
+        </div>
+
         <button onClick={() => setActiveTab('tasks')}
-          style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: '6px 14px', cursor: 'pointer', fontSize: 11, fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span>✅</span> TASKS
+          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, padding: 8, display: 'flex', alignItems: 'center' }}>
+          ✅
         </button>
       </div>
 
-      {/* ── Balance (always reflects displayReward — updates immediately on claim) ── */}
-      <div className="balance-container" style={{ margin: '4px 0 8px' }}>
-        <div className="balance-main">
-          <img src="/assets/gold_coin.png" className="balance-coin" style={{ width: 40, clipPath: 'circle(50%)' }} alt="coin" />
-          <span className="balance-value" style={{ fontSize: 40 }}>
-            {Math.floor(displayReward).toLocaleString('en-US')}
-          </span>
-        </div>
-      </div>
-
-      {/* ── Egg Zone ── */}
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', minHeight: 240 }}>
-        <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-
-          {/* Maturity circle ring */}
-          <svg style={{ position: 'absolute', top: '50%', left: '50%', width: 260, height: 260, transform: 'translate(-50%, -50%) rotate(-90deg)', pointerEvents: 'none' }}>
-            <circle cx="130" cy="130" r="120" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="3" />
-            <motion.circle cx="130" cy="130" r="120" fill="none" stroke="var(--neon-lime)" strokeWidth="3"
-              strokeDasharray="754"
-              animate={{ strokeDashoffset: 754 * (1 - maturity) }}
-              transition={{ duration: 1, ease: 'linear' }}
-              strokeLinecap="round" />
-          </svg>
-
-          <AnimatePresence>
-            {isExploding && (
-              <motion.div initial={{ opacity: 1, scale: 0.8 }} animate={{ opacity: 0, scale: 2 }}
-                style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle, var(--neon-lime) 0%, transparent 70%)', zIndex: 5, borderRadius: '50%' }} />
-            )}
-          </AnimatePresence>
-
-          {/* EGG — circle-masked, frameless */}
-          <div style={{ position: 'relative', width: 210, height: 210, zIndex: 10 }}>
-            <img src="/assets/egg_orange.png"
-              style={{ width: '100%', height: '100%', objectFit: 'contain', mixBlendMode: 'screen', clipPath: 'circle(48% at 50% 50%)', filter: `drop-shadow(0 0 ${20 * maturity}px rgba(203,255,1,0.5))` }}
-              alt="Mining Egg" />
-          </div>
-
-          {/* BOOST pill */}
-          <motion.div onClick={() => setActiveTab('mine')}
-            animate={{ boxShadow: ['0 0 8px rgba(203,255,1,0.3)', '0 0 22px rgba(203,255,1,0.7)', '0 0 8px rgba(203,255,1,0.3)'] }}
-            transition={{ duration: 2.5, repeat: Infinity }}
-            style={{ marginTop: 8, background: 'var(--neon-lime)', borderRadius: 40, padding: '7px 20px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', zIndex: 20 }}>
-            <span style={{ fontSize: 13, fontWeight: 900, color: '#000', letterSpacing: 1 }}>BOOST</span>
-            <span style={{ fontSize: 11, fontWeight: 900, color: 'rgba(0,0,0,0.6)' }}>T{displayTier}→{displayTier + 1} ⬆</span>
-          </motion.div>
-        </div>
-      </div>
-
-      {/* ── Claim Module ── */}
-      <div style={{ flexShrink: 0, padding: '12px 0 0px', background: 'linear-gradient(to top, var(--bg-dark) 60%, transparent)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
-          <span style={{ fontSize: 10, fontWeight: 800, color: 'rgba(255,255,255,0.45)', letterSpacing: 1 }}>SESSION ENDS IN</span>
-          <span style={{ fontSize: 11, fontWeight: 900, color: '#fff' }}>{formatTime(timeRemaining)}</span>
-        </div>
-
-        <button
-          onClick={onClaim}
-          disabled={localMined <= 0}
-          style={{
-            width: '100%', background: localMined > 0 ? 'var(--neon-lime)' : 'rgba(255,255,255,0.08)',
-            border: 'none', borderRadius: 20, padding: '18px', cursor: localMined > 0 ? 'pointer' : 'default',
-            boxShadow: localMined > 0 ? '0 0 30px rgba(203,255,1,0.3)' : 'none',
-            transition: 'all 0.3s'
-          }}>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-            <span style={{ fontSize: 16, fontWeight: 900, color: localMined > 0 ? '#000' : 'rgba(255,255,255,0.3)', letterSpacing: 1 }}>
-              {maturity >= 1 ? '🥚 READY TO HATCH' : 'COLLECT MINED'}
-            </span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <img src="/assets/gold_coin.png" style={{ width: 14, clipPath: 'circle(50%)' }} alt="coin" />
-              <span style={{ fontSize: 15, fontWeight: 900, color: localMined > 0 ? '#000' : 'rgba(255,255,255,0.3)' }}>
-                {Math.floor(localMined).toLocaleString('en-US')}
+      {/* ── Conditional View Content ── */}
+      {view === 'mining' ? (
+        <>
+          {/* ── Balance ── */}
+          <div className="balance-container" style={{ margin: '4px 0 8px' }}>
+            <div className="balance-main">
+              <img src="/assets/gold_coin.png" className="balance-coin" style={{ width: 40, clipPath: 'circle(50%)' }} alt="coin" />
+              <span className="balance-value" style={{ fontSize: 40 }}>
+                {Math.floor(displayReward).toLocaleString('en-US')}
               </span>
             </div>
           </div>
-        </button>
-      </div>
+
+          {/* ── Egg Zone ── */}
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', minHeight: 240 }}>
+            <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+
+              {/* Maturity circle ring */}
+              <svg style={{ position: 'absolute', top: '50%', left: '50%', width: 260, height: 260, transform: 'translate(-50%, -50%) rotate(-90deg)', pointerEvents: 'none' }}>
+                <circle cx="130" cy="130" r="120" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="3" />
+                <motion.circle cx="130" cy="130" r="120" fill="none" stroke="var(--neon-lime)" strokeWidth="3"
+                  strokeDasharray="754"
+                  animate={{ strokeDashoffset: 754 * (1 - maturity) }}
+                  transition={{ duration: 1, ease: 'linear' }}
+                  strokeLinecap="round" />
+              </svg>
+
+              <AnimatePresence>
+                {isExploding && (
+                  <motion.div initial={{ opacity: 1, scale: 0.8 }} animate={{ opacity: 0, scale: 2 }}
+                    style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle, var(--neon-lime) 0%, transparent 70%)', zIndex: 5, borderRadius: '50%' }} />
+                )}
+              </AnimatePresence>
+
+              {/* EGG */}
+              <div style={{ position: 'relative', width: 210, height: 210, zIndex: 10 }}>
+                <img src="/assets/egg_orange.png"
+                  style={{ 
+                    width: '100%', height: '100%', objectFit: 'contain', mixBlendMode: 'screen', clipPath: 'circle(48% at 50% 50%)', 
+                    filter: isExpired ? 'grayscale(1) brightness(0.5)' : `drop-shadow(0 0 ${20 * maturity}px rgba(203,255,1,0.5))` 
+                  }}
+                  alt="Mining Egg" />
+                
+                {isExpired && (
+                  <div style={{ 
+                    position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', 
+                    background: 'rgba(0,0,0,0.6)', borderRadius: '50%', textAlign: 'center', padding: 20, zIndex: 15
+                  }}>
+                    <span style={{ fontSize: 13, fontWeight: 900, color: '#FF3B30', marginBottom: 8 }}>SESSION EXPIRED</span>
+                    <button onClick={() => setActiveTab('mine')} style={{ background: 'var(--neon-lime)', border: 'none', padding: '8px 16px', borderRadius: 12, fontSize: 11, fontWeight: 900, color: '#000', cursor: 'pointer' }}>
+                      ACTIVATE NODE
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* BOOST pill - Only for node owners */}
+              {hasNode && (
+                <motion.div onClick={() => setActiveTab('mine')}
+                  animate={{ boxShadow: ['0 0 8px rgba(203,255,1,0.3)', '0 0 22px rgba(203,255,1,0.7)', '0 0 8px rgba(203,255,1,0.3)'] }}
+                  transition={{ duration: 2.5, repeat: Infinity }}
+                  style={{ marginTop: 8, background: 'var(--neon-lime)', borderRadius: 40, padding: '7px 20px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', zIndex: 20 }}>
+                  <span style={{ fontSize: 13, fontWeight: 900, color: '#000', letterSpacing: 1 }}>BOOST</span>
+                  <span style={{ fontSize: 11, fontWeight: 900, color: 'rgba(0,0,0,0.6)' }}>T{displayTier}→{displayTier + 1} ⬆</span>
+                </motion.div>
+              )}
+
+              {!hasNode && isFreeActive && (
+                <div style={{ marginTop: 12, background: 'rgba(255,255,255,0.05)', padding: '6px 16px', borderRadius: 20, border: '1px solid rgba(255,255,255,0.1)' }}>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--neon-lime)' }}>{daysLeft} DAYS TRIAL LEFT</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ── Claim Module ── */}
+          <div style={{ flexShrink: 0, padding: '12px 0 0px', background: 'linear-gradient(to top, var(--bg-dark) 60%, transparent)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
+              <span style={{ fontSize: 10, fontWeight: 800, color: 'rgba(255,255,255,0.45)', letterSpacing: 1 }}>SESSION ENDS IN</span>
+              <span style={{ fontSize: 11, fontWeight: 900, color: '#fff' }}>{formatTime(timeRemaining)}</span>
+            </div>
+
+            <button
+              onClick={onClaim}
+              disabled={localMined <= 0}
+              style={{
+                width: '100%', background: localMined > 0 ? 'var(--neon-lime)' : 'rgba(255,255,255,0.08)',
+                border: 'none', borderRadius: 20, padding: '18px', cursor: localMined > 0 ? 'pointer' : 'default',
+                boxShadow: localMined > 0 ? '0 0 30px rgba(203,255,1,0.3)' : 'none',
+                transition: 'all 0.3s'
+              }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                <span style={{ fontSize: 16, fontWeight: 900, color: localMined > 0 ? '#000' : 'rgba(255,255,255,0.3)', letterSpacing: 1 }}>
+                  {maturity >= 1 ? '🥚 READY TO HATCH' : 'COLLECT MINED'}
+                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <img src="/assets/gold_coin.png" style={{ width: 14, clipPath: 'circle(50%)' }} alt="coin" />
+                  <span style={{ fontSize: 15, fontWeight: 900, color: localMined > 0 ? '#000' : 'rgba(255,255,255,0.3)' }}>
+                    {Math.floor(localMined).toLocaleString('en-US')}
+                  </span>
+                </div>
+              </div>
+            </button>
+          </div>
+        </>
+      ) : (
+        /* ── HISTORY VIEW ── */
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <h3 style={{ fontSize: 14, fontWeight: 900, color: 'var(--neon-lime)' }}>TEAM EARNINGS</h3>
+            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', cursor: 'pointer' }} onClick={fetchTeamHistory}>🔄 REFRESH</span>
+          </div>
+
+          <AnimatePresence mode="wait">
+            {isHistoryLoading ? (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
+                style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.3)' }}>
+                Syncing Blockchain Events...
+              </motion.div>
+            ) : teamHistory.length === 0 ? (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
+                style={{ height: 200, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, color: 'rgba(255,255,255,0.2)' }}>
+                <div style={{ fontSize: 40 }}>💤</div>
+                <p style={{ fontSize: 12, fontWeight: 600 }}>No team income found yet.</p>
+              </motion.div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {teamHistory.map((item, idx) => {
+                  const getIcon = (type) => {
+                    if (item.is_missed) return '⚠️';
+                    switch(type) {
+                      case 'Referral': return '🤝';
+                      case 'Direct Upgrade': return '⚡';
+                      case 'Layer Income': return '🪜';
+                      case 'Matrix Income': return '🌀';
+                      case 'Global Pool': return '🏆';
+                      default: return '💰';
+                    }
+                  };
+
+                  const isMissed = !!item.is_missed;
+
+                  return (
+                    <motion.div 
+                      key={item.id || idx}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: idx * 0.05 }}
+                      style={{ 
+                        background: isMissed ? 'rgba(255,160,0,0.05)' : 'rgba(255,255,255,0.03)', 
+                        border: isMissed ? '1px solid rgba(255,160,0,0.2)' : '1px solid rgba(255,255,255,0.06)', 
+                        borderRadius: 16, padding: '12px 14px',
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                      }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ 
+                          width: 32, height: 32, borderRadius: 8, 
+                          background: isMissed ? 'rgba(255,160,0,0.1)' : 'rgba(163,255,18,0.1)', 
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 
+                        }}>
+                          {getIcon(item.event_type)}
+                        </div>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontSize: 12, fontWeight: 800, color: isMissed ? '#FFA000' : '#fff' }}>
+                              {item.event_type}
+                            </span>
+                            {isMissed && (
+                              <span style={{ fontSize: 8, background: '#FFA000', color: '#000', padding: '1px 4px', borderRadius: 4, fontWeight: 900 }}>MISSED</span>
+                            )}
+                          </div>
+                          
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', fontWeight: 600 }}>#{item.from_node_id}</span>
+                            {item.tier > 0 && (
+                              <span style={{ fontSize: 9, color: 'var(--neon-lime)', opacity: 0.8 }}>Tier {item.tier}</span>
+                            )}
+                            {item.layer > 0 && (
+                              <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)' }}>Lvl {item.layer}</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: 13, fontWeight: 900, color: isMissed ? 'rgba(255,255,255,0.3)' : 'var(--neon-lime)' }}>
+                          {isMissed ? '' : '+'}{Number(item.amount_bnb).toFixed(4)} BNB
+                        </div>
+                        <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.2)', fontWeight: 700 }}>
+                          ~${Number(item.amount_usd).toFixed(2)}
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            )}
+          </AnimatePresence>
+          <div style={{ height: 40 }} /> {/* Spacer */}
+        </div>
+      )}
     </div>
   );
 }

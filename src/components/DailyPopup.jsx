@@ -6,12 +6,22 @@ import toast from 'react-hot-toast';
 const STREAK_REWARDS = [5000, 10000, 25000, 50000, 100000, 250000, 500000, 1000000];
 
 export default function DailyPopup() {
-  const { streak, setShowDailyPopup } = useGameStore();
+  const { streak, setShowDailyPopup, hasNode, setActiveTab } = useGameStore();
   const currentDay = (streak % STREAK_REWARDS.length) + 1;
 
   const handleClaim = () => {
     toast.success(`CLAIMED DAY ${currentDay} REWARD! 🔥`);
     setShowDailyPopup(false);
+    
+    if (!hasNode) {
+      setTimeout(() => {
+        toast('Activate an AIPCore Node to earn real BNB, 10x more coins, and massive pool rewards!', {
+          icon: '💎',
+          duration: 6000,
+          style: { border: '1px solid var(--neon-lime)' }
+        });
+      }, 500);
+    }
   };
 
   return (
@@ -38,6 +48,15 @@ export default function DailyPopup() {
           <div className="modal-sub" style={{ marginBottom: '32px' }}>
             LOG IN DAILY TO GROW YOUR MINING RESERVE
           </div>
+          
+          {!hasNode && (
+            <div style={{ background: 'rgba(255,149,0,0.1)', border: '1px solid rgba(255,149,0,0.3)', padding: '12px', borderRadius: '12px', marginBottom: '24px', textAlign: 'center' }}>
+              <span style={{ fontSize: '12px', fontWeight: 900, color: '#FF9500' }}>⭐ FREE OPERATIVE</span>
+              <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.7)', marginTop: '4px', lineHeight: 1.4, fontWeight: 700 }}>
+                You're on a free trial mining 10 coins/hr. <strong>Upgrade to an Active Node</strong> to earn real <strong>BNB</strong>, mine at <strong>10x speed</strong>, and unlock ecosystem rewards!
+              </p>
+            </div>
+          )}
 
           {/* Streak Grid */}
           <div className="streak-grid-aipcore">

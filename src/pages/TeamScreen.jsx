@@ -13,15 +13,17 @@ export default function TeamScreen() {
   const [levelMembers, setLevelMembers] = useState([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
 
+  const targetNodeId = nodeId || (isConnected ? 0 : null);
+
   useEffect(() => {
-    if (isConnected && nodeId) {
+    if (isConnected) {
       setLoadingCounts(true);
-      fetchTeamCounts(nodeId).then((counts) => {
+      fetchTeamCounts(targetNodeId).then((counts) => {
         setLevelCounts(counts);
         setLoadingCounts(false);
       });
     }
-  }, [isConnected, nodeId]);
+  }, [isConnected, targetNodeId]);
 
   const toggleLevel = async (levelIndex) => {
     if (expandedLevel === levelIndex) {
@@ -34,7 +36,7 @@ export default function TeamScreen() {
     
     if (levelCounts[levelIndex] > 0) {
       setLoadingMembers(true);
-      const members = await fetchTeamLevelMembers(nodeId, levelIndex, 50);
+      const members = await fetchTeamLevelMembers(targetNodeId, levelIndex, 50);
       setLevelMembers(members);
       setLoadingMembers(false);
     }
@@ -46,11 +48,11 @@ export default function TeamScreen() {
     return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
   };
 
-  if (!isConnected || !nodeId) {
+  if (!isConnected) {
     return (
       <div className="page" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
         <h2 style={{ fontSize: '24px', fontWeight: 900, marginBottom: '8px' }}>MY NETWORK</h2>
-        <p style={{ color: 'var(--text-dim)', fontSize: '13px', fontWeight: 600 }}>Please connect an active Node to view your team.</p>
+        <p style={{ color: 'var(--text-dim)', fontSize: '13px', fontWeight: 600 }}>Please connect your wallet to view your team.</p>
       </div>
     );
   }
@@ -158,14 +160,23 @@ export default function TeamScreen() {
                         {levelMembers.length === 0 ? (
                           <div style={{ padding: '10px 0', textAlign: 'center', fontSize: '12px', color: 'var(--text-dim)' }}>No members found.</div>
                         ) : (
-                          levelMembers.map((member, mIdx) => (
-                            <div key={mIdx} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '12px', fontWeight: 700 }}>
-                              <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                                <span style={{ color: '#fff' }}>#{member.nodeId}</span>
-                                <span style={{ color: 'var(--text-dim)', fontSize: '10px' }}>{shortAddr(member.wallet)}</span>
+                          levelMembers.map((m, i) => (
+                            <div key={i} style={{ 
+                              display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: i < levelMembers.length - 1 ? '1px rgba(255,255,255,0.03) solid' : 'none'
+                            }}>
+                              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                <span style={{ fontSize: '12px', fontWeight: 700, color: 'rgba(255,255,255,0.8)' }}>
+                                  {shortAddr(m[1])}
+                                </span>
+                                {Number(m?.[3] || 0) > 0 ? (
+                                  <span style={{ background: 'var(--neon-lime)', color: '#000', fontSize: '8px', fontWeight: 900, padding: '2px 6px', borderRadius: '4px' }}>NODE</span>
+                                ) : (
+                                  <span style={{ border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.4)', fontSize: '8px', fontWeight: 900, padding: '1px 5px', borderRadius: '4px' }}>FREE</span>
+                                )}
                               </div>
-                              <span style={{ width: '60px', textAlign: 'center', color: 'var(--neon-lime)' }}>{member.tier}</span>
-                              <span style={{ width: '80px', textAlign: 'right', color: 'var(--text-dim)' }}>{formatDate(member.joinedAt)}</span>
+                              <span style={{ fontSize: '10px', color: 'var(--text-dim)', fontWeight: 600 }}>
+                                {formatDate(Number(m[0]))}
+                              </span>
                             </div>
                           ))
                         )}

@@ -32,23 +32,32 @@ export default function TopBar() {
 
       {/* ─ Node ID + Tier pill (center) ─ */}
       {isConnected && nodeId ? (
-        <div style={{
-          flex: 1, display: 'flex', justifyContent: 'center',
-        }}>
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            background: 'rgba(203,255,1,0.07)',
-            border: '1px solid rgba(203,255,1,0.2)',
-            borderRadius: 40, padding: '5px 14px',
-          }}>
-            <span style={{ fontSize: 10, fontWeight: 900, color: 'var(--neon-lime)', letterSpacing: 0.5 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <div style={{ background: 'rgba(255,255,255,0.05)', padding: '4px 12px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontSize: '10px', color: 'var(--text-dim)', fontWeight: 800 }}>BALANCE</span>
+              <span style={{ fontSize: '12px', fontWeight: 900 }}>{bnbBalance} BNB</span>
+            </div>
+            <div 
+              onClick={() => setActiveTab('contracts')}
+              style={{ 
+                background: 'linear-gradient(135deg, var(--neon-lime) 0%, #a3ff12 100%)',
+                color: '#000', padding: '4px 12px', borderRadius: '12px',
+                fontSize: '11px', fontWeight: 900, cursor: 'pointer',
+                boxShadow: '0 0 10px rgba(203, 255, 1, 0.2)'
+              }}
+            >
               ⬡ NODE #{nodeId}
-            </span>
-            <div style={{ width: 1, height: 12, background: 'rgba(255,255,255,0.15)' }} />
-            <span style={{ fontSize: 10, fontWeight: 900, color: '#fff' }}>
-              TIER {nodeTier || 1}
-            </span>
+            </div>
           </div>
+          <div style={{ fontSize: '9px', fontWeight: 800, color: 'var(--text-dim)', letterSpacing: '1px' }}>
+            TIER {nodeTier || 1} • {nodeActive ? 'ACTIVE' : 'IDLE'}
+          </div>
+        </div>
+      ) : isConnected ? (
+        <div style={{ background: 'rgba(255,255,255,0.05)', padding: '6px 14px', borderRadius: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '12px', fontWeight: 900 }}>{bnbBalance} BNB</span>
+          <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--neon-lime)' }} />
         </div>
       ) : (
         <div style={{ flex: 1 }} />

@@ -58,7 +58,7 @@ const INCOME_STREAMS = [
       { label: 'Distribution Share', value: '~15%' },
       { label: 'Trigger', value: 'Tier Unlock Events' },
       { label: 'Tier Range', value: 'Level 1 → 18' },
-      { label: 'Mining Rate', value: '100 → 200 🪙/hr' },
+      { label: 'Mining Rate', value: '10 → 200 🪙/hr' },
     ]
   },
   {
@@ -76,14 +76,13 @@ const INCOME_STREAMS = [
   },
 ];
 
-const PROTOCOL_STATS = [
-  { label: 'ACTIVE MINERS', target: 12489, format: v => v.toLocaleString() },
-  { label: 'PROTOCOL VOLUME', target: 2841500, format: v => `$${(v/1000).toFixed(0)}K` },
-  { label: 'INCOME STREAMS', target: 4, format: v => `${v} TYPES` },
-];
+  const { referrerId, isConnected, bnbBalance, globalStats, fetchGlobalProtocolStats } = useGameStore();
 
-export default function MarketingScreen({ onConnect, onDisconnect }) {
-  const { referrerId, isConnected, bnbBalance } = useGameStore();
+  const protocolStats = [
+    { label: 'ACTIVE MINERS', target: globalStats?.active_nodes || 12489, format: v => v.toLocaleString() },
+    { label: 'PROTOCOL VOLUME', target: globalStats?.total_volume_bnb || 2841, format: v => `${v.toLocaleString()} BNB` },
+    { label: 'INCOME STREAMS', target: 4, format: v => `${v} TYPES` },
+  ];
   const { createNode, connectWallet } = useContract();
   const [loading, setLoading] = useState(false);
   const [showStats, setShowStats] = useState(false);
@@ -91,9 +90,10 @@ export default function MarketingScreen({ onConnect, onDisconnect }) {
   const hasEnoughBnb = parseFloat(bnbBalance || '0') >= 0.01;
 
   useEffect(() => {
+    fetchGlobalProtocolStats();
     const t = setTimeout(() => setShowStats(true), 600);
     return () => clearTimeout(t);
-  }, []);
+  }, [fetchGlobalProtocolStats]);
 
   const handleActivate = async () => {
     if (!isConnected) { connectWallet(); return; }
@@ -141,7 +141,7 @@ export default function MarketingScreen({ onConnect, onDisconnect }) {
         {showStats && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6 }}
             style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', borderTop: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.06)', marginBottom: 8 }}>
-            {PROTOCOL_STATS.map((s, i) => (
+            {protocolStats.map((s, i) => (
               <div key={i} style={{ padding: '16px 8px', textAlign: 'center', borderRight: i < 2 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
                 <div style={{ fontSize: 20, fontWeight: 900, color: 'var(--neon-lime)' }}>
                   <AnimatedNumber target={s.target} format={s.format} />

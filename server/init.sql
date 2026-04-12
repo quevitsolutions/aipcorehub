@@ -66,3 +66,22 @@ CREATE TABLE IF NOT EXISTS user_tasks (
 );
 
 CREATE INDEX IF NOT EXISTS idx_user_tasks_wallet ON user_tasks(wallet_address);
+
+-- Team Income History Tracking (Precision indexed from on-chain)
+CREATE TABLE IF NOT EXISTS income_history (
+    id SERIAL PRIMARY KEY,
+    wallet_address VARCHAR(42) NOT NULL,
+    source_contract VARCHAR(42) NOT NULL,
+    event_type VARCHAR(50) NOT NULL, -- Referral, Direct, Layer, Matrix, PoolClaim
+    from_node_id INTEGER,
+    amount_bnb NUMERIC(36, 18) NOT NULL,
+    amount_usd NUMERIC(36, 18) NOT NULL,
+    tier INTEGER DEFAULT 0, -- Context: Tier 0-17
+    layer INTEGER DEFAULT 0, -- Context: Layer depth
+    is_missed BOOLEAN DEFAULT FALSE,
+    tx_hash VARCHAR(66) UNIQUE NOT NULL,
+    timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_income_wallet ON income_history(wallet_address);
+CREATE INDEX IF NOT EXISTS idx_income_timestamp ON income_history(timestamp DESC);

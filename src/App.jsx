@@ -28,8 +28,10 @@ const NAV_ITEMS = [
   { id: 'tasks',     icon: '✅',  label: 'Tasks' },
 ];
 
-function DesktopSidebar({ activeTab, setActiveTab, nodeId, nodeTier, isAdmin }) {
-  const tabs = [...NAV_ITEMS];
+function DesktopSidebar({ activeTab, setActiveTab, nodeId, nodeTier, isAdmin, hasNode }) {
+  const tabs = [...NAV_ITEMS].map(t => 
+    t.id === 'mine' ? { ...t, label: hasNode ? 'Boost' : 'Upgrade' } : t
+  );
   if (isAdmin) {
     tabs.push({ id: 'admin', icon: '⚡', label: 'Master Admin' });
   }
@@ -119,6 +121,7 @@ export default function App() {
         nodeId={nodeId}
         nodeTier={nodeTier}
         isAdmin={isAdmin}
+        hasNode={hasNode}
       />
 
       {/* TopBar — fixed on mobile/tablet, grid on desktop */}

@@ -61,6 +61,12 @@ class ApiService {
     return res.json();
   }
 
+  async fetchIncomeHistory(walletAddress) {
+    const res = await fetch(`${this.baseUrl}/user/income-history/${walletAddress}`);
+    if (!res.ok) throw new Error('Income history fetch failed');
+    return res.json();
+  }
+
   // Task Endpoints
   async fetchTasks(walletAddress) {
     const res = await fetch(`${this.baseUrl}/tasks/${walletAddress}`);
@@ -134,6 +140,39 @@ class ApiService {
       method: 'DELETE',
       headers: { 'x-admin-wallet': adminWallet }
     });
+    return res.json();
+  }
+
+  async fetchAdminUserDetails(adminWallet, userWallet) {
+    const res = await fetch(`${this.baseUrl}/admin/user/${userWallet}`, {
+      headers: { 'x-admin-wallet': adminWallet }
+    });
+    if (!res.ok) throw new Error('User not found');
+    return res.json();
+  }
+
+  async adjustUserReward(adminWallet, userWallet, amount, reason = '') {
+    const res = await fetch(`${this.baseUrl}/admin/user/adjust-reward`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'x-admin-wallet': adminWallet 
+      },
+      body: JSON.stringify({ walletAddress: userWallet, amount, reason })
+    });
+    if (!res.ok) throw new Error('Adjustment failed');
+    return res.json();
+  }
+
+  async fetchAdminAdjustmentHistory(adminWallet) {
+    const res = await fetch(`${this.baseUrl}/admin/adjustments`, {
+      headers: { 'x-admin-wallet': adminWallet }
+    });
+    return res.json();
+  }
+
+  async fetchGlobalStats() {
+    const res = await fetch(`${this.baseUrl}/stats/global`);
     return res.json();
   }
 

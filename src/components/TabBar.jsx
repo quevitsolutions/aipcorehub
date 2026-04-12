@@ -1,13 +1,13 @@
 import { useGameStore } from '../store/gameStore.js';
 
 export default function TabBar() {
-  const { activeTab, setActiveTab, isAdmin } = useGameStore();
+  const { activeTab, setActiveTab, isAdmin, hasNode } = useGameStore();
 
   const TABS = [
     { id: 'friends',   icon: '👥', label: 'Friends' },
     { id: 'team',      icon: '🕸️', label: 'Team' },
     { id: 'earn',      icon: '⛏️', label: 'Earn' },
-    { id: 'mine',      icon: '🚀', label: 'Boost' },
+    { id: 'mine',      icon: '🚀', label: hasNode ? 'Boost' : 'Upgrade' },
     { id: 'contracts', icon: '📄', label: 'Docs' },
     { id: 'dash',      icon: '👤', label: 'Stats' },
   ];

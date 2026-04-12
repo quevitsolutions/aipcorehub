@@ -9,7 +9,7 @@ export default function DashboardScreen() {
     walletAddress, hasNode, nodeId, nodeActive, nodeTier,
     totalEarned, pendingReward, teamSize, directRefs,
     poolClaimable, poolQual, localReward, streak, isConnected,
-    conversionHistory
+    conversionHistory, isFreeActive, globalStats
   } = useGameStore();
   const { loadNodeData, connectWallet, claimPool, fetchTeamCounts } = useContract();
 
@@ -56,7 +56,7 @@ export default function DashboardScreen() {
           )}
         </div>
         <h2 style={{ fontSize: '26px', fontWeight: 900, letterSpacing: '-0.02em' }}>
-          {hasNode ? `NODE #${nodeId}` : 'GUEST OPERATOR'}
+          {hasNode ? `NODE #${nodeId}` : (isFreeActive ? 'FREE OPERATIVE' : 'GUEST OPERATOR')}
         </h2>
         <div style={{ 
           display: 'inline-flex', padding: '4px 12px', borderRadius: '20px', 
@@ -69,24 +69,33 @@ export default function DashboardScreen() {
         </div>
       </div>
 
-      {/* Main Revenue Grid */}
-      <h3 style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-dim)', marginBottom: 12 }}>REVENUE COMMAND</h3>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
-        <div className="partner-card" style={{ flexDirection: 'column', alignItems: 'flex-start', margin: 0, padding: 16 }}>
-          <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-dim)' }}>TAPPING</span>
-          <span style={{ fontSize: '18px', fontWeight: 900 }}>{formatNumber(localReward)} 🪙</span>
+        {/* Total Earned - Main Highlight */}
+        <div className="partner-card" style={{ 
+          flexDirection: 'column', alignItems: 'center', margin: '0 0 12px', padding: '20px',
+          background: 'linear-gradient(135deg, rgba(203,255,1,0.1) 0%, rgba(203,255,1,0.02) 100%)',
+          border: '1px solid rgba(203,255,1,0.2)'
+        }}>
+          <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-dim)', letterSpacing: 1 }}>TOTAL LIFETIME EARNINGS</span>
+          <span style={{ fontSize: '28px', fontWeight: 900, color: 'var(--neon-lime)', marginTop: 4 }}>{formatBNB(totalEarned)}</span>
         </div>
-        <div className="partner-card" style={{ flexDirection: 'column', alignItems: 'flex-start', margin: 0, padding: 16 }}>
-          <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-dim)' }}>PENDING</span>
-          <span style={{ fontSize: '18px', fontWeight: 900, color: 'var(--neon-lime)' }}>{formatBNB(pendingReward)}</span>
-        </div>
-        <div className="partner-card" style={{ flexDirection: 'column', alignItems: 'flex-start', margin: 0, padding: 16 }}>
-          <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-dim)' }}>POOL SHARE</span>
-          <span style={{ fontSize: '18px', fontWeight: 900 }}>{formatBNB(poolClaimable)}</span>
-        </div>
-        <div className="partner-card" style={{ flexDirection: 'column', alignItems: 'flex-start', margin: 0, padding: 16 }}>
-          <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-dim)' }}>TOTAL EARNED</span>
-          <span style={{ fontSize: '18px', fontWeight: 900 }}>{formatBNB(totalEarned)}</span>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
+          <div className="partner-card" style={{ flexDirection: 'column', alignItems: 'flex-start', margin: 0, padding: 16 }}>
+            <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-dim)' }}>SELF CONTRIBUTION</span>
+            <span style={{ fontSize: '16px', fontWeight: 900, color: '#fff' }}>{formatBNB(poolQual.totalDeposited)}</span>
+          </div>
+          <div className="partner-card" style={{ flexDirection: 'column', alignItems: 'flex-start', margin: 0, padding: 16 }}>
+            <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-dim)' }}>TAPPING COINS</span>
+            <span style={{ fontSize: '16px', fontWeight: 900 }}>{formatNumber(localReward)} 🪙</span>
+          </div>
+          <div className="partner-card" style={{ flexDirection: 'column', alignItems: 'flex-start', margin: 0, padding: 16 }}>
+            <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-dim)' }}>UNCLAIMED MINING</span>
+            <span style={{ fontSize: '16px', fontWeight: 900, color: 'var(--neon-lime)' }}>{formatBNB(pendingReward)}</span>
+          </div>
+          <div className="partner-card" style={{ flexDirection: 'column', alignItems: 'flex-start', margin: 0, padding: 16 }}>
+            <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-dim)' }}>POOL REWARDS</span>
+            <span style={{ fontSize: '16px', fontWeight: 900 }}>{formatBNB(poolClaimable)}</span>
+          </div>
         </div>
       </div>
 
@@ -95,12 +104,14 @@ export default function DashboardScreen() {
       <div className="partner-card" style={{ flexDirection: 'column', padding: 20, marginBottom: 24, background: 'rgba(203, 255, 1, 0.02)', border: '1px solid rgba(203, 255, 1, 0.1)' }}>
         <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', marginBottom: 20, alignItems: 'center' }}>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-dim)' }}>ACTIVE POOL</span>
+            <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-dim)' }}>QUALIFYING FOR</span>
             <span style={{ fontSize: '18px', fontWeight: 900, color: 'var(--neon-lime)' }}>{poolQual.poolName.toUpperCase()}</span>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-dim)' }}>SELF CONTRIBUTION</span>
-            <div style={{ fontSize: '16px', fontWeight: 900 }}>{formatBNB(poolQual.totalDeposited)}</div>
+            <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-dim)' }}>STATUS</span>
+            <div style={{ fontSize: '14px', fontWeight: 900, color: poolQual.isPoolQualified ? 'var(--neon-lime)' : '#FF3B30' }}>
+              {poolQual.isPoolQualified ? 'QUALIFIED' : 'PENDING'}
+            </div>
           </div>
         </div>
 
@@ -158,6 +169,27 @@ export default function DashboardScreen() {
         </div>
         <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', marginTop: 20, overflow: 'hidden' }}>
           <div style={{ width: '45%', height: '100%', background: 'var(--neon-lime)', boxShadow: '0 0 10px var(--neon-lime)' }} />
+        </div>
+      </div>
+
+      {/* Protocol Global Stats Card */}
+      <h3 style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-dim)', marginBottom: 12, marginTop: 32 }}>PROTOCOL GLOBAL INSIGHTS</h3>
+      <div className="partner-card" style={{ padding: '24px 20px', marginBottom: 24, background: 'linear-gradient(180deg, rgba(203,255,1,0.05) 0%, transparent 100%)', border: '1px solid rgba(203,255,1,0.1)' }}>
+        <div style={{ width: '100%', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', textAlign: 'center' }}>
+          <div>
+            <div style={{ fontSize: '20px', fontWeight: 900, color: 'var(--neon-lime)' }}>
+              {parseFloat(globalStats?.total_volume_bnb || 0).toFixed(2)}
+            </div>
+            <div style={{ fontSize: '9px', fontWeight: 800, color: 'var(--text-dim)', marginTop: 4 }}>TOTAL VOL (BNB)</div>
+          </div>
+          <div>
+            <div style={{ fontSize: '20px', fontWeight: 900 }}>{globalStats?.active_nodes || 0}</div>
+            <div style={{ fontSize: '9px', fontWeight: 800, color: 'var(--text-dim)', marginTop: 4 }}>ACTIVE OPERATORS</div>
+          </div>
+          <div>
+            <div style={{ fontSize: '20px', fontWeight: 900 }}>{globalStats?.total_users || 0}</div>
+            <div style={{ fontSize: '9px', fontWeight: 800, color: 'var(--text-dim)', marginTop: 4 }}>TOTAL NETWORK</div>
+          </div>
         </div>
       </div>
 
