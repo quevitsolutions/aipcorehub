@@ -1,30 +1,34 @@
 import { useState, useEffect } from 'react';
 import { useGameStore } from '../store/gameStore.js';
-import { useContract } from '../hooks/useContract.js';
 import { shortAddr } from '../utils/format.js';
 import { api } from '../services/api.js';
 
 export default function TeamScreen() {
-  const { isConnected, nodeId, directRefs, teamSize } = useGameStore();
-  const { fetchTeamCounts, fetchTeamLevelMembers } = useContract();
+  const { isConnected, nodeId, directRefs, teamSize, walletAddress } = useGameStore();
 
-  const [levelCounts, setLevelCounts] = useState([]);
+  const [levelCounts, setLevelCounts] = useState(new Array(18).fill(0));
   const [loadingCounts, setLoadingCounts] = useState(false);
   const [expandedLevel, setExpandedLevel] = useState(null);
   const [levelMembers, setLevelMembers] = useState([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
 
-  const targetNodeId = nodeId || (isConnected ? 0 : null);
-
   useEffect(() => {
-    if (isConnected) {
+    const loadStats = async () => {
+      if (!walletAddress) return;
       setLoadingCounts(true);
-      fetchTeamCounts(targetNodeId).then((counts) => {
+      try {
+        const counts = await api.fetchNetworkCounts(walletAddress);
         setLevelCounts(counts);
-        setLoadingCounts(false);
-      });
+      } catch (err) {
+        console.error("Failed to load network stats from API:", err);
+      }
+      setLoadingCounts(false);
+    };
+
+    if (isConnected && walletAddress) {
+      loadStats();
     }
-  }, [isConnected, targetNodeId]);
+  }, [isConnected, walletAddress]);
 
   const toggleLevel = async (levelIndex) => {
     if (expandedLevel === levelIndex) {
@@ -38,32 +42,10 @@ export default function TeamScreen() {
     if (levelCounts[levelIndex] > 0) {
       setLoadingMembers(true);
       try {
-        const { walletAddress } = useGameStore.getState();
-        
-        // 1. Fetch Source of Truth from Blockchain (Instant & Complete)
-        const members = await fetchTeamLevelMembers(targetNodeId, levelIndex, 50);
-        setLevelMembers(members); // Show members immediately
-
-        // 2. Fetch Extra Metrics from Backend (Async Enrichment)
-        api.fetchNetworkLevelMembers(walletAddress, levelIndex).then(backendData => {
-          if (!backendData || !Array.isArray(backendData)) return;
-          
-          const sizeMap = {};
-          backendData.forEach(b => {
-            if (b.wallet_address) sizeMap[b.wallet_address.toLowerCase()] = b.team_size;
-          });
-
-          setLevelMembers(prev => prev.map(m => {
-            const addr = (m.wallet_address || m.wallet || "").toLowerCase();
-            return {
-              ...m,
-              team_size: sizeMap[addr] !== undefined ? sizeMap[addr] : 0
-            };
-          }));
-        }).catch(e => console.warn("Backend metrics failed:", e));
-        
+        const members = await api.fetchNetworkLevelMembers(walletAddress, levelIndex);
+        setLevelMembers(members);
       } catch (err) {
-        console.error(err);
+        console.error("API member fetch failed:", err);
       }
       setLoadingMembers(false);
     }

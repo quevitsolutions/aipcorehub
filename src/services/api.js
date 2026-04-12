@@ -164,6 +164,12 @@ class ApiService {
     return res.json();
   }
 
+  async fetchNetworkCounts(walletAddress) {
+    const res = await fetch(`${this.baseUrl}/network/counts/${walletAddress}`);
+    if (!res.ok) throw new Error('Failed to fetch network counts');
+    return res.json();
+  }
+
   async createAdminTask(adminWallet, payload) {
     const res = await fetch(`${this.baseUrl}/admin/tasks`, {
       method: 'POST',

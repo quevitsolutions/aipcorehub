@@ -14,7 +14,9 @@ const BSC_RPC = process.env.VITE_RPC_URL || 'https://bsc-dataseed.binance.org/';
 const DEPLOY_BLOCK = 43232822; // Block around contract deployment for optimization
 
 const AIPCORE_ABI = [
-  "event RewardDistributed(address indexed wallet, uint indexed nodeId, uint fromId, uint layer, uint amount, uint time, bool isMissed, uint rewardType, uint tier)"
+  "event RewardDistributed(address indexed wallet, uint indexed nodeId, uint fromId, uint layer, uint amount, uint time, bool isMissed, uint rewardType, uint tier)",
+  "event NodeCreated(address indexed node, uint indexed userId, uint indexed referrerId, uint uplineId)",
+  "event TierUnlocked(address indexed node, uint indexed userId, uint packageId)"
 ];
 
 const REWARDPOOL_ABI = [
@@ -62,6 +64,8 @@ const ensureSchema = async () => {
     await query(`ALTER TABLE income_history ADD COLUMN IF NOT EXISTS layer INTEGER DEFAULT 0`);
     await query(`ALTER TABLE income_history ADD COLUMN IF NOT EXISTS is_missed BOOLEAN DEFAULT FALSE`);
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS claimed_milestones TEXT DEFAULT '[]'`);
+    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS node_id INTEGER UNIQUE`);
+    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS node_active BOOLEAN DEFAULT TRUE`);
     
     // Performance Indexes
     await query(`CREATE INDEX IF NOT EXISTS idx_users_wallet_address ON users(wallet_address)`);
@@ -181,6 +185,40 @@ const syncUserHistory = async (wallet) => {
         [wallet, REWARDPOOL_ADDRESS, 'Global Pool', Number(nodeId), bnbAmount, usdAmount, 0, 0, false, txHash, timestamp]
       );
     }
+
+    // 3. Fetch NodeCreated Events to build tree
+    const filterNodes = aipcoreContract.filters.NodeCreated();
+    const logsNodes = await aipcoreContract.queryFilter(filterNodes, startBlock, latestBlock);
+    for (const log of logsNodes) {
+      const { node, userId, referrerId } = log.args;
+      const joinedAt = new Date((await provider.getBlock(log.blockNumber)).timestamp * 1000);
+      
+      // Upsert the node. We map referrerId (contract) to the PG internal ID
+      try {
+        // Find referrer's PG ID
+        const refRes = await query('SELECT id FROM users WHERE node_id = $1', [Number(referrerId)]);
+        const pgReferrerId = refRes.rows.length > 0 ? refRes.rows[0].id : null;
+
+        await query(
+          `INSERT INTO users (wallet_address, node_id, referrer_id, created_at)
+           VALUES ($1, $2, $3, $4)
+           ON CONFLICT (node_id) DO UPDATE 
+           SET wallet_address = EXCLUDED.wallet_address, 
+               referrer_id = COALESCE(users.referrer_id, EXCLUDED.referrer_id),
+               updated_at = CURRENT_TIMESTAMP`,
+          [node.toLowerCase(), Number(userId), pgReferrerId, joinedAt]
+        );
+      } catch (e) { console.error("Node Sync Err:", e.message); }
+    }
+
+    // 4. Fetch TierUnlocked Events
+    const filterTiers = aipcoreContract.filters.TierUnlocked();
+    const logsTiers = await aipcoreContract.queryFilter(filterTiers, startBlock, latestBlock);
+    for (const log of logsTiers) {
+      const { userId, tierId } = log.args;
+      await query('UPDATE users SET node_tier = $1 WHERE node_id = $2', [Number(tierId), Number(userId)]);
+    }
+
     // Update last synced block
     await query('UPDATE users SET last_synced_block = $1 WHERE wallet_address = $2', [latestBlock, wallet]);
 
@@ -869,7 +907,47 @@ app.get('/api/network/level/:walletAddress/:level', async (req, res) => {
   }
 });
 
-// GET Global Protocol Stats
+// GET Network Counts for all 18 levels (Offline View Helper)
+app.get('/api/network/counts/:walletAddress', async (req, res) => {
+  const { walletAddress } = req.params;
+  try {
+    const rootUser = await query('SELECT id FROM users WHERE wallet_address = $1', [walletAddress]);
+    if (rootUser.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    const rootId = rootUser.rows[0].id;
+
+    // Recursive CTE to get counts for all 18 layers in a single database hit
+    const result = await query(`
+      WITH RECURSIVE team_tree AS (
+        SELECT id, 0 as level
+        FROM users
+        WHERE id = $1
+        UNION ALL
+        SELECT u.id, tt.level + 1
+        FROM users u
+        INNER JOIN team_tree tt ON u.referrer_id = tt.id
+        WHERE tt.level < 18
+      )
+      SELECT level, COUNT(*) as count 
+      FROM team_tree 
+      WHERE level > 0
+      GROUP BY level 
+      ORDER BY level
+    `, [rootId]);
+
+    // Format as simple array [L1_count, L2_count, ...]
+    const counts = new Array(18).fill(0);
+    result.rows.forEach(row => {
+      if (row.level >= 1 && row.level <= 18) {
+        counts[row.level - 1] = parseInt(row.count);
+      }
+    });
+
+    res.json(counts);
+  } catch (err) {
+    console.error('Count query failed:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
 
 // GET User Precision Income History (AIPCore + RewardPool indexed)
 app.get('/api/user/income-history/:walletAddress', async (req, res) => {
