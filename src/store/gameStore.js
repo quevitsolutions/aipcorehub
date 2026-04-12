@@ -451,18 +451,31 @@ export const useGameStore = create(
       },
 
       fetchTeamHistory: async () => {
-        const { walletAddress, nodeId } = get();
+        const { walletAddress } = get();
         if (!walletAddress) return;
         set({ isHistoryLoading: true });
         try {
           let list = null;
 
-          // Try fetching perfectly accurate on-chain data directly first
-          if (nodeId && nodeId > 0) {
-            list = await blockchain.fetchTeamHistoryOnChain(nodeId, 50);
+          // Resolve nodeId — use store value OR look up from contract if not yet loaded
+          let { nodeId } = get();
+          if (!nodeId || nodeId === 0) {
+            try {
+              const { blockchain } = await import('../services/blockchain.js');
+              const data = await blockchain.getFullDashboardData(walletAddress);
+              if (data?.hasNode && data.nodeId > 0) {
+                nodeId = data.nodeId;
+              }
+            } catch (_) { /* can't resolve nodeId, will use API fallback */ }
           }
 
-          // Fallback to postgres db sync if on-chain fails or missing
+          // Primary: fetch directly from contract storage (no block scan limits, always complete)
+          if (nodeId && nodeId > 0) {
+            const { blockchain } = await import('../services/blockchain.js');
+            list = await blockchain.fetchTeamHistoryOnChain(nodeId, 100);
+          }
+
+          // Fallback: postgres (covers pool claims & any event the contract `getIncome` misses)
           if (!list || list.length === 0) {
             list = await api.fetchIncomeHistory(walletAddress);
           }

@@ -34,11 +34,16 @@ export const useContract = () => {
           missingTier:    data.missingTier    || 0,
           missingTeam:    data.missingTeam    || 0,
         });
+        return data.nodeId; // Return nodeId for downstream chaining
       } else {
         setNodeData({ nodeId: 0, tier: 0, active: false });
+        return 0;
       }
     } catch (err) {
-      if (retries > 0) setTimeout(() => loadNodeData(address, retries - 1), 2000);
+      if (retries > 0) {
+        await new Promise(r => setTimeout(r, 2000));
+        return loadNodeData(address, retries - 1);
+      }
     }
   };
 
@@ -119,17 +124,23 @@ export const useContract = () => {
 
 export const useWalletLifecycle = () => {
   const { address, isConnected } = useAccount();
-  const { setWallet, disconnectWallet, fetchUserData, fetchAdminStatus, fetchUserConversions } = useGameStore();
+  const { setWallet, disconnectWallet, fetchUserData, fetchAdminStatus, fetchUserConversions, fetchTeamHistory } = useGameStore();
   const { loadNodeData, fetchBnbBalance } = useContract();
 
   useEffect(() => {
     if (isConnected && address) {
       setWallet(address);
-      loadNodeData(address);
       fetchBnbBalance(address);
-      fetchAdminStatus(); // Check for owner privileges
-      fetchUserConversions(); // Load payout history
-      fetchUserData().catch(() => {}); // Sync backend state on connect
+      fetchAdminStatus();
+      fetchUserConversions();
+      fetchUserData().catch(() => {});
+      // Load node data first, then fetch history once nodeId is known
+      loadNodeData(address).then(() => {
+        fetchTeamHistory();
+      }).catch(() => {
+        // Still try history even if chain call partially fails
+        fetchTeamHistory();
+      });
     } else if (!isConnected) {
       disconnectWallet();
     }
