@@ -306,14 +306,15 @@ export default function EarnScreen() {
               </div>
             </div>
 
-              {/* TRIAL LEFT - Centered and subtle */}
-              {!hasNode && isFreeActive && (
-                <div style={{ marginTop: 24, background: 'rgba(255,255,255,0.05)', padding: '6px 20px', borderRadius: 20, border: '1px solid rgba(255,255,255,0.1)' }}>
+            {/* TRIAL LEFT - Centered and subtle */}
+            {!hasNode && isFreeActive && (
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: -10, marginBottom: 20 }}>
+                <div style={{ background: 'rgba(255,255,255,0.05)', padding: '6px 20px', borderRadius: 20, border: '1px solid rgba(255,255,255,0.1)' }}>
                   <span style={{ fontSize: 11, fontWeight: 900, color: 'var(--neon-lime)', letterSpacing: 0.5 }}>{daysLeft} DAYS TRIAL LEFT</span>
                 </div>
-              )}
-            </div>
-            </div>
+              </div>
+            )}
+          </div>
 
           {/* ── Mobile-Optimized Action Bar ── */}
           <div style={{ flexShrink: 0, padding: '20px 0 10px', background: 'linear-gradient(to top, var(--bg-dark) 50%, transparent)' }}>
