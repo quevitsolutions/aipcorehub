@@ -62,6 +62,12 @@ const ensureSchema = async () => {
     await query(`ALTER TABLE income_history ADD COLUMN IF NOT EXISTS layer INTEGER DEFAULT 0`);
     await query(`ALTER TABLE income_history ADD COLUMN IF NOT EXISTS is_missed BOOLEAN DEFAULT FALSE`);
     
+    // Performance Indexes
+    await query(`CREATE INDEX IF NOT EXISTS idx_users_wallet_address ON users(wallet_address)`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_users_referrer_id ON users(referrer_id)`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_income_history_wallet_address ON income_history(wallet_address)`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_users_node_active ON users(node_active) WHERE node_active = TRUE`);
+    
     // NEW: Audit log for admin adjustments
     await query(`
       CREATE TABLE IF NOT EXISTS admin_adjustments (

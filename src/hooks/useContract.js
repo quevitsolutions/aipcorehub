@@ -153,11 +153,14 @@ export const useWalletLifecycle = () => {
         setTimeout(() => fetchTeamHistory(), 2000);
       });
 
+      // 2. Secondary Actions (Parallelized and faster)
       setTimeout(() => {
-        fetchUserData().catch(() => {});
-        fetchAdminStatus();
-        fetchUserConversions();
-      }, 3000);
+        Promise.all([
+          fetchUserData(),
+          fetchAdminStatus(),
+          fetchUserConversions()
+        ]).catch(() => {});
+      }, 500);
 
     } else if (!isConnected) {
       disconnectWallet();
