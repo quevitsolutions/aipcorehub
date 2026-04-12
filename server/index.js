@@ -61,6 +61,7 @@ const ensureSchema = async () => {
     await query(`ALTER TABLE income_history ADD COLUMN IF NOT EXISTS tier INTEGER DEFAULT 0`);
     await query(`ALTER TABLE income_history ADD COLUMN IF NOT EXISTS layer INTEGER DEFAULT 0`);
     await query(`ALTER TABLE income_history ADD COLUMN IF NOT EXISTS is_missed BOOLEAN DEFAULT FALSE`);
+    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS claimed_milestones TEXT DEFAULT '[]'`);
     
     // Performance Indexes
     await query(`CREATE INDEX IF NOT EXISTS idx_users_wallet_address ON users(wallet_address)`);
@@ -246,7 +247,8 @@ app.get('/api/user/:walletAddress', async (req, res) => {
     // 1. Fetch user & calculate stats
     const userResult = await query(
       `SELECT u.*, 
-       (SELECT COUNT(*) FROM users WHERE referrer_id = u.id) as direct_refs,
+        (SELECT COUNT(*) FROM users WHERE referrer_id = u.id) as direct_refs,
+        (SELECT COUNT(*) FROM users WHERE referrer_id = u.id AND node_tier > 0) as activated_refs,
        -- Recursive CTE for team size (18 levels deep)
         (
           WITH RECURSIVE team AS (
@@ -496,6 +498,46 @@ const checkAdmin = (req, res, next) => {
   }
   next();
 };
+
+// POST Claim Milestone
+app.post('/api/milestones/claim', async (req, res) => {
+  const { walletAddress, milestoneThreshold } = req.body;
+  if (!walletAddress || !milestoneThreshold) return res.status(400).json({ error: 'Threshold required' });
+
+  const MILESTONES = {
+    1: 500,
+    3: 2000,
+    5: 5000,
+    10: 20000,
+    20: 50000,
+    50: 500000
+  };
+
+  const reward = MILESTONES[milestoneThreshold];
+  if (!reward) return res.status(400).json({ error: 'Invalid milestone' });
+
+  try {
+    const user = await query('SELECT id, claimed_milestones FROM users WHERE wallet_address = $1', [walletAddress]);
+    if (user.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+
+    const claimed = JSON.parse(user.rows[0].claimed_milestones || '[]');
+    if (claimed.includes(Number(milestoneThreshold))) return res.status(400).json({ error: 'Milestone already claimed' });
+
+    const activatedRefs = await query('SELECT COUNT(*) FROM users WHERE referrer_id = $1 AND node_tier > 0', [user.rows[0].id]);
+    const count = parseInt(activatedRefs.rows[0].count);
+
+    if (count < milestoneThreshold) return res.status(400).json({ error: `You need ${milestoneThreshold} activated nodes to claim this` });
+
+    claimed.push(Number(milestoneThreshold));
+    await query('UPDATE users SET local_reward = local_reward + $1, claimed_milestones = $2 WHERE id = $3', 
+      [reward, JSON.stringify(claimed), user.rows[0].id]);
+
+    res.json({ success: true, reward, claimed_milestones: claimed });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to claim milestone' });
+  }
+});
 
 // POST Create Task (Admin)
 app.post('/api/admin/tasks', checkAdmin, async (req, res) => {

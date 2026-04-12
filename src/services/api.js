@@ -110,6 +110,19 @@ class ApiService {
     return res.json();
   }
 
+  async claimMilestone(walletAddress, milestoneThreshold) {
+    const res = await fetch(`${this.baseUrl}/milestones/claim`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ walletAddress, milestoneThreshold })
+    });
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.error || 'Milestone claim failed');
+    }
+    return res.json();
+  }
+
   // Admin Endpoints
   async fetchAdminOverview(adminWallet) {
     const res = await fetch(`${this.baseUrl}/admin/overview`, {

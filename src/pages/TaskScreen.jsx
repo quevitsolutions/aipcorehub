@@ -59,6 +59,93 @@ export default function TaskScreen() {
         <p style={{ fontSize: '12px', color: '#FFB74D', fontWeight: 700 }}>COMPLETE TASKS & UNLOCK REWARDS</p>
       </div>
 
+      {/* --- NODE ACTIVATION MILESTONES --- */}
+      <h3 style={{ fontSize: '14px', fontWeight: 800, margin: '24px 0 16px', color: '#A3FF12', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span>🚀</span> NODE ACTIVATION MILESTONES
+      </h3>
+      <div className="flex-column" style={{ gap: 12, marginBottom: 40 }}>
+        {[
+          { threshold: 1,  reward: 500,    label: 'Starter Sponsor' },
+          { threshold: 3,  reward: 2000,   label: 'Squad Leader' },
+          { threshold: 5,  reward: 5000,   label: 'Team Legend' },
+          { threshold: 10, reward: 20000,  label: 'AIP Ambassador' },
+          { threshold: 20, reward: 50000,  label: 'Whale Sponsor' },
+          { threshold: 50, reward: 500000, label: 'Global Visionary' },
+        ].map((m) => {
+          const { activatedRefs, claimedMilestones, claimMilestoneAction } = useGameStore.getState();
+          const isClaimed = (claimedMilestones || []).includes(m.threshold);
+          const canClaim = activatedRefs >= m.threshold && !isClaimed;
+          const progress = Math.min((activatedRefs / m.threshold) * 100, 100);
+
+          return (
+            <div key={m.threshold} className="partner-card" style={{ 
+              padding: '16px', border: canClaim ? '1px solid var(--neon-lime)' : '1px solid rgba(255,255,255,0.05)',
+              background: isClaimed ? 'rgba(163,255,18,0.05)' : 'var(--bg-card)'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ 
+                    width: 40, height: 40, borderRadius: 10, background: 'rgba(163,255,18,0.1)', 
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 
+                  }}>
+                    {m.threshold >= 10 ? '👑' : '🤝'}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 800 }}>{m.label}</div>
+                    <div style={{ fontSize: 11, color: 'var(--neon-lime)', fontWeight: 700 }}>+{formatNumber(m.reward)} $AIP</div>
+                  </div>
+                </div>
+
+                {isClaimed ? (
+                  <span style={{ color: 'var(--neon-lime)', fontWeight: 900, fontSize: 12 }}>CLAIMED ✓</span>
+                ) : (
+                  <button
+                    onClick={async () => {
+                      if (!canClaim) {
+                        toast.error(`You need ${m.threshold} friends with Activated Nodes!`);
+                        return;
+                      }
+                      try {
+                        setClaimingId(`m-${m.threshold}`);
+                        await useGameStore.getState().claimMilestoneAction(m.threshold);
+                        toast.success(`Milestone Claimed! +${formatNumber(m.reward)} AIP`);
+                        fetchTasksData(); // and refresh user data in store
+                      } catch (err) {
+                        toast.error(err.message);
+                      } finally {
+                        setClaimingId(null);
+                      }
+                    }}
+                    disabled={claimingId === `m-${m.threshold}`}
+                    style={{
+                      background: canClaim ? 'var(--neon-lime)' : 'rgba(255,255,255,0.05)',
+                      color: canClaim ? '#000' : 'rgba(255,255,255,0.3)',
+                      border: 'none', padding: '6px 14px', borderRadius: 20, fontSize: 11, fontWeight: 900,
+                      cursor: canClaim ? 'pointer' : 'not-allowed'
+                    }}
+                  >
+                    {claimingId === `m-${m.threshold}` ? '...' : (canClaim ? 'CLAIM' : 'LOCKED')}
+                  </button>
+                )}
+              </div>
+
+              {/* Progress Bar */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, fontWeight: 700, color: '#4FC3F7', marginBottom: 4 }}>
+                <span>{activatedRefs} / {m.threshold} Activated Friends</span>
+                <span>{Math.floor(progress)}%</span>
+              </div>
+              <div style={{ height: 4, background: 'rgba(255,255,255,0.05)', borderRadius: 2, overflow: 'hidden' }}>
+                <div style={{ 
+                  height: '100%', width: `${progress}%`, 
+                  background: isClaimed ? 'var(--neon-lime)' : 'linear-gradient(90deg, #4FC3F7, var(--neon-lime))',
+                  transition: 'width 0.5s ease-out'
+                }} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
       <h3 style={{ fontSize: '14px', fontWeight: 800, margin: '24px 0 16px', color: '#FFD700' }}>GLOBAL TASKS</h3>
 
       <div className="flex-column" style={{ gap: 12, paddingBottom: 60 }}>

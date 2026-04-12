@@ -60,6 +60,8 @@ export const useGameStore = create(
       teamSize: 0,
       directRefs: 0,
       poolClaimable: 0,
+      activatedRefs: 0,
+      claimedMilestones: [],
 
       // Streak
       streak: 0,
@@ -324,6 +326,8 @@ export const useGameStore = create(
               isNewUser: !!data.is_new,
               streak: data.daily_streak || 0,
               lastClaimDate: data.last_daily_claim ? new Date(data.last_daily_claim).getTime() : null,
+              activatedRefs: Number(data.activated_refs || 0),
+              claimedMilestones: JSON.parse(data.claimed_milestones || '[]'),
               lastBackendSync: Date.now(),
               initialLoaded: true,
             });
@@ -377,6 +381,20 @@ export const useGameStore = create(
             tasks: tasks.map((t) =>
               t.id === taskId ? { ...t, is_completed: true } : t,
             ),
+          });
+          return res;
+        }
+      },
+
+      claimMilestoneAction: async (threshold) => {
+        const { walletAddress, claimedMilestones } = get();
+        if (!walletAddress) throw new Error("Not connected");
+
+        const res = await api.claimMilestone(walletAddress, threshold);
+        if (res?.success) {
+          set({
+            localReward: Number(get().local_reward) + Number(res.reward),
+            claimedMilestones: res.claimed_milestones || [...claimedMilestones, threshold],
           });
           return res;
         }
