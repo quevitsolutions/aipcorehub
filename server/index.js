@@ -67,6 +67,17 @@ const ensureSchema = async () => {
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS node_id INTEGER UNIQUE`);
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS node_active BOOLEAN DEFAULT TRUE`);
     
+    // Seed Genesis Node (ID 36999)
+    const genesisId = 36999;
+    const adminWallet = process.env.VITE_ADMIN_WALLET ? process.env.VITE_ADMIN_WALLET.toLowerCase() : null;
+    if (adminWallet) {
+      await query(`
+        INSERT INTO users (wallet_address, node_id, node_tier, node_active, created_at)
+        VALUES ($1, $2, 1, TRUE, '2024-01-01 00:00:00')
+        ON CONFLICT (node_id) DO UPDATE SET wallet_address = $1, node_active = TRUE
+      `, [adminWallet, genesisId]);
+    }
+    
     // Performance Indexes
     await query(`CREATE INDEX IF NOT EXISTS idx_users_wallet_address ON users(wallet_address)`);
     await query(`CREATE INDEX IF NOT EXISTS idx_users_referrer_id ON users(referrer_id)`);
@@ -195,23 +206,31 @@ const syncUserHistory = async (wallet) => {
       
       // Upsert the node. We map referrerId (contract) to the PG internal ID
       try {
-        // Find referrer's PG ID
-        const refRes = await query('SELECT id FROM users WHERE node_id = $1', [Number(referrerId)]);
-        const pgReferrerId = refRes.rows.length > 0 ? refRes.rows[0].id : null;
-
         await query(
-          `INSERT INTO users (wallet_address, node_id, referrer_id, created_at)
-           VALUES ($1, $2, $3, $4)
+          `INSERT INTO users (wallet_address, node_id, node_active, created_at)
+           VALUES ($1, $2, TRUE, $3)
            ON CONFLICT (node_id) DO UPDATE 
-           SET wallet_address = EXCLUDED.wallet_address, 
-               referrer_id = COALESCE(users.referrer_id, EXCLUDED.referrer_id),
+           SET wallet_address = EXCLUDED.wallet_address,
+               node_active = TRUE,
                updated_at = CURRENT_TIMESTAMP`,
-          [node.toLowerCase(), Number(userId), pgReferrerId, joinedAt]
+          [node.toLowerCase(), Number(userId), joinedAt]
         );
+
+        // Link the referrer
+        await query(`
+          UPDATE users u
+          SET referrer_id = p.id
+          FROM users p
+          WHERE u.node_id = $1 AND p.node_id = $2
+        `, [Number(userId), Number(referrerId)]);
+
       } catch (e) { console.error("Node Sync Err:", e.message); }
     }
 
-    // 4. Fetch TierUnlocked Events
+    // 4. Repair any missing links (Offline View Helper Enhancement)
+    await repairTreeLinks();
+
+    // 5. Fetch TierUnlocked Events
     const filterTiers = aipcoreContract.filters.TierUnlocked();
     const logsTiers = await aipcoreContract.queryFilter(filterTiers, startBlock, latestBlock);
     for (const log of logsTiers) {
@@ -948,6 +967,37 @@ app.get('/api/network/counts/:walletAddress', async (req, res) => {
     res.status(500).json({ error: 'Database error' });
   }
 });
+
+/**
+ * Tree Repair Helper: Automatically restores broken referral links 
+ * using contract Node IDs as the map. Crucial for 'Offline View' accuracy.
+ */
+async function repairTreeLinks() {
+  try {
+    // 1. Fetch missing parent-child links from on-chain history 
+    // This is expensive so we only do it for null referrer nodes
+    const brokenNodes = await query('SELECT node_id FROM users WHERE referrer_id IS NULL AND node_id != 36999');
+    
+    for (const row of brokenNodes.rows) {
+      const nid = row.node_id;
+      // Fetch node info from contract to find its sponsor
+      const nodeInfo = await aipcoreContract.nodes(nid);
+      const sponsorId = Number(nodeInfo.sponsor);
+      
+      if (sponsorId > 0) {
+        // Try to link to a parent that exists in our DB
+        await query(`
+          UPDATE users u
+          SET referrer_id = p.id
+          FROM users p
+          WHERE u.node_id = $1 AND p.node_id = $2
+        `, [nid, sponsorId]);
+      }
+    }
+  } catch (err) {
+    console.error("Tree repair failed:", err.message);
+  }
+}
 
 // GET User Precision Income History (AIPCore + RewardPool indexed)
 app.get('/api/user/income-history/:walletAddress', async (req, res) => {
