@@ -249,21 +249,45 @@ app.get('/api/user/:walletAddress', async (req, res) => {
     if (userResult.rows.length === 0) {
       // Resolve referrer ID if provided
       let refId = null;
+      let sponsorWallet = null;
       if (req.query.ref && /^0x[a-fA-F0-9]{40}$/i.test(req.query.ref)) {
-        const refObj = await query('SELECT id FROM users WHERE wallet_address ILIKE $1', [req.query.ref]);
-        if (refObj.rows.length > 0) refId = refObj.rows[0].id;
+        const refObj = await query('SELECT id, wallet_address FROM users WHERE wallet_address ILIKE $1', [req.query.ref]);
+        if (refObj.rows.length > 0) {
+          refId = refObj.rows[0].id;
+          sponsorWallet = refObj.rows[0].wallet_address;
+        }
       }
 
-      // Create new user record
+      // Create new user record (sponsor locked at creation)
       const newUser = await query(
         'INSERT INTO users (wallet_address, referrer_id) VALUES ($1, $2) RETURNING *',
         [walletAddress, refId]
       );
-      return res.json({ ...newUser.rows[0], direct_refs: 0, team_size: 0 });
+      return res.json({ ...newUser.rows[0], direct_refs: 0, team_size: 0, is_new: true, sponsor_wallet: sponsorWallet });
     }
     
     const user = userResult.rows[0];
-    
+
+    // If existing user has NO sponsor yet and a ref is provided — set it now (one-time, never overwrite)
+    if (!user.referrer_id && req.query.ref && /^0x[a-fA-F0-9]{40}$/i.test(req.query.ref)) {
+      // Don't allow self-referral
+      if (req.query.ref.toLowerCase() !== walletAddress.toLowerCase()) {
+        const refObj = await query('SELECT id, wallet_address FROM users WHERE wallet_address ILIKE $1', [req.query.ref]);
+        if (refObj.rows.length > 0) {
+          await query('UPDATE users SET referrer_id = $1 WHERE wallet_address = $2 AND referrer_id IS NULL', [refObj.rows[0].id, walletAddress]);
+          user.referrer_id = refObj.rows[0].id;
+          user.sponsor_wallet = refObj.rows[0].wallet_address;
+        }
+      }
+    }
+
+    // Fetch sponsor wallet for display
+    let sponsorWallet = user.sponsor_wallet || null;
+    if (!sponsorWallet && user.referrer_id) {
+      const sponsorRow = await query('SELECT wallet_address FROM users WHERE id = $1', [user.referrer_id]);
+      if (sponsorRow.rows.length > 0) sponsorWallet = sponsorRow.rows[0].wallet_address;
+    }
+
     // Calculate pending mining rewards
     let pending_mined = 0;
     const now = new Date();
@@ -287,7 +311,8 @@ app.get('/api/user/:walletAddress', async (req, res) => {
       ...user,
       direct_refs: parseInt(user.direct_refs || 0),
       team_size: parseInt(user.team_size || 0),
-      pending_mined: parseFloat(pending_mined.toFixed(4))
+      pending_mined: parseFloat(pending_mined.toFixed(4)),
+      sponsor_wallet: sponsorWallet,
     });
   } catch (err) {
     console.error(err);
@@ -796,7 +821,7 @@ app.get('/api/referrals/:walletAddress', async (req, res) => {
     if (parent.rows.length === 0) return res.json([]);
 
     const result = await query(
-      `SELECT wallet_address, local_reward, created_at
+      `SELECT wallet_address, local_reward, created_at, node_tier
        FROM users 
        WHERE referrer_id = $1
        ORDER BY created_at DESC`,

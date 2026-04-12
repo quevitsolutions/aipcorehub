@@ -11,7 +11,9 @@ export default function ReferralScreen() {
     leaderboard, 
     referralList, 
     fetchLeaderboardData, 
-    fetchReferralData 
+    fetchReferralData,
+    sponsorWallet,
+    hasNode,
   } = useGameStore();
 
   useEffect(() => {
@@ -45,18 +47,36 @@ export default function ReferralScreen() {
 
   return (
     <div className="page page-referral" style={{ paddingBottom: '120px' }}>
-      <div style={{ textAlign: 'center', padding: '10px 0 30px' }}>
+      <div style={{ textAlign: 'center', padding: '10px 0 20px' }}>
         <h2 style={{ fontSize: '24px', fontWeight: 900, marginBottom: '8px' }}>INVITE FRIENDS</h2>
         <p style={{ fontSize: '11px', color: 'var(--text-dim)', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
           Grow your pod and earn massive bonuses
         </p>
       </div>
 
+      {/* ── Referred By Card ─────────────────────────────── */}
+      {sponsorWallet && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 12,
+          background: 'linear-gradient(135deg, rgba(79,195,247,0.1), rgba(5,8,15,0))',
+          border: '1px solid rgba(79,195,247,0.3)',
+          borderRadius: 16, padding: '14px 16px', marginBottom: 20
+        }}>
+          <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'rgba(79,195,247,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>🔗</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 10, fontWeight: 800, color: 'rgba(255,255,255,0.5)', letterSpacing: 1 }}>REFERRED BY</div>
+            <div style={{ fontSize: 14, fontWeight: 900, color: '#4FC3F7', marginTop: 2 }}>{shortAddr(sponsorWallet)}</div>
+          </div>
+          <div style={{ fontSize: 9, fontWeight: 800, color: 'rgba(79,195,247,0.6)', background: 'rgba(79,195,247,0.08)', padding: '4px 8px', borderRadius: 8 }}>SPONSOR</div>
+        </div>
+      )}
+
       {/* Stats Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '32px' }}>
-        <div className="booster-card" style={{ margin: 0, padding: '16px', alignItems: 'center', border: '1px solid rgba(163, 255, 18, 0.1)' }}>
-          <span style={{ fontSize: '24px', fontWeight: 900, color: 'var(--neon-lime)' }}>{directRefs}</span>
-          <span style={{ fontSize: '10px', color: 'var(--text-dim)', fontWeight: 800, marginTop: '4px' }}>TOTAL FRIENDS</span>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px' }}>
+        <div className="booster-card" style={{ margin: 0, padding: '16px', alignItems: 'center', border: '1px solid rgba(163, 255, 18, 0.15)', background: 'rgba(203,255,1,0.04)' }}>
+          <span style={{ fontSize: '28px', fontWeight: 900, color: 'var(--neon-lime)' }}>{directRefs}</span>
+          <span style={{ fontSize: '10px', color: 'var(--text-dim)', fontWeight: 800, marginTop: '4px' }}>FRIENDS INVITED</span>
+          <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.4)', fontWeight: 700, marginTop: 2 }}>{hasNode ? 'Activated Node' : 'Free User'}</span>
         </div>
         <div className="booster-card" style={{ margin: 0, padding: '16px', alignItems: 'center', border: '1px solid rgba(163, 255, 18, 0.1)' }}>
           <span style={{ fontSize: '24px', fontWeight: 900, color: 'var(--neon-lime)' }}>{(localReward / 1000000).toFixed(1)}M</span>
@@ -138,17 +158,21 @@ export default function ReferralScreen() {
         {referralList.length === 0 ? (
           <div style={{ padding: '20px', textAlign: 'center', fontSize: '11px', opacity: 0.5 }}>No friends invited yet. Start sharing your link!</div>
         ) : (
-          referralList.slice(0, 5).map((friend, i) => (
+          referralList.slice(0, 10).map((friend, i) => (
             <div key={i} style={{ 
               display: 'flex', alignItems: 'center', padding: '12px 0',
               borderBottom: i < referralList.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none'
             }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(163, 255, 18, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>👤</div>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: friend.node_tier > 0 ? 'rgba(203,255,1,0.15)' : 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>
+                {friend.node_tier > 0 ? '⬡' : '👤'}
+              </div>
               <div className="flex-column" style={{ flex: 1, marginLeft: '12px' }}>
                 <span style={{ fontSize: '13px', fontWeight: 800 }}>{shortAddr(friend.wallet_address)}</span>
-                <span style={{ fontSize: '10px', color: 'var(--neon-lime)', fontWeight: 700 }}>Active Miner</span>
+                <span style={{ fontSize: '10px', color: friend.node_tier > 0 ? 'var(--neon-lime)' : '#4FC3F7', fontWeight: 700 }}>
+                  {friend.node_tier > 0 ? `✅ Node Active (T${friend.node_tier})` : '🔵 Free Member'}
+                </span>
               </div>
-              <span style={{ fontSize: '12px', fontWeight: 900 }}>{(friend.local_reward / 1000).toFixed(1)}K</span>
+              <span style={{ fontSize: '12px', fontWeight: 900, color: friend.node_tier > 0 ? 'var(--neon-lime)' : 'rgba(255,255,255,0.6)' }}>{(friend.local_reward / 1000).toFixed(1)}K</span>
             </div>
           ))
         )}

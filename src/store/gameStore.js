@@ -25,6 +25,8 @@ export const useGameStore = create(
       teamHistory: [],
       globalHistory: [],
       isHistoryLoading: false,
+      sponsorWallet: null,   // wallet address of who referred this user
+      isNewUser: false,      // true only on very first connect (for welcome banner)
 
       // Backend Sync
       isSyncing: false,
@@ -302,6 +304,8 @@ export const useGameStore = create(
               lastClaimTime: new Date(data.last_claim_time).getTime(),
               createdAt: data.created_at,
               isFreeActive: isFreeActive,
+              sponsorWallet: data.sponsor_wallet || get().sponsorWallet,
+              isNewUser: !!data.is_new,
             });
           }
         } catch (err) {
@@ -525,6 +529,7 @@ export const useGameStore = create(
         streak: s.streak,
         lastClaimDate: s.lastClaimDate,
         referrerId: s.referrerId,
+        sponsorWallet: s.sponsorWallet,   // persist so banner shows correctly after refresh
       }),
     },
   ),

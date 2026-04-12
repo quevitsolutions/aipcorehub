@@ -1,7 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from './store/gameStore.js';
+import { shortAddr } from './utils/format.js';
 import { useContract, useWalletLifecycle } from './hooks/useContract.js';
 import LoginScreen from './components/LoginScreen.jsx';
 import TopBar from './components/TopBar.jsx';
@@ -70,17 +72,50 @@ export default function App() {
     rechargeEnergy,
     showNodePopup, showDailyPopup, lastClaimDate,
     setShowDailyPopup, setReferrerId,
-    nodeId, nodeTier, isAdmin
+    nodeId, nodeTier, isAdmin,
+    sponsorWallet, isNewUser
   } = useGameStore();
 
   const { connectWallet, disconnectWallet } = useContract();
   const { setupListeners, removeListeners } = useWalletLifecycle();
+  const welcomeShown = useRef(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const ref = params.get('ref');
     if (ref && /^0x[a-fA-F0-9]{40}$/.test(ref)) setReferrerId(ref);
   }, [setReferrerId]);
+
+  // Show "Referred by" banner once on first connect
+  useEffect(() => {
+    if (!isConnected || welcomeShown.current) return;
+    welcomeShown.current = true;
+    if (sponsorWallet) {
+      setTimeout(() => {
+        toast(
+          `🤝 Referred by ${shortAddr(sponsorWallet)} — Welcome to AIPCore!`,
+          {
+            duration: 6000,
+            icon: '🔗',
+            style: {
+              background: 'linear-gradient(135deg, rgba(79,195,247,0.2), rgba(5,8,15,0.95))',
+              border: '1px solid #4FC3F7',
+              color: '#fff',
+              fontWeight: 800,
+              fontSize: 13,
+            }
+          }
+        );
+      }, 1500);
+    } else if (isNewUser) {
+      setTimeout(() => {
+        toast(
+          '🚀 Welcome to AIPCore! Start mining and invite friends to earn more.',
+          { duration: 5000, icon: '⬡', style: { background: 'rgba(203,255,1,0.1)', border: '1px solid rgba(203,255,1,0.3)', color: '#fff', fontWeight: 800, fontSize: 13 } }
+        );
+      }, 1500);
+    }
+  }, [isConnected, sponsorWallet, isNewUser]);
 
   useEffect(() => {
     if (!isConnected) return;
