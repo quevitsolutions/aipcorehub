@@ -70,6 +70,12 @@ class ApiService {
     return res.json();
   }
 
+  async fetchGlobalHistory() {
+    const res = await fetch(`${this.baseUrl}/history/global`);
+    if (!res.ok) throw new Error('Global history fetch failed');
+    return res.json();
+  }
+
   // Task Endpoints
   async fetchTasks(walletAddress) {
     const res = await fetch(`${this.baseUrl}/tasks/${walletAddress}`);

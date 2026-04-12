@@ -134,10 +134,11 @@ export default function EarnScreen() {
     walletAddress, localReward, nodeTier, isPremium,
     hasNode, lastClaimTime, teamHistory, isHistoryLoading,
     claimMined, setActiveTab, addLocalReward, fetchTeamHistory,
-    isFreeActive, createdAt
+    isFreeActive, createdAt, globalHistory, fetchGlobalHistory
   } = useGameStore();
 
   const [view, setView] = useState('mining'); // 'mining' | 'history'
+  const [historyMode, setHistoryMode] = useState('personal'); // 'personal' | 'global'
   const [isExploding, setIsExploding] = useState(false);
   const [displayReward, setDisplayReward] = useState(localReward);
   const [claimedTasks, setClaimedTasks] = useState(() => {
@@ -352,8 +353,26 @@ export default function EarnScreen() {
         /* ── HISTORY VIEW ── */
         <div style={{ flex: 1, overflowY: 'auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <h3 style={{ fontSize: 14, fontWeight: 900, color: 'var(--neon-lime)' }}>TEAM EARNINGS</h3>
-            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', cursor: 'pointer' }} onClick={fetchTeamHistory}>🔄 REFRESH</span>
+            <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: 20, padding: 4 }}>
+              <div 
+                onClick={() => setHistoryMode('personal')}
+                style={{
+                  padding: '6px 14px', borderRadius: 16, fontSize: 11, fontWeight: 900, cursor: 'pointer',
+                  background: historyMode === 'personal' ? 'var(--neon-lime)' : 'transparent',
+                  color: historyMode === 'personal' ? '#000' : 'rgba(255,255,255,0.5)'
+                }}
+              >MY TEAM</div>
+              <div 
+                onClick={() => { setHistoryMode('global'); fetchGlobalHistory(); }}
+                style={{
+                  padding: '6px 14px', borderRadius: 16, fontSize: 11, fontWeight: 900, cursor: 'pointer',
+                  background: historyMode === 'global' ? 'var(--neon-lime)' : 'transparent',
+                  color: historyMode === 'global' ? '#000' : 'rgba(255,255,255,0.5)'
+                }}
+              >LIVE FEED 🌍</div>
+            </div>
+
+            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', cursor: 'pointer', paddingRight: 8 }} onClick={() => historyMode === 'personal' ? fetchTeamHistory() : fetchGlobalHistory()}>🔄</span>
           </div>
 
           <AnimatePresence mode="wait">
@@ -362,15 +381,15 @@ export default function EarnScreen() {
                 style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.3)' }}>
                 Syncing Blockchain Events...
               </motion.div>
-            ) : teamHistory.length === 0 ? (
+            ) : (historyMode === 'personal' ? teamHistory : globalHistory).length === 0 ? (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
                 style={{ height: 200, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, color: 'rgba(255,255,255,0.2)' }}>
                 <div style={{ fontSize: 40 }}>💤</div>
-                <p style={{ fontSize: 12, fontWeight: 600 }}>No team income found yet.</p>
+                <p style={{ fontSize: 12, fontWeight: 600 }}>No {historyMode} income found yet.</p>
               </motion.div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                {Object.entries(teamHistory.reduce((acc, item) => {
+                {Object.entries((historyMode === 'personal' ? teamHistory : globalHistory).reduce((acc, item) => {
                   const dateStr = new Date(item.timestamp).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
                   if (!acc[dateStr]) acc[dateStr] = [];
                   acc[dateStr].push(item);
@@ -428,7 +447,10 @@ export default function EarnScreen() {
                               </div>
                               
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                                {item.from_node_id > 0 && (
+                                {historyMode === 'global' && item.wallet_address && (
+                                  <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', fontWeight: 700 }}>To {item.wallet_address}</span>
+                                )}
+                                {historyMode === 'personal' && item.from_node_id > 0 && (
                                   <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', fontWeight: 600 }}>From #{item.from_node_id}</span>
                                 )}
                                 {item.tier > 0 && (

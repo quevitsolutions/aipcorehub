@@ -168,6 +168,48 @@ const syncUserHistory = async (wallet) => {
   }
 };
 
+// Global Sync Worker: Polls latest 1000 blocks periodically for missed global events
+let lastSyncBlock = DEPLOY_BLOCK;
+const syncGlobalHistory = async () => {
+  try {
+    const currentBlock = await provider.getBlockNumber();
+    if (currentBlock <= lastSyncBlock) return;
+    
+    // limit max blocks to 3000 to avoid rpc timeout
+    const fromBlock = Math.max(lastSyncBlock, currentBlock - 3000);
+    const filterAIP = aipcoreContract.filters.RewardDistributed();
+    const logsAIP = await aipcoreContract.queryFilter(filterAIP, fromBlock, currentBlock);
+    
+    if (logsAIP.length > 0) {
+      const currentPrice = await getBnbPrice();
+      for (const log of logsAIP) {
+        const { wallet, fromId, amount, time, rewardType, tier, layer, isMissed } = log.args;
+        const bnbAmount = ethers.formatEther(amount);
+        const usdAmount = parseFloat(bnbAmount) * currentPrice;
+        const txHash = log.transactionHash;
+        const timestamp = new Date(Number(time) * 1000);
+        
+        let eventName = 'Team Reward';
+        const rType = Number(rewardType);
+        const tierVal = Number(tier);
+        if (rType === 1) eventName = tierVal === 0 ? 'Referral' : 'Direct Upgrade';
+        else if (rType === 2) eventName = 'Layer Income';
+        else if (rType === 3) eventName = 'Matrix Income';
+        
+        await query(
+          `INSERT INTO income_history (wallet_address, source_contract, event_type, from_node_id, amount_bnb, amount_usd, tier, layer, is_missed, tx_hash, timestamp)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+           ON CONFLICT (tx_hash) DO NOTHING`,
+          [wallet, AIPCORE_ADDRESS, eventName, Number(fromId), bnbAmount, usdAmount, tierVal, Number(layer), !!isMissed, txHash, timestamp]
+        );
+      }
+    }
+    lastSyncBlock = currentBlock;
+  } catch(err) {
+    console.error('Global sync error:', err.message);
+  }
+};
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -600,6 +642,29 @@ app.get('/api/user/income-history/:walletAddress', async (req, res) => {
   }
 });
 
+// GET Global Income History (Live Feed)
+app.get('/api/history/global', async (req, res) => {
+  try {
+    const history = await query(`
+      SELECT wallet_address, event_type, amount_bnb, amount_usd, tier, from_node_id, is_missed, timestamp, tx_hash
+      FROM income_history
+      ORDER BY timestamp DESC
+      LIMIT 100
+    `);
+    
+    // Anonymize wallet address for public privacy viewing
+    const publicHistory = history.rows.map(row => ({
+      ...row,
+      wallet_address: row.wallet_address ? row.wallet_address.substring(0, 6) + '...' + row.wallet_address.substring(38) : 'Unknown'
+    }));
+
+    res.json(publicHistory);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch global history' });
+  }
+});
+
 // GET User Details (Admin)
 app.get('/api/admin/user/:walletAddress', checkAdmin, async (req, res) => {
   const { walletAddress } = req.params;
@@ -778,6 +843,9 @@ app.post('/api/sync', async (req, res) => {
   }
 });
 
+setInterval(syncGlobalHistory, 2 * 60 * 1000); // Poll every 2 minutes
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`AIPCore Backend running on port ${PORT}`);
+  syncGlobalHistory(); // Initial fetch
 });

@@ -23,6 +23,7 @@ export const useGameStore = create(
       adjustmentLogs: [],
       globalStats: { total_users: 0, total_volume_bnb: 0, active_nodes: 0 },
       teamHistory: [],
+      globalHistory: [],
       isHistoryLoading: false,
  
       // Backend Sync
@@ -442,6 +443,15 @@ export const useGameStore = create(
           console.warn("Team History Fetch Failed:", e.message);
         } finally {
           set({ isHistoryLoading: false });
+        }
+      },
+      
+      fetchGlobalHistory: async () => {
+        try {
+          const list = await api.fetchGlobalHistory();
+          set({ globalHistory: Array.isArray(list) ? list : [] });
+        } catch (e) {
+          console.warn("Global History Fetch Failed:", e.message);
         }
       },
  
