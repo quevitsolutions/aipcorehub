@@ -66,6 +66,8 @@ const ensureSchema = async () => {
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS claimed_milestones TEXT DEFAULT '[]'`);
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS node_id INTEGER UNIQUE`);
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS sponsor_node_id INTEGER`);
+    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS matrix_parent_node_id INTEGER`);
+    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS matrix_parent_id INTEGER`);
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS node_active BOOLEAN DEFAULT TRUE`);
     
     // Seed Genesis Node (ID 36999)
@@ -205,17 +207,18 @@ const syncUserHistory = async (wallet) => {
       const { node, userId, referrerId } = log.args;
       const joinedAt = new Date((await provider.getBlock(log.blockNumber)).timestamp * 1000);
       
-      // Upsert the node. We map referrerId (contract) to the PG internal ID
+      // Upsert the node. We map referrerId AND matrixParentId from contract
       try {
         await query(
-          `INSERT INTO users (wallet_address, node_id, sponsor_node_id, node_active, created_at)
-           VALUES ($1, $2, $3, TRUE, $4)
+          `INSERT INTO users (wallet_address, node_id, sponsor_node_id, matrix_parent_node_id, node_active, created_at)
+           VALUES ($1, $2, $3, $4, TRUE, $5)
            ON CONFLICT (node_id) DO UPDATE 
            SET wallet_address = EXCLUDED.wallet_address,
                sponsor_node_id = EXCLUDED.sponsor_node_id,
+               matrix_parent_node_id = EXCLUDED.matrix_parent_node_id,
                node_active = TRUE,
                updated_at = CURRENT_TIMESTAMP`,
-          [node.toLowerCase(), Number(userId), Number(referrerId), joinedAt]
+          [node.toLowerCase(), Number(userId), Number(referrerId), Number(log.args[3] || 0), joinedAt]
         );
       } catch (e) { console.error("Node Sync Err:", e.message); }
     }
@@ -927,34 +930,33 @@ app.get('/api/network/counts/:walletAddress', async (req, res) => {
     if (rootUser.rows.length === 0) return res.status(404).json({ error: 'User not found' });
     const rootId = rootUser.rows[0].id;
 
-    // Recursive CTE to get counts for all 18 layers in a single database hit
-    const result = await query(`
-      WITH RECURSIVE team_tree AS (
-        SELECT id, 0 as level
-        FROM users
-        WHERE id = $1
+    // Recursive CTE for REFERRAL TREE (Direct Referrals)
+    const referralRes = await query(`
+      WITH RECURSIVE referral_tree AS (
+        SELECT id, 0 as level FROM users WHERE id = $1
         UNION ALL
-        SELECT u.id, tt.level + 1
-        FROM users u
-        INNER JOIN team_tree tt ON u.referrer_id = tt.id
-        WHERE tt.level < 18
+        SELECT u.id, rt.level + 1 FROM users u INNER JOIN referral_tree rt ON u.referrer_id = rt.id WHERE rt.level < 18
       )
-      SELECT level, COUNT(*) as count 
-      FROM team_tree 
-      WHERE level > 0
-      GROUP BY level 
-      ORDER BY level
+      SELECT level, COUNT(*) as count FROM referral_tree WHERE level > 0 GROUP BY level
     `, [rootId]);
 
-    // Format as simple array [L1_count, L2_count, ...]
-    const counts = new Array(18).fill(0);
-    result.rows.forEach(row => {
-      if (row.level >= 1 && row.level <= 18) {
-        counts[row.level - 1] = parseInt(row.count);
-      }
-    });
+    // Recursive CTE for MATRIX TREE (Binary Placement)
+    const matrixRes = await query(`
+      WITH RECURSIVE matrix_tree AS (
+        SELECT id, 0 as level FROM users WHERE id = $1
+        UNION ALL
+        SELECT u.id, mt.level + 1 FROM users u INNER JOIN matrix_tree mt ON u.matrix_parent_id = mt.id WHERE mt.level < 18
+      )
+      SELECT level, COUNT(*) as count FROM matrix_tree WHERE level > 0 GROUP BY level
+    `, [rootId]);
 
-    res.json(counts);
+    const referralCounts = new Array(18).fill(0);
+    referralRes.rows.forEach(r => referralCounts[r.level - 1] = parseInt(r.count));
+
+    const matrixCounts = new Array(18).fill(0);
+    matrixRes.rows.forEach(r => matrixCounts[r.level - 1] = parseInt(r.count));
+
+    res.json({ referralCounts, matrixCounts });
   } catch (err) {
     console.error('Count query failed:', err);
     res.status(500).json({ error: 'Database error' });
@@ -967,19 +969,27 @@ app.get('/api/network/counts/:walletAddress', async (req, res) => {
  */
 async function repairTreeLinks() {
   try {
-    // Single query to link orphans by their stored sponsor_node_id mapping
-    const result = await query(`
+    // 1. Repair Referral Links (Referrer Tree)
+    await query(`
       UPDATE users u
       SET referrer_id = p.id
       FROM users p
       WHERE u.sponsor_node_id = p.node_id
-      AND u.referrer_id IS NULL 
-      AND u.sponsor_node_id IS NOT NULL
+      AND u.referrer_id IS NULL AND u.sponsor_node_id IS NOT NULL
+    `);
+
+    // 2. Repair Matrix Links (Binary Tree)
+    const res = await query(`
+      UPDATE users u
+      SET matrix_parent_id = p.id
+      FROM users p
+      WHERE u.matrix_parent_node_id = p.node_id
+      AND u.matrix_parent_id IS NULL AND u.matrix_parent_node_id IS NOT NULL
       RETURNING u.id
     `);
     
-    if (result.rowCount > 0) {
-      console.log(`✅ Repaired ${result.rowCount} tree links in SQL`);
+    if (res.rowCount > 0) {
+      console.log(`✅ Dual-Tree Repair: Updated ${res.rowCount} binary links`);
     }
   } catch (err) {
     console.error("SQL Tree repair failed:", err.message);

@@ -6,7 +6,10 @@ import { api } from '../services/api.js';
 export default function TeamScreen() {
   const { isConnected, nodeId, directRefs, teamSize, walletAddress } = useGameStore();
 
-  const [levelCounts, setLevelCounts] = useState(new Array(18).fill(0));
+  const [dualCounts, setDualCounts] = useState({ 
+    referral: new Array(18).fill(0), 
+    matrix: new Array(18).fill(0) 
+  });
   const [loadingCounts, setLoadingCounts] = useState(false);
   const [expandedLevel, setExpandedLevel] = useState(null);
   const [levelMembers, setLevelMembers] = useState([]);
@@ -17,8 +20,12 @@ export default function TeamScreen() {
       if (!walletAddress) return;
       setLoadingCounts(true);
       try {
-        const counts = await api.fetchNetworkCounts(walletAddress);
-        setLevelCounts(counts);
+        const data = await api.fetchNetworkCounts(walletAddress);
+        // API now returns { referralCounts, matrixCounts }
+        setDualCounts({
+          referral: data.referralCounts || new Array(18).fill(0),
+          matrix: data.matrixCounts || new Array(18).fill(0)
+        });
       } catch (err) {
         console.error("Failed to load network stats from API:", err);
       }
@@ -39,7 +46,7 @@ export default function TeamScreen() {
     setExpandedLevel(levelIndex);
     setLevelMembers([]);
     
-    if (levelCounts[levelIndex] > 0) {
+    if (dualCounts.referral[levelIndex] > 0) {
       setLoadingMembers(true);
       try {
         const members = await api.fetchNetworkLevelMembers(walletAddress, levelIndex);
@@ -67,10 +74,10 @@ export default function TeamScreen() {
   }
 
   // Calculate totals locally from the level data we fetched to ensure 100% accuracy
-  const calculatedDirects = levelCounts.length > 0 ? levelCounts[0] : (directRefs || 0);
-  const calculatedTotal = levelCounts.length > 0 
-    ? levelCounts.reduce((acc, curr) => acc + curr, 0) 
-    : (teamSize || 0);
+  // Calculate totals from specific tree data
+  const calculatedDirects = dualCounts.referral[0] || (directRefs || 0);
+  const calculatedTotal = dualCounts.matrix.reduce((acc, curr) => acc + curr, 0) || (teamSize || 0);
+  const levelData = dualCounts.referral; // Use referral tree for the breakdown list
 
   return (
     <div className="page page-team" style={{ paddingBottom: '100px' }}>
@@ -101,9 +108,9 @@ export default function TeamScreen() {
           LOADING NETWORK DATA...
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {levelCounts.map((count, index) => {
-            const level = index + 1;
+        <div className="levels-container" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18].map((level, index) => {
+            const count = levelData[index];
             const isExpanded = expandedLevel === index;
             
             // Allow clicking if count > 0 OR if it's currently expanded (to close it)
@@ -156,7 +163,7 @@ export default function TeamScreen() {
                       <div style={{ padding: '20px 0', textAlign: 'center', fontSize: '11px', color: '#FFB74D', fontWeight: 700 }}>
                         FETCHING MEMBERS...
                       </div>
-                    ) : levelMembers.length === 0 && levelCounts[index] > 0 ? (
+                    ) : levelMembers.length === 0 && levelData[index] > 0 ? (
                       <div style={{ padding: '20px 10px', textAlign: 'center' }}>
                          <div style={{ fontSize: '12px', color: '#FFD54F', fontWeight: 800, marginBottom: '4px' }}>REFRESHING DATABASE...</div>
                          <div style={{ fontSize: '9px', color: '#999', textTransform: 'uppercase', letterSpacing: '1px' }}>Establishing on-chain connections</div>
