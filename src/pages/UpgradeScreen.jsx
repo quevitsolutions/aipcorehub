@@ -107,9 +107,9 @@ export default function UpgradeScreen() {
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
             style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 12 }}>
             {[
-              { icon: '$AIP', title: '10x Mining Speed', desc: 'Boost your base rate from 10 coins/hr to 100+ coins/hr instantly.' },
-              { icon: '💎', title: 'Earn Real BNB', desc: 'Unlock smart contract payouts. Start earning real BNB directly to your wallet.' },
-              { icon: '🌐', title: '18-Level Commission', desc: 'Get paid when your community upgrades, up to 18 layers deep.' },
+              { icon: '🚀', title: '10x Mining Speed', desc: 'Boost your base rate from 10 coins/hr to 100+ coins/hr instantly.' },
+              { icon: '💰', title: 'Earn Real BNB', desc: 'Unlock smart contract payouts. Start earning real BNB directly to your wallet.' },
+              { icon: '🛡️', title: 'Income Protection', desc: 'Stay ahead of your team! Higher tiers ensure you never miss commissions from your downline.' },
               { icon: '🏆', title: 'Global Pool Rewards', desc: 'Qualify for the global matrix and premium reward pools.' },
             ].map((benefit, i) => (
               <div key={i} style={{ 
@@ -165,6 +165,28 @@ export default function UpgradeScreen() {
             <div style={{ fontSize: 11, fontWeight: 800, color: '#FF5252', letterSpacing: 2 }}>DAILY EARNINGS</div>
             <div style={{ fontSize: 22, fontWeight: 900, color: '#fff', marginTop: 4 }}>{(currentCoinsPerHr * 24).toLocaleString()} $AIP</div>
             <div style={{ fontSize: 11, fontWeight: 700, color: '#FFFFFF', marginTop: 4 }}>24HR AUTO-MINE</div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* ─ INCOME PROTECTION ALERT ─ */}
+      {nodeId && (
+        <motion.div
+          animate={{ x: [0, -2, 2, -2, 0] }}
+          transition={{ duration: 0.5, delay: 2, repeat: Infinity, repeatDelay: 5 }}
+          style={{ 
+            background: 'rgba(255, 59, 48, 0.1)',
+            border: '2px solid rgba(255, 59, 48, 0.4)',
+            borderRadius: 20, padding: '14px 16px', marginBottom: 24,
+            display: 'flex', alignItems: 'center', gap: 14
+          }}>
+          <div style={{ fontSize: 24 }}>⚠️</div>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 900, color: '#FF5252', marginBottom: 2 }}>STOP MISSING INCOME!</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#fff', opacity: 0.9, lineHeight: 1.4 }}>
+              You only earn rewards from team members at or <span style={{ color: 'var(--neon-lime)' }}>below your tier</span>.
+              Upgrade now to stay ahead and capture 100% of your community rewards!
+            </div>
           </div>
         </motion.div>
       )}
