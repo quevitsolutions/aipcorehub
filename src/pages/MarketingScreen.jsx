@@ -76,6 +76,7 @@ const INCOME_STREAMS = [
   },
 ];
 
+export default function MarketingScreen() {
   const { referrerId, isConnected, bnbBalance, globalStats, fetchGlobalProtocolStats } = useGameStore();
 
   const protocolStats = [
