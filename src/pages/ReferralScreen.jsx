@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useGameStore } from '../store/gameStore.js';
 import { formatNumber, shortAddr } from '../utils/format.js';
 import toast from 'react-hot-toast';
@@ -15,6 +15,8 @@ export default function ReferralScreen() {
     sponsorWallet,
     hasNode,
   } = useGameStore();
+
+  const [inviteTab, setInviteTab] = useState('activated');
 
   useEffect(() => {
     fetchLeaderboardData();
@@ -154,28 +156,47 @@ export default function ReferralScreen() {
 
       {/* My Recent Invites */}
       <h3 style={{ fontSize: '12px', fontWeight: 900, color: '#4FC3F7', marginBottom: '12px', letterSpacing: '1px' }}>MY RECENT INVITES</h3>
+      
+      {/* Referral Filter Tabs */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+        <button onClick={() => setInviteTab('activated')} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: inviteTab === 'activated' ? '1px solid var(--neon-lime)' : '1px solid rgba(255,255,255,0.1)', background: inviteTab === 'activated' ? 'rgba(163,255,18,0.1)' : 'transparent', color: inviteTab === 'activated' ? 'var(--neon-lime)' : '#FFFFFF', fontWeight: 800, fontSize: '11px', cursor: 'pointer' }}>
+          ACTIVATED NODES
+        </button>
+        <button onClick={() => setInviteTab('free')} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: inviteTab === 'free' ? '1px solid #4FC3F7' : '1px solid rgba(255,255,255,0.1)', background: inviteTab === 'free' ? 'rgba(79,195,247,0.1)' : 'transparent', color: inviteTab === 'free' ? '#4FC3F7' : '#FFFFFF', fontWeight: 800, fontSize: '11px', cursor: 'pointer' }}>
+          FREE MEMBERS
+        </button>
+      </div>
+
       <div className="booster-card" style={{ padding: '8px 16px', marginBottom: '32px' }}>
-        {referralList.length === 0 ? (
-          <div style={{ padding: '20px', textAlign: 'center', fontSize: '11px', opacity: 0.5 }}>No friends invited yet. Start sharing your link!</div>
-        ) : (
-          referralList.slice(0, 10).map((friend, i) => (
+        {(() => {
+          const filteredList = referralList.filter(f => inviteTab === 'activated' ? Number(f.node_tier) > 0 : Number(f.node_tier) === 0);
+          
+          if (filteredList.length === 0) {
+            return (
+              <div style={{ padding: '20px', textAlign: 'center', fontSize: '11px', opacity: 0.5, color: '#FFF' }}>
+                No {inviteTab === 'activated' ? 'activated nodes' : 'free members'} found.
+              </div>
+            );
+          }
+
+          return filteredList.slice(0, 10).map((friend, i) => (
             <div key={i} style={{ 
               display: 'flex', alignItems: 'center', padding: '12px 0',
-              borderBottom: i < referralList.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none'
+              borderBottom: i < filteredList.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none'
             }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: friend.node_tier > 0 ? 'rgba(203,255,1,0.15)' : 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>
-                {friend.node_tier > 0 ? '⬡' : '👤'}
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: Number(friend.node_tier) > 0 ? 'rgba(203,255,1,0.15)' : 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>
+                {Number(friend.node_tier) > 0 ? '⬡' : '👤'}
               </div>
               <div className="flex-column" style={{ flex: 1, marginLeft: '12px' }}>
                 <span style={{ fontSize: '13px', fontWeight: 800 }}>{shortAddr(friend.wallet_address)}</span>
-                <span style={{ fontSize: '10px', color: friend.node_tier > 0 ? 'var(--neon-lime)' : '#4FC3F7', fontWeight: 700 }}>
-                  {friend.node_tier > 0 ? `✅ Node Active (T${friend.node_tier})` : '🔵 Free Member'}
+                <span style={{ fontSize: '10px', color: Number(friend.node_tier) > 0 ? 'var(--neon-lime)' : '#4FC3F7', fontWeight: 700 }}>
+                  {Number(friend.node_tier) > 0 ? `✅ Node Active (T${friend.node_tier})` : '🔵 Free Member'}
                 </span>
               </div>
-              <span style={{ fontSize: '12px', fontWeight: 900, color: friend.node_tier > 0 ? 'var(--neon-lime)' : '#FFFFFF' }}>{(friend.local_reward / 1000).toFixed(1)}K</span>
+              <span style={{ fontSize: '12px', fontWeight: 900, color: Number(friend.node_tier) > 0 ? 'var(--neon-lime)' : '#FFFFFF' }}>{(friend.local_reward / 1000).toFixed(1)}K</span>
             </div>
-          ))
-        )}
+          ));
+        })()}
       </div>
 
       {/* Top Referrers Leaderboard */}

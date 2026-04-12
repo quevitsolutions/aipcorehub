@@ -156,7 +156,6 @@ export default function TeamScreen() {
                           <span style={{ width: '80px', textAlign: 'right' }}>JOINED</span>
                         </div>
                         
-                        {/* Member Rows */}
                         {levelMembers.length === 0 ? (
                           <div style={{ padding: '10px 0', textAlign: 'center', fontSize: '12px', color: '#A3FF12' }}>No members found.</div>
                         ) : (
@@ -165,17 +164,15 @@ export default function TeamScreen() {
                               display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: i < levelMembers.length - 1 ? '1px rgba(255,255,255,0.03) solid' : 'none'
                             }}>
                               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                <span style={{ fontSize: '12px', fontWeight: 700, color: 'rgba(255,255,255,0.8)' }}>
-                                  {shortAddr(m[1])}
+                                <span style={{ fontSize: '12px', fontWeight: 800, color: '#FFFFFF' }}>
+                                  {shortAddr(m.wallet)}
                                 </span>
-                                {Number(m?.[3] || 0) > 0 ? (
-                                  <span style={{ background: 'var(--neon-lime)', color: '#000', fontSize: '8px', fontWeight: 900, padding: '2px 6px', borderRadius: '4px' }}>NODE</span>
-                                ) : (
-                                  <span style={{ border: '1px solid rgba(255,255,255,0.15)', color: '#FFFFFF', fontSize: '8px', fontWeight: 900, padding: '1px 5px', borderRadius: '4px' }}>FREE</span>
-                                )}
+                                <span style={{ background: 'var(--neon-lime)', color: '#000', fontSize: '8px', fontWeight: 900, padding: '2px 6px', borderRadius: '4px' }}>
+                                  T{m.tier} (Node #{m.nodeId})
+                                </span>
                               </div>
                               <span style={{ fontSize: '10px', color: '#4FC3F7', fontWeight: 600 }}>
-                                {formatDate(Number(m[0]))}
+                                {formatDate(m.joinedAt)}
                               </span>
                             </div>
                           ))
