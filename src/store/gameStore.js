@@ -172,6 +172,7 @@ export const useGameStore = create(
         return { status: 'SUCCESS', taps: get().taps };
       },
 
+      rechargeEnergy: () => {
         const state = get();
         // Energy always recharges
         set((s) => ({ energy: Math.min(s.maxEnergy, s.energy + 1) }));
