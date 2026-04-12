@@ -52,12 +52,12 @@ function RegistrationGate({ setActiveTab }) {
       const contract = new ethers.Contract(CONTRACTS.AIPCORE, AIPCORE_ABI, signer);
       let sponsorNodeId = 1n;
       if (referrerId) {
-        try { const ref = await contract.nodeId(referrerId); if (Number(ref) > 0) sponsorNodeId = ref; } catch {}
+        try { const ref = await contract.nodeId(referrerId); if (Number(ref) > 0) sponsorNodeId = ref; } catch { }
       }
       const tierCost = await contract.getTierCost(0);
       toast.loading('Confirm transaction...', { id: 'reg' });
       const tx = await contract.createNode(sponsorNodeId, { value: tierCost });
-      toast.loading(`Tx sent: ${tx.hash.slice(0,10)}...`, { id: 'reg' });
+      toast.loading(`Tx sent: ${tx.hash.slice(0, 10)}...`, { id: 'reg' });
       await tx.wait();
       toast.success('Node registered! Pull to refresh.', { id: 'reg', duration: 5000 });
     } catch (err) {
@@ -144,6 +144,7 @@ export default function EarnScreen() {
   const [claimedTasks, setClaimedTasks] = useState(() => {
     try { return JSON.parse(localStorage.getItem('aip-tasks') || '[]'); } catch { return []; }
   });
+  const [visibleDays, setVisibleDays] = useState(3);
 
   // Keep displayReward in sync with store (animates upward only)
   useEffect(() => {
@@ -154,7 +155,7 @@ export default function EarnScreen() {
   const multiplier = isPremium ? 2 : 1;
   const ratePerHour = hourlyBase * multiplier;
   const displayTier = Number(nodeTier || 1);
-  
+
   const localMined = useLocalMining(lastClaimTime, ratePerHour, hasNode || isFreeActive);
 
   // Live timer — re-renders every second
@@ -220,17 +221,17 @@ export default function EarnScreen() {
       {/* ── Tab Switcher Header ── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', marginBottom: 12 }}>
         <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: 4 }}>
-          <button 
+          <button
             onClick={() => setView('mining')}
-            style={{ 
+            style={{
               padding: '6px 16px', borderRadius: 10, border: 'none', fontSize: 11, fontWeight: 800, cursor: 'pointer',
               background: view === 'mining' ? 'var(--neon-lime)' : 'transparent',
               color: view === 'mining' ? '#000' : '#A3FF12',
               transition: 'all 0.2s'
             }}>⛏️ MINING</button>
-          <button 
+          <button
             onClick={() => { setView('history'); fetchTeamHistory(); }}
-            style={{ 
+            style={{
               padding: '6px 16px', borderRadius: 10, border: 'none', fontSize: 11, fontWeight: 800, cursor: 'pointer',
               background: view === 'history' ? 'var(--neon-lime)' : 'transparent',
               color: view === 'history' ? '#000' : '#4FC3F7',
@@ -279,22 +280,22 @@ export default function EarnScreen() {
               </AnimatePresence>
 
               {/* EGG */}
-              <div style={{ 
+              <div style={{
                 position: 'relative', width: 220, height: 220, zIndex: 10,
                 WebkitMaskImage: 'radial-gradient(circle, black 50%, transparent 95%)',
                 maskImage: 'radial-gradient(circle, black 50%, transparent 95%)'
               }}>
                 <img src="/assets/egg_orange.png"
                   loading="eager"
-                  style={{ 
+                  style={{
                     width: '100%', height: '100%', objectFit: 'contain',
-                    filter: isExpired ? 'grayscale(1) brightness(0.5)' : `drop-shadow(0 0 ${25 * maturity}px rgba(255,165,0,0.4))` 
+                    filter: isExpired ? 'grayscale(1) brightness(0.5)' : `drop-shadow(0 0 ${25 * maturity}px rgba(255,165,0,0.4))`
                   }}
                   alt="Mining Egg" />
-                
+
                 {isExpired && (
-                  <div style={{ 
-                    position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', 
+                  <div style={{
+                    position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                     background: 'rgba(0,0,0,0.6)', borderRadius: '50%', textAlign: 'center', padding: 20, zIndex: 15
                   }}>
                     <span style={{ fontSize: 13, fontWeight: 900, color: '#FF3B30', marginBottom: 8 }}>SESSION EXPIRED</span>
@@ -375,7 +376,7 @@ export default function EarnScreen() {
         <div style={{ flex: 1, overflowY: 'auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: 20, padding: 4 }}>
-              <div 
+              <div
                 onClick={() => setHistoryMode('personal')}
                 style={{
                   padding: '6px 14px', borderRadius: 16, fontSize: 11, fontWeight: 900, cursor: 'pointer',
@@ -383,7 +384,7 @@ export default function EarnScreen() {
                   color: historyMode === 'personal' ? '#000' : '#FFB74D'
                 }}
               >MY TEAM</div>
-              <div 
+              <div
                 onClick={() => { setHistoryMode('global'); fetchGlobalHistory(); }}
                 style={{
                   padding: '6px 14px', borderRadius: 16, fontSize: 11, fontWeight: 900, cursor: 'pointer',
@@ -398,110 +399,143 @@ export default function EarnScreen() {
 
           <AnimatePresence mode="wait">
             {isHistoryLoading ? (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4FC3F7' }}>
                 Syncing Blockchain Events...
               </motion.div>
             ) : (historyMode === 'personal' ? teamHistory : globalHistory).length === 0 ? (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 style={{ height: 200, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, color: 'rgba(255,255,255,0.2)' }}>
                 <div style={{ fontSize: 40 }}>💤</div>
                 <p style={{ fontSize: 12, fontWeight: 600 }}>No {historyMode} income found yet.</p>
               </motion.div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                {Object.entries((historyMode === 'personal' ? teamHistory : globalHistory).reduce((acc, item) => {
-                  const dateStr = new Date(item.timestamp).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
-                  if (!acc[dateStr]) acc[dateStr] = [];
-                  acc[dateStr].push(item);
-                  return acc;
-                }, {})).map(([dateLabel, items], groupIdx) => (
-                  <div key={dateLabel} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {/* Day divider */}
-                    <div style={{ fontSize: 11, fontWeight: 900, color: '#FF5252', letterSpacing: 1, paddingLeft: 4, textTransform: 'uppercase' }}>
-                      {dateLabel}
-                    </div>
+                {(() => {
+                  const grouped = (historyMode === 'personal' ? teamHistory : globalHistory).reduce((acc, item) => {
+                    const dateStr = new Date(item.timestamp).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+                    if (!acc[dateStr]) acc[dateStr] = { items: [], totalBnb: 0, totalUsd: 0 };
+                    acc[dateStr].items.push(item);
+                    if (!item.is_missed) {
+                      acc[dateStr].totalBnb += Number(item.amount_bnb || 0);
+                      acc[dateStr].totalUsd += Number(item.amount_usd || 0);
+                    }
+                    return acc;
+                  }, {});
 
-                    {items.map((item, idx) => {
-                      const getIcon = (type) => {
-                        if (item.is_missed) return '⚠️';
-                        switch(type) {
-                          case 'Referral': return '🤝';
-                          case 'Direct Upgrade': return '⚡';
-                          case 'Layer Income': return '🪜';
-                          case 'Matrix Income': return '🌀';
-                          case 'Global Pool': return '🏆';
-                          default: return '💰';
-                        }
-                      };
+                  const sortedDays = Object.entries(grouped);
+                  const displayedDays = sortedDays.slice(0, visibleDays);
 
-                      const isMissed = !!item.is_missed;
+                  return (
+                    <>
+                      {displayedDays.map(([dateLabel, group], groupIdx) => (
+                        <div key={dateLabel} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                          {/* Day divider with Totals */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 4px', marginBottom: 4 }}>
+                            <div style={{ fontSize: 11, fontWeight: 900, color: '#FF5252', letterSpacing: 1, textTransform: 'uppercase' }}>
+                              {dateLabel}
+                            </div>
+                            <div style={{ background: 'rgba(79,195,247,0.1)', border: '1px solid rgba(79,195,247,0.2)', padding: '2px 8px', borderRadius: 8, display: 'flex', gap: 8 }}>
+                              <span style={{ fontSize: 9, fontWeight: 900, color: '#4FC3F7' }}>{group.totalBnb.toFixed(5)} BNB</span>
+                              <span style={{ fontSize: 9, fontWeight: 800, color: '#fff', opacity: 0.6 }}>${group.totalUsd.toFixed(2)}</span>
+                            </div>
+                          </div>
 
-                      return (
-                        <motion.div 
-                          key={item.id || item.tx_hash || idx}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: (groupIdx * 0.1) + (idx * 0.05) }}
-                          style={{ 
-                            background: isMissed ? 'rgba(255,59,48,0.05)' : 'rgba(255,255,255,0.03)', 
-                            border: isMissed ? '1px solid rgba(255,59,48,0.2)' : '1px solid rgba(255,255,255,0.06)', 
-                            borderRadius: 16, padding: '12px 14px',
-                            display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                          {group.items.map((item, idx) => {
+                            const getIcon = (type) => {
+                              if (item.is_missed) return '⚠️';
+                              switch (type) {
+                                case 'Referral': return '🤝';
+                                case 'Direct Upgrade': return '⚡';
+                                case 'Layer Income': return '🪜';
+                                case 'Matrix Income': return '🌀';
+                                case 'Global Pool': return '🏆';
+                                default: return '💰';
+                              }
+                            };
+
+                            const isMissed = !!item.is_missed;
+
+                            return (
+                              <motion.div
+                                key={item.id || item.tx_hash || idx}
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: (groupIdx * 0.05) + (idx * 0.02) }}
+                                style={{
+                                  background: isMissed ? 'rgba(255,59,48,0.05)' : 'rgba(255,255,255,0.03)',
+                                  border: isMissed ? '1px solid rgba(255,59,48,0.2)' : '1px solid rgba(255,255,255,0.06)',
+                                  borderRadius: 16, padding: '12px 14px',
+                                  display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                                }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                  <div style={{
+                                    width: 32, height: 32, borderRadius: 8,
+                                    background: isMissed ? 'rgba(255,59,48,0.1)' : 'rgba(163,255,18,0.1)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16
+                                  }}>
+                                    {getIcon(item.event_type)}
+                                  </div>
+                                  <div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                      <span style={{ fontSize: 12, fontWeight: 800, color: isMissed ? '#FF3B30' : '#fff' }}>
+                                        {item.event_type}
+                                      </span>
+                                      {isMissed && (
+                                        <span style={{ fontSize: 9, background: '#FF3B30', color: '#fff', padding: '2px 5px', borderRadius: 4, fontWeight: 900 }}>MISSED</span>
+                                      )}
+                                    </div>
+
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                                      {historyMode === 'global' && item.wallet_address && (
+                                        <span style={{ fontSize: 10, color: '#FFFFFF', fontWeight: 700 }}>To {item.wallet_address}</span>
+                                      )}
+                                      {historyMode === 'personal' && item.from_node_id > 0 && (
+                                        <span style={{ fontSize: 10, color: '#FFB74D', fontWeight: 600 }}>From #{item.from_node_id}</span>
+                                      )}
+                                      {item.tier > 0 && (
+                                        <span style={{ fontSize: 9, color: 'var(--neon-lime)', opacity: 0.8 }}>Tier {item.tier}</span>
+                                      )}
+                                      {item.layer > 0 && (
+                                        <span style={{ fontSize: 9, color: '#FFD700' }}>Lvl {item.layer}</span>
+                                      )}
+                                      <span style={{ fontSize: 9, color: '#4FC3F7', fontWeight: 600 }}>
+                                        {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div style={{ textAlign: 'right', minWidth: 90 }}>
+                                  <div style={{ fontSize: 13, fontWeight: 900, color: isMissed ? '#FF3B30' : 'var(--neon-lime)', letterSpacing: 0.3 }}>
+                                    {isMissed ? '-' : '+'}{Number(item.amount_bnb || 0).toFixed(5)} BNB
+                                  </div>
+                                  {item.amount_usd != null && (
+                                    <div style={{ fontSize: 11, fontWeight: 700, color: isMissed ? 'rgba(255,59,48,0.6)' : '#4FC3F7', marginTop: 2 }}>
+                                      ≈ ${Number(item.amount_usd).toFixed(2)}
+                                    </div>
+                                  )}
+                                </div>
+                              </motion.div>
+                            );
+                          })}
+                        </div>
+                      ))}
+
+                      {sortedDays.length > visibleDays && (
+                        <button
+                          onClick={() => setVisibleDays(prev => prev + 7)}
+                          style={{
+                            width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px dashed rgba(255,255,255,0.1)',
+                            borderRadius: 16, padding: '16px', color: '#4FC3F7', fontSize: 11, fontWeight: 900,
+                            letterSpacing: 1, cursor: 'pointer', marginTop: 10, marginBottom: 40
                           }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <div style={{ 
-                              width: 32, height: 32, borderRadius: 8, 
-                              background: isMissed ? 'rgba(255,59,48,0.1)' : 'rgba(163,255,18,0.1)', 
-                              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 
-                            }}>
-                              {getIcon(item.event_type)}
-                            </div>
-                            <div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span style={{ fontSize: 12, fontWeight: 800, color: isMissed ? '#FF3B30' : '#fff' }}>
-                                  {item.event_type}
-                                </span>
-                                {isMissed && (
-                                  <span style={{ fontSize: 9, background: '#FF3B30', color: '#fff', padding: '2px 5px', borderRadius: 4, fontWeight: 900 }}>MISSED</span>
-                                )}
-                              </div>
-                              
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                                {historyMode === 'global' && item.wallet_address && (
-                                  <span style={{ fontSize: 10, color: '#FFFFFF', fontWeight: 700 }}>To {item.wallet_address}</span>
-                                )}
-                                {historyMode === 'personal' && item.from_node_id > 0 && (
-                                  <span style={{ fontSize: 10, color: '#FFB74D', fontWeight: 600 }}>From #{item.from_node_id}</span>
-                                )}
-                                {item.tier > 0 && (
-                                  <span style={{ fontSize: 9, color: 'var(--neon-lime)', opacity: 0.8 }}>Tier {item.tier}</span>
-                                )}
-                                {item.layer > 0 && (
-                                  <span style={{ fontSize: 9, color: '#FFD700' }}>Lvl {item.layer}</span>
-                                )}
-                                <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.2)' }}>
-                                  {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div style={{ textAlign: 'right', minWidth: 90 }}>
-                            <div style={{ fontSize: 13, fontWeight: 900, color: isMissed ? '#FF3B30' : 'var(--neon-lime)', letterSpacing: 0.3 }}>
-                              {isMissed ? '-' : '+'}{Number(item.amount_bnb || 0).toFixed(5)} BNB
-                            </div>
-                            {item.amount_usd != null && (
-                              <div style={{ fontSize: 11, fontWeight: 700, color: isMissed ? 'rgba(255,59,48,0.6)' : '#4FC3F7', marginTop: 2 }}>
-                                ≈ ${Number(item.amount_usd).toFixed(2)}
-                              </div>
-                            )}
-                          </div>
-                        </motion.div>
-                      );
-                    })}
-                  </div>
-                ))}
+                          LOAD PREVIOUS DAYS ({sortedDays.length - visibleDays} LEFT)
+                        </button>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             )}
           </AnimatePresence>
