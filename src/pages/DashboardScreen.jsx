@@ -97,9 +97,8 @@ export default function DashboardScreen() {
             <span style={{ fontSize: '16px', fontWeight: 900 }}>{formatBNB(poolClaimable)}</span>
           </div>
         </div>
-      </div>
 
-      {/* Reward Pool Command Center */}
+        {/* Reward Pool Command Center */}
       <h3 style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-dim)', marginBottom: 12 }}>COMMAND: REWARD POOL</h3>
       <div className="partner-card" style={{ flexDirection: 'column', padding: 20, marginBottom: 24, background: 'rgba(203, 255, 1, 0.02)', border: '1px solid rgba(203, 255, 1, 0.1)' }}>
         <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', marginBottom: 20, alignItems: 'center' }}>
