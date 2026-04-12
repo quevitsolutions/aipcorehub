@@ -48,6 +48,19 @@ class ApiService {
     return res.json();
   }
 
+  async claimDailyReward(walletAddress) {
+    const res = await fetch(`${this.baseUrl}/daily/claim`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ walletAddress })
+    });
+    if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Daily claim failed');
+    }
+    return res.json();
+  }
+
   async upgradeTier(walletAddress, { tier, isPremium }) {
     const res = await fetch(`${this.baseUrl}/mining/upgrade`, {
       method: 'POST',

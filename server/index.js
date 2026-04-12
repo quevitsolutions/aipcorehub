@@ -55,6 +55,8 @@ const getBnbPrice = async () => {
 const ensureSchema = async () => {
   try {
     console.log('Checking database schema...');
+    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_streak INTEGER DEFAULT 0`);
+    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_daily_claim TIMESTAMP`);
     await query(`ALTER TABLE income_history ADD COLUMN IF NOT EXISTS tier INTEGER DEFAULT 0`);
     await query(`ALTER TABLE income_history ADD COLUMN IF NOT EXISTS layer INTEGER DEFAULT 0`);
     await query(`ALTER TABLE income_history ADD COLUMN IF NOT EXISTS is_missed BOOLEAN DEFAULT FALSE`);
@@ -865,6 +867,75 @@ app.post('/api/sync', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Sync failed' });
+  }
+});
+
+// POST Claim Daily Login Reward
+app.post('/api/daily/claim', async (req, res) => {
+  const { walletAddress } = req.body;
+  if (!walletAddress) return res.status(400).json({ error: 'Wallet missing' });
+
+  try {
+    await query('BEGIN');
+    const user = await query('SELECT daily_streak, last_daily_claim, local_reward FROM users WHERE wallet_address = $1 FOR UPDATE', [walletAddress]);
+    
+    if (user.rows.length === 0) {
+      await query('ROLLBACK');
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const { daily_streak, last_daily_claim } = user.rows[0];
+    const now = new Date();
+    
+    let currentStreak = daily_streak || 0;
+    
+    if (last_daily_claim) {
+      const dbDate = new Date(last_daily_claim);
+      const diffMs = now - dbDate;
+      const diffHrs = diffMs / (1000 * 60 * 60);
+
+      // Rule: Can only claim once per rolling 24 hours
+      if (diffHrs < 24) {
+        await query('ROLLBACK');
+        return res.status(400).json({ error: 'Reward already claimed for today. Come back tomorrow!' });
+      }
+
+      // Rule: If more than 48 hours passed, streak is broken
+      if (diffHrs >= 48) {
+        currentStreak = 0;
+      }
+    }
+
+    // Determine reward: day 1 is 100, day 2 is 200, ... max 10 days
+    const rewardBase = ((currentStreak % 10) + 1) * 100;
+
+    // Advance streak
+    const nextStreak = (currentStreak + 1) % 10;
+
+    // Update user
+    const update = await query(
+      `UPDATE users 
+       SET daily_streak = $1, 
+           last_daily_claim = CURRENT_TIMESTAMP, 
+           local_reward = local_reward + $2 
+       WHERE wallet_address = $3 
+       RETURNING *`,
+      [nextStreak, rewardBase, walletAddress]
+    );
+
+    await query('COMMIT');
+    
+    res.json({
+      success: true,
+      reward: rewardBase,
+      daily_streak: nextStreak,
+      last_daily_claim: update.rows[0].last_daily_claim,
+      local_reward: update.rows[0].local_reward
+    });
+  } catch (err) {
+    await query('ROLLBACK');
+    console.error(err);
+    res.status(500).json({ error: 'Failed to claim daily reward' });
   }
 });
 

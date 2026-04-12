@@ -119,8 +119,11 @@ export default function App() {
 
   useEffect(() => {
     if (!isConnected) return;
-    const today = new Date().toDateString();
-    if (lastClaimDate !== today) setTimeout(() => setShowDailyPopup(true), 1200);
+    const now = Date.now();
+    // Show if never claimed, or if 24 hours have passed since the last claim
+    if (!lastClaimDate || (now - lastClaimDate >= 24 * 60 * 60 * 1000)) {
+      setTimeout(() => setShowDailyPopup(true), 1200);
+    }
   }, [isConnected, lastClaimDate, setShowDailyPopup]);
 
   useEffect(() => {

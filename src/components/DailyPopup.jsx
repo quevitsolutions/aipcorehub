@@ -3,24 +3,34 @@ import { useGameStore } from '../store/gameStore.js';
 import { formatNumber } from '../utils/format.js';
 import toast from 'react-hot-toast';
 
-const STREAK_REWARDS = [5000, 10000, 25000, 50000, 100000, 250000, 500000, 1000000];
+const STREAK_REWARDS = [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000];
 
 export default function DailyPopup() {
-  const { streak, setShowDailyPopup, hasNode, setActiveTab } = useGameStore();
-  const currentDay = (streak % STREAK_REWARDS.length) + 1;
+  const { streak, setShowDailyPopup, hasNode, claimDailyReward, lastClaimDate } = useGameStore();
+  
+  // They can claim if it's been 24 hrs since the last claim, or if no last claim exists
+  const isClaimable = !lastClaimDate || (Date.now() - lastClaimDate >= 24 * 60 * 60 * 1000);
 
-  const handleClaim = () => {
-    toast.success(`CLAIMED DAY ${currentDay} REWARD! 🔥`);
-    setShowDailyPopup(false);
+  const handleClaim = async () => {
+    if (!isClaimable) return;
     
-    if (!hasNode) {
-      setTimeout(() => {
-        toast('Activate an AIPCore Node to earn real BNB, 10x more coins, and massive pool rewards!', {
-          icon: '💎',
-          duration: 6000,
-          style: { border: '1px solid var(--neon-lime)' }
-        });
-      }, 500);
+    try {
+      const res = await claimDailyReward();
+      const claimedDay = res.daily_streak === 0 ? 10 : res.daily_streak;
+      toast.success(`CLAIMED ${res.reward} COINS FOR DAY ${claimedDay} REWARD! 🔥`);
+      setShowDailyPopup(false);
+      
+      if (!hasNode) {
+        setTimeout(() => {
+          toast('Activate an AIPCore Node to earn real BNB, 10x more coins, and massive pool rewards!', {
+            icon: '💎',
+            duration: 6000,
+            style: { border: '1px solid var(--neon-lime)' }
+          });
+        }, 500);
+      }
+    } catch (err) {
+      toast.error(err.message || 'Failed to claim daily reward');
     }
   };
 
@@ -59,38 +69,49 @@ export default function DailyPopup() {
           )}
 
           {/* Streak Grid */}
-          <div className="streak-grid-aipcore">
+          <div className="streak-grid-aipcore" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px', marginBottom: '24px' }}>
             {STREAK_REWARDS.map((reward, i) => {
               const day = i + 1;
-              const isActive = day === currentDay;
+              const isPast = day <= streak;
+              // If already claimed today, no box should be labeled as "isToday" / active for clicking next
+              // If not claimed today, the next box (streak + 1) is today's claimable box
+              const isToday = isClaimable && day === streak + 1;
+              
               return (
-                <div key={day} className={`day-box ${isActive ? 'active' : ''}`} style={{
-                  background: isActive ? 'rgba(163, 255, 18, 0.1)' : 'rgba(255,255,255,0.02)',
-                  borderColor: isActive ? 'var(--neon-lime)' : 'rgba(255,255,255,0.05)',
-                  padding: '16px 8px'
+                <div key={day} className={`day-box ${isToday ? 'active' : ''}`} style={{
+                  background: isPast ? 'rgba(79, 195, 247, 0.1)' : isToday ? 'rgba(163, 255, 18, 0.1)' : 'rgba(255,255,255,0.02)',
+                  borderColor: isPast ? '#4FC3F7' : isToday ? 'var(--neon-lime)' : 'rgba(255,255,255,0.05)',
+                  padding: '12px 6px',
+                  opacity: (isPast || isToday) ? 1 : 0.5,
+                  textAlign: 'center',
+                  borderRadius: '12px'
                 }}>
-                  <span className="d-num" style={{ fontSize: '9px' }}>DAY {day}</span>
-                  <span className="d-val" style={{ fontSize: '12px' }}>{formatNumber(reward)}</span>
+                  <span className="d-num" style={{ fontSize: '9px', display: 'block', color: isPast ? '#4FC3F7' : isToday ? 'var(--neon-lime)' : 'rgba(255,255,255,0.5)', marginBottom: '4px', fontWeight: 800 }}>
+                    {isPast ? 'CLAIMED' : `DAY ${day}`}
+                  </span>
+                  <span className="d-val" style={{ fontSize: '13px', fontWeight: 900, color: '#FFF' }}>{reward}</span>
                 </div>
               );
             })}
           </div>
 
           <button 
-            className="giant-btn shimmer-btn" 
-            onClick={handleClaim}
+            className={isClaimable ? "giant-btn shimmer-btn" : "giant-btn"} 
+            onClick={isClaimable ? handleClaim : undefined}
             style={{ 
-              background: 'var(--neon-lime)', 
-              color: '#000', 
+              background: isClaimable ? 'var(--neon-lime)' : 'rgba(255,255,255,0.05)', 
+              color: isClaimable ? '#000' : 'rgba(255,255,255,0.4)', 
               borderRadius: '16px',
               fontSize: '16px',
               fontWeight: 900,
               padding: '18px',
               width: '100%',
-              boxShadow: '0 0 20px rgba(163, 255, 18, 0.3)'
+              boxShadow: isClaimable ? '0 0 20px rgba(163, 255, 18, 0.3)' : 'none',
+              cursor: isClaimable ? 'pointer' : 'not-allowed',
+              border: isClaimable ? 'none' : '1px solid rgba(255,255,255,0.1)'
             }}
           >
-            CLAIM REWARD
+            {isClaimable ? 'CLAIM REWARD' : 'COME BACK IN 24H'}
           </button>
 
           <button 

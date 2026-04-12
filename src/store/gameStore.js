@@ -306,6 +306,8 @@ export const useGameStore = create(
               isFreeActive: isFreeActive,
               sponsorWallet: data.sponsor_wallet || get().sponsorWallet,
               isNewUser: !!data.is_new,
+              streak: data.daily_streak || 0,
+              lastClaimDate: data.last_daily_claim ? new Date(data.last_daily_claim).getTime() : null,
             });
           }
         } catch (err) {
@@ -355,6 +357,21 @@ export const useGameStore = create(
             tasks: tasks.map((t) =>
               t.id === taskId ? { ...t, is_completed: true } : t,
             ),
+          });
+          return res;
+        }
+      },
+
+      claimDailyReward: async () => {
+        const { walletAddress } = get();
+        if (!walletAddress) throw new Error("Wallet not connected");
+        
+        const res = await api.claimDailyReward(walletAddress);
+        if (res?.success) {
+          set({
+            localReward: Number(res.local_reward || 0),
+            streak: Number(res.daily_streak || 0),
+            lastClaimDate: new Date(res.last_daily_claim).getTime(),
           });
           return res;
         }
