@@ -123,6 +123,19 @@ class BlockchainService {
     if (this._bnbPrice && now - this._bnbPriceFetchedAt < 5 * 60 * 1000) {
       return this._bnbPrice;
     }
+
+    // Primary: On-chain oracle from AIPCore contract (8 decimal uint, e.g. 60000000000 = $600)
+    try {
+      const raw = await this.core.bnbPrice();
+      const price = Number(raw) / 1e8;
+      if (price > 0) {
+        this._bnbPrice = price;
+        this._bnbPriceFetchedAt = now;
+        return this._bnbPrice;
+      }
+    } catch { /* fall through */ }
+
+    // Fallback 1: Binance REST API
     try {
       const res = await fetch(
         "https://api.binance.com/api/v3/ticker/price?symbol=BNBUSDT",
@@ -130,19 +143,22 @@ class BlockchainService {
       const json = await res.json();
       this._bnbPrice = parseFloat(json.price);
       this._bnbPriceFetchedAt = now;
-    } catch {
-      // Fallback to CoinGecko
-      try {
-        const res = await fetch(
-          "https://api.coingecko.com/api/v3/simple/price?ids=binancecoin&vs_currencies=usd",
-        );
-        const json = await res.json();
-        this._bnbPrice = json?.binancecoin?.usd || 600;
-        this._bnbPriceFetchedAt = now;
-      } catch {
-        this._bnbPrice = this._bnbPrice || 600; // Stale or default fallback
-      }
-    }
+      return this._bnbPrice;
+    } catch { /* fall through */ }
+
+    // Fallback 2: CoinGecko
+    try {
+      const res = await fetch(
+        "https://api.coingecko.com/api/v3/simple/price?ids=binancecoin&vs_currencies=usd",
+      );
+      const json = await res.json();
+      this._bnbPrice = json?.binancecoin?.usd || 600;
+      this._bnbPriceFetchedAt = now;
+      return this._bnbPrice;
+    } catch { /* fall through */ }
+
+    // Last resort: use stale value or hardcoded default
+    this._bnbPrice = this._bnbPrice || 600;
     return this._bnbPrice;
   }
 
