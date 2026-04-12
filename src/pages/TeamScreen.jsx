@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useGameStore } from '../store/gameStore.js';
 import { useContract } from '../hooks/useContract.js';
 import { shortAddr } from '../utils/format.js';
+import { api } from '../services/api.js';
 
 export default function TeamScreen() {
   const { isConnected, nodeId, directRefs, teamSize } = useGameStore();
@@ -36,8 +37,13 @@ export default function TeamScreen() {
     
     if (levelCounts[levelIndex] > 0) {
       setLoadingMembers(true);
-      const members = await fetchTeamLevelMembers(targetNodeId, levelIndex, 50);
-      setLevelMembers(members);
+      try {
+        const { walletAddress } = useGameStore.getState();
+        const members = await api.fetchNetworkLevelMembers(walletAddress, levelIndex);
+        setLevelMembers(members);
+      } catch (err) {
+        console.error(err);
+      }
       setLoadingMembers(false);
     }
   };
@@ -151,8 +157,8 @@ export default function TeamScreen() {
                       <div style={{ padding: '12px 0' }}>
                         {/* Member Header */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#FFD700', fontWeight: 800, paddingBottom: '8px', borderBottom: '1px solid rgba(255,255,255,0.05)', marginBottom: '8px' }}>
-                          <span style={{ flex: 1 }}>NODE ID / WALLET</span>
-                          <span style={{ width: '60px', textAlign: 'center' }}>TIER</span>
+                          <span style={{ flex: 1.5 }}>NODE ID / WALLET</span>
+                          <span style={{ width: '60px', textAlign: 'center' }}>TEAM</span>
                           <span style={{ width: '80px', textAlign: 'right' }}>JOINED</span>
                         </div>
                         
@@ -163,17 +169,30 @@ export default function TeamScreen() {
                             <div key={i} style={{ 
                               display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: i < levelMembers.length - 1 ? '1px rgba(255,255,255,0.03) solid' : 'none'
                             }}>
-                              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                              <div style={{ flex: 1.5, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                 <span style={{ fontSize: '12px', fontWeight: 800, color: '#FFFFFF' }}>
-                                  {shortAddr(m.wallet)}
+                                  {shortAddr(m.wallet_address || m.wallet)}
                                 </span>
-                                <span style={{ background: 'var(--neon-lime)', color: '#000', fontSize: '8px', fontWeight: 900, padding: '2px 6px', borderRadius: '4px' }}>
-                                  T{m.tier} (Node #{m.nodeId})
+                                <div style={{ display: 'flex', gap: '6px' }}>
+                                  <span style={{ background: '#FFD700', color: '#000', fontSize: '9px', fontWeight: 900, padding: '1px 5px', borderRadius: '4px' }}>
+                                    T{m.node_tier || m.tier}
+                                  </span>
+                                  <span style={{ background: '#4FC3F7', color: '#000', fontSize: '9px', fontWeight: 900, padding: '1px 5px', borderRadius: '4px' }}>
+                                    Node #{m.node_id || m.nodeId}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div style={{ width: '60px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                <span style={{ fontSize: '12px', fontWeight: 900, color: 'var(--neon-lime)' }}>{m.team_size || 0}</span>
+                                <span style={{ fontSize: '7px', fontWeight: 800, color: '#fff', opacity: 0.5 }}>NETWORK</span>
+                              </div>
+
+                              <div style={{ width: '80px', textAlign: 'right' }}>
+                                <span style={{ fontSize: '10px', color: '#4FC3F7', fontWeight: 600 }}>
+                                  {formatDate(m.joined_at || m.joinedAt)}
                                 </span>
                               </div>
-                              <span style={{ fontSize: '10px', color: '#4FC3F7', fontWeight: 600 }}>
-                                {formatDate(m.joinedAt)}
-                              </span>
                             </div>
                           ))
                         )}

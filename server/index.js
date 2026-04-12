@@ -821,21 +821,55 @@ app.get('/api/admin/adjustments', checkAdmin, async (req, res) => {
   }
 });
 
-// GET Global Protocol Stats
-app.get('/api/stats/global', async (req, res) => {
+// GET Members at a specific network level with their team sizes
+app.get('/api/network/level/:walletAddress/:level', async (req, res) => {
+  const { walletAddress, level } = req.params;
+  const targetDepth = parseInt(level) + 1; // Level 1 = depth 1
+  
   try {
-    const stats = await query(`
+    const rootUser = await query('SELECT id FROM users WHERE wallet_address = $1', [walletAddress]);
+    if (rootUser.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    const rootId = rootUser.rows[0].id;
+
+    // Recursive CTE to find members at depth, and another sub-CTE for their team sizes
+    const members = await query(`
+      WITH RECURSIVE team_tree AS (
+        SELECT id, wallet_address, node_id, node_tier, created_at, 1 as depth
+        FROM users
+        WHERE referrer_id = $1
+        UNION ALL
+        SELECT u.id, u.wallet_address, u.node_id, u.node_tier, u.created_at, tt.depth + 1
+        FROM users u
+        INNER JOIN team_tree tt ON u.referrer_id = tt.id
+        WHERE tt.depth < $2
+      )
       SELECT 
-        (SELECT COUNT(*) FROM users) as total_users,
-        (SELECT COALESCE(SUM(amount_bnb), 0) FROM income_history WHERE is_missed = false) as total_volume_bnb,
-        (SELECT COUNT(*) FROM users WHERE node_tier >= 1) as active_nodes
-    `);
-    res.json(stats.rows[0]);
+        wallet_address, 
+        node_id, 
+        node_tier, 
+        created_at as joined_at,
+        (
+          WITH RECURSIVE sub_tree AS (
+            SELECT id, 1 as d FROM users WHERE referrer_id = team_tree.id
+            UNION ALL
+            SELECT u.id, st.d + 1 FROM users u INNER JOIN sub_tree st ON u.referrer_id = st.id WHERE st.d < 18
+          )
+          SELECT COUNT(*) FROM sub_tree
+        ) as team_size
+      FROM team_tree
+      WHERE depth = $2
+      ORDER BY created_at DESC
+      LIMIT 100
+    `, [rootId, targetDepth]);
+
+    res.json(members.rows);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to fetch global stats' });
+    console.error('Network level fetch failed:', err);
+    res.status(500).json({ error: 'Database error' });
   }
 });
+
+// GET Global Protocol Stats
 
 // GET User Precision Income History (AIPCore + RewardPool indexed)
 app.get('/api/user/income-history/:walletAddress', async (req, res) => {

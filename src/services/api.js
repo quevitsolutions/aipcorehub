@@ -158,6 +158,12 @@ class ApiService {
     return res.json();
   }
 
+  async fetchNetworkLevelMembers(walletAddress, level) {
+    const res = await fetch(`${this.baseUrl}/network/level/${walletAddress}/${level}`);
+    if (!res.ok) throw new Error('Failed to fetch network level members');
+    return res.json();
+  }
+
   async createAdminTask(adminWallet, payload) {
     const res = await fetch(`${this.baseUrl}/admin/tasks`, {
       method: 'POST',
