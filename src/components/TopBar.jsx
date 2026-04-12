@@ -3,7 +3,7 @@ import { useContract } from '../hooks/useContract.js';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 
 export default function TopBar() {
-  const { walletAddress, isConnected, nodeId, nodeTier } = useGameStore();
+  const { walletAddress, isConnected, nodeId, nodeTier, nodeActive, bnbBalance, setActiveTab } = useGameStore();
   const { loadNodeData } = useContract();
 
   return (
