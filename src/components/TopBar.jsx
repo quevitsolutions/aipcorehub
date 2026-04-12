@@ -1,10 +1,13 @@
 import { useGameStore } from '../store/gameStore.js';
 import { useContract } from '../hooks/useContract.js';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { useBnbPrice } from '../hooks/useBnbPrice.js';
 
 export default function TopBar() {
   const { walletAddress, isConnected, nodeId, nodeTier, nodeActive, bnbBalance, setActiveTab } = useGameStore();
   const { loadNodeData } = useContract();
+  const bnbPrice = useBnbPrice();
+  const bnbUsd = bnbPrice > 0 ? `≈ $${(parseFloat(bnbBalance || 0) * bnbPrice).toFixed(2)}` : null;
 
   return (
     <div className="top-bar-fixed" style={{
@@ -37,6 +40,7 @@ export default function TopBar() {
             <div style={{ background: 'rgba(255,255,255,0.05)', padding: '4px 12px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ fontSize: '10px', color: 'var(--text-dim)', fontWeight: 800 }}>BALANCE</span>
               <span style={{ fontSize: '12px', fontWeight: 900 }}>{bnbBalance} BNB</span>
+              {bnbUsd && <span style={{ fontSize: '9px', fontWeight: 700, color: '#4FC3F7' }}>{bnbUsd}</span>}
             </div>
             <div 
               onClick={() => setActiveTab('contracts')}
@@ -57,6 +61,7 @@ export default function TopBar() {
       ) : isConnected ? (
         <div style={{ background: 'rgba(255,255,255,0.05)', padding: '6px 14px', borderRadius: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ fontSize: '12px', fontWeight: 900 }}>{bnbBalance} BNB</span>
+          {bnbUsd && <span style={{ fontSize: '9px', fontWeight: 700, color: '#4FC3F7' }}>{bnbUsd}</span>}
           <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--neon-lime)' }} />
         </div>
       ) : (

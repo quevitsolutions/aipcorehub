@@ -14,7 +14,7 @@ export default function DashboardScreen() {
   } = useGameStore();
   const { loadNodeData, connectWallet, claimPool, fetchTeamCounts } = useContract();
   const bnbPrice = useBnbPrice();
-  const usd = (bnb) => bnbPrice > 0 ? <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.4)', display: 'block', marginTop: 2 }}>≈ ${(parseFloat(bnb || 0) * bnbPrice).toFixed(2)}</span> : null;
+  const usd = (bnb) => bnbPrice > 0 ? <span style={{ fontSize: 11, fontWeight: 700, color: '#4FC3F7', display: 'block', marginTop: 2 }}>≈ ${(parseFloat(bnb || 0) * bnbPrice).toFixed(2)}</span> : null;
 
   const [levelCounts, setLevelCounts] = useState([]);
 
@@ -187,7 +187,7 @@ export default function DashboardScreen() {
               {parseFloat(globalStats?.total_volume_bnb || 0).toFixed(2)}
             </div>
             <div style={{ fontSize: '9px', fontWeight: 800, color: 'var(--text-dim)', marginTop: 2 }}>TOTAL VOL (BNB)</div>
-            {bnbPrice > 0 && <div style={{ fontSize: '9px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', marginTop: 1 }}>≈ ${(parseFloat(globalStats?.total_volume_bnb || 0) * bnbPrice).toFixed(0)}</div>}
+            {bnbPrice > 0 && <div style={{ fontSize: '9px', fontWeight: 700, color: '#4FC3F7', marginTop: 1 }}>≈ ${(parseFloat(globalStats?.total_volume_bnb || 0) * bnbPrice).toFixed(0)}</div>}
           </div>
           <div>
             <div style={{ fontSize: '20px', fontWeight: 900 }}>{globalStats?.active_nodes || 0}</div>

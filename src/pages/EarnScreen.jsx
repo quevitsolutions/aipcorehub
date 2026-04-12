@@ -471,7 +471,7 @@ export default function EarnScreen() {
                               {isMissed ? '-' : '+'}{Number(item.amount_bnb || 0).toFixed(5)} BNB
                             </div>
                             {item.amount_usd != null && (
-                              <div style={{ fontSize: 11, fontWeight: 700, color: isMissed ? 'rgba(255,59,48,0.5)' : 'rgba(255,255,255,0.4)', marginTop: 2 }}>
+                              <div style={{ fontSize: 11, fontWeight: 700, color: isMissed ? 'rgba(255,59,48,0.6)' : '#4FC3F7', marginTop: 2 }}>
                                 ≈ ${Number(item.amount_usd).toFixed(2)}
                               </div>
                             )}

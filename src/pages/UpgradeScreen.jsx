@@ -71,7 +71,7 @@ export default function UpgradeScreen() {
   const nextTier  = BOOSTERS.find(b => b.tier === nodeTier + 1);
   const locked    = BOOSTERS.filter(b => b.tier > nodeTier + 1);
   const bnbPrice  = useBnbPrice();
-  const usdLabel  = (bnb) => bnbPrice > 0 ? ` ≈ $${(parseFloat(bnb || 0) * bnbPrice).toFixed(2)}` : '';
+  const usdLabel  = (bnb) => bnbPrice > 0 ? `≈ $${(parseFloat(bnb || 0) * bnbPrice).toFixed(2)}` : '';
 
   const currentCoinsPerHr = nodeTier >= 2
     ? (BOOSTERS.find(b => b.tier === nodeTier)?.coinsPerHr || 100)
@@ -139,7 +139,7 @@ export default function UpgradeScreen() {
               }}>
               <span style={{ fontSize: 15, fontWeight: 900 }}>ACTIVATE NODE (LEVEL 1)</span>
               <span style={{ fontSize: 13, fontWeight: 800, opacity: 0.8 }}>
-                {parseFloat(tierCosts[0]).toFixed(3)} BNB <span style={{ fontSize: 11, fontWeight: 700, marginLeft: 4 }}>≈ ${(parseFloat(tierCosts[0]) * bnbPriceUsd).toFixed(2)} USD</span>
+                {parseFloat(tierCosts[0]).toFixed(3)} BNB <span style={{ fontSize: 11, fontWeight: 700, color: '#4FC3F7', marginLeft: 4 }}>≈ ${(parseFloat(tierCosts[0]) * bnbPrice).toFixed(2)} USD</span>
               </span>
             </button>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 16, color: 'rgba(255,255,255,0.5)' }}>
@@ -208,7 +208,7 @@ export default function UpgradeScreen() {
               <div style={{ flex: 1, background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: '10px 12px', textAlign: 'center' }}>
                 <div style={{ fontSize: 12, fontWeight: 900, color: '#fff' }}>{parseFloat(tierCosts[nextTier.tier - 1] || '0').toFixed(3)} BNB</div>
                 <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontWeight: 700, marginTop: 2 }}>UNLOCK COST</div>
-                {bnbPrice > 0 && <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', fontWeight: 700, marginTop: 1 }}>{usdLabel(tierCosts[nextTier.tier - 1])}</div>}
+                {bnbPrice > 0 && <div style={{ fontSize: 10, color: '#4FC3F7', fontWeight: 700, marginTop: 2 }}>{usdLabel(tierCosts[nextTier.tier - 1])}</div>}
               </div>
             </div>
 
@@ -261,7 +261,7 @@ export default function UpgradeScreen() {
                 <div style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.4)', marginTop: 3 }}>
                   {parseFloat(tierCosts[b.tier - 1] || '0').toFixed(3)} BNB
                 </div>
-                {bnbPrice > 0 && <div style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.3)', marginTop: 1 }}>{usdLabel(tierCosts[b.tier - 1])}</div>}
+                {bnbPrice > 0 && <div style={{ fontSize: 9, fontWeight: 700, color: '#4FC3F7', marginTop: 2 }}>{usdLabel(tierCosts[b.tier - 1])}</div>}
               </motion.div>
             ))}
           </div>
