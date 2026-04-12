@@ -466,13 +466,15 @@ export default function EarnScreen() {
                             </div>
                           </div>
 
-                          <div style={{ textAlign: 'right' }}>
-                            <div style={{ fontSize: 13, fontWeight: 900, color: isMissed ? '#FF3B30' : 'var(--neon-lime)' }}>
-                              {isMissed ? '' : '+'}{Number(item.amount_bnb).toFixed(4)} BNB
+                          <div style={{ textAlign: 'right', minWidth: 90 }}>
+                            <div style={{ fontSize: 13, fontWeight: 900, color: isMissed ? '#FF3B30' : 'var(--neon-lime)', letterSpacing: 0.3 }}>
+                              {isMissed ? '-' : '+'}{Number(item.amount_bnb || 0).toFixed(5)} BNB
                             </div>
-                            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.2)', fontWeight: 700 }}>
-                              ~${Number(item.amount_usd).toFixed(2)}
-                            </div>
+                            {item.amount_usd != null && (
+                              <div style={{ fontSize: 11, fontWeight: 700, color: isMissed ? 'rgba(255,59,48,0.5)' : 'rgba(255,255,255,0.4)', marginTop: 2 }}>
+                                ≈ ${Number(item.amount_usd).toFixed(2)}
+                              </div>
+                            )}
                           </div>
                         </motion.div>
                       );

@@ -117,11 +117,43 @@ class BlockchainService {
     return ethers.formatEther(bal);
   }
 
+  async _getBnbUsdPrice() {
+    // Simple in-memory cache (5 min TTL)
+    const now = Date.now();
+    if (this._bnbPrice && now - this._bnbPriceFetchedAt < 5 * 60 * 1000) {
+      return this._bnbPrice;
+    }
+    try {
+      const res = await fetch(
+        "https://api.binance.com/api/v3/ticker/price?symbol=BNBUSDT",
+      );
+      const json = await res.json();
+      this._bnbPrice = parseFloat(json.price);
+      this._bnbPriceFetchedAt = now;
+    } catch {
+      // Fallback to CoinGecko
+      try {
+        const res = await fetch(
+          "https://api.coingecko.com/api/v3/simple/price?ids=binancecoin&vs_currencies=usd",
+        );
+        const json = await res.json();
+        this._bnbPrice = json?.binancecoin?.usd || 600;
+        this._bnbPriceFetchedAt = now;
+      } catch {
+        this._bnbPrice = this._bnbPrice || 600; // Stale or default fallback
+      }
+    }
+    return this._bnbPrice;
+  }
+
   async fetchTeamHistoryOnChain(nodeId, length = 50) {
     try {
       if (!nodeId || Number(nodeId) === 0) return [];
 
-      const historyItems = await this.core.getIncome(nodeId, length);
+      const [historyItems, bnbPrice] = await Promise.all([
+        this.core.getIncome(nodeId, length),
+        this._getBnbUsdPrice(),
+      ]);
 
       return historyItems.map((item) => {
         const rType = Number(item.rewardType);
@@ -133,10 +165,13 @@ class BlockchainService {
         else if (rType === 2) eventName = "Layer Income";
         else if (rType === 3) eventName = "Matrix Income";
 
+        const bnbAmount = ethers.formatEther(item.amount);
+
         return {
-          from_node_id: Number(item.id), // id from contract is actually the fromId
+          from_node_id: Number(item.id),
           event_type: eventName,
-          amount_bnb: ethers.formatEther(item.amount),
+          amount_bnb: bnbAmount,
+          amount_usd: (parseFloat(bnbAmount) * bnbPrice).toFixed(2),
           timestamp: new Date(Number(item.time) * 1000).toISOString(),
           is_missed: item.isMissed,
           layer: Number(item.layer),
