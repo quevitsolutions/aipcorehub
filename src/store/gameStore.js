@@ -30,6 +30,8 @@ export const useGameStore = create(
 
       // Backend Sync
       isSyncing: false,
+      isProcessing: false,
+      processingLabel: "",
       lastBackendSync: null,
 
       // Node
@@ -116,6 +118,9 @@ export const useGameStore = create(
         });
         localStorage.removeItem("aipcore-game-state");
       },
+
+      setProcessing: (isProcessing, processingLabel = "") => 
+        set({ isProcessing, processingLabel }),
 
       setNodeData: (data) => {
         // Tier from blockchain (authoritative) — clamp to min 1 for active nodes
@@ -277,9 +282,10 @@ export const useGameStore = create(
       },
 
       fetchUserData: async () => {
-        const { walletAddress, referrerId } = get();
-        if (!walletAddress) return;
+        const { walletAddress, referrerId, isSyncing } = get();
+        if (!walletAddress || isSyncing) return;
 
+        set({ isSyncing: true });
         try {
           const data = await api.fetchUser(walletAddress, referrerId);
           if (data) {
@@ -312,6 +318,8 @@ export const useGameStore = create(
           }
         } catch (err) {
           console.warn("API Fetch Failed:", err.message);
+        } finally {
+          set({ isSyncing: false });
         }
       },
 

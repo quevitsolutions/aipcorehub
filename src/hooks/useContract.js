@@ -12,6 +12,7 @@ export const useContract = () => {
   const setNodeData = useGameStore(s => s.setNodeData);
   const updateChainData = useGameStore(s => s.updateChainData);
   const setBnbBalance = useGameStore(s => s.setBnbBalance);
+  const setProcessing = useGameStore(s => s.setProcessing);
   
   const { openConnectModal } = useConnectModal();
   const { disconnect } = useDisconnect();
@@ -60,6 +61,7 @@ export const useContract = () => {
     disconnectWallet: () => disconnect(),
     createNode: async (sponsorId = 1) => {
       const tid = toast.loading("Estimating activation cost...");
+      setProcessing(true, "Activating Node...");
       try {
         // Pre-flight: check user has enough BNB for gas + cost
         const bal = await blockchain.getBnbBalance(
@@ -67,6 +69,7 @@ export const useContract = () => {
         );
         const nid = await blockchain.createNode(sponsorId);
         toast.success("🚀 Node Activated! Welcome to the Protocol.", { id: tid, duration: 5000 });
+        setProcessing(false);
         return nid;
       } catch (e) {
         // Friendly insufficient funds error
@@ -92,28 +95,35 @@ export const useContract = () => {
         }
         toast.error(errMsg, { id: tid });
         }
+        setProcessing(false);
         return false;
       }
     },
     claimRewards: async () => {
       const tid = toast.loading("Withdrawing rewards...");
+      setProcessing(true, "Withdrawing Rewards...");
       try {
         await blockchain.claimRewards();
         toast.success("✅ Rewards claimed!", { id: tid });
+        setProcessing(false);
         return true;
       } catch (e) {
         toast.error("Claim failed", { id: tid });
+        setProcessing(false);
         return false;
       }
     },
     unlockTier: async (nodeId, toTier) => {
       const tid = toast.loading(`Upgrading to Level ${toTier}...`);
+      setProcessing(true, `Upgrading to Level ${toTier}...`);
       try {
         await blockchain.unlockTier(nodeId, toTier);
         toast.success(`🚀 Level ${toTier} Unlocked!`, { id: tid });
+        setProcessing(false);
         return true;
       } catch (e) {
         toast.error("Upgrade failed", { id: tid });
+        setProcessing(false);
         return false;
       }
     },

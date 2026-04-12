@@ -18,6 +18,7 @@ import TeamScreen from './pages/TeamScreen.jsx';
 import AdminScreen from './pages/AdminScreen.jsx';
 import NodePopup from './components/NodePopup.jsx';
 import DailyPopup from './components/DailyPopup.jsx';
+import DynamicPortal from './components/DynamicPortal.jsx';
 
 // Sidebar nav definition (desktop)
 const NAV_ITEMS = [
@@ -140,6 +141,7 @@ export default function App() {
   if (!isConnected) {
     return (
       <div className="app-container">
+        <DynamicPortal />
         <LoginScreen onConnect={connectWallet} />
         <Toaster position="top-center" toastOptions={{ style: TOAST_STYLE }} />
       </div>
@@ -150,6 +152,7 @@ export default function App() {
 
   return (
     <div className="app-container">
+      <DynamicPortal />
       <Toaster position="top-center" toastOptions={{ style: TOAST_STYLE }} />
 
       {/* Desktop sidebar (hidden on mobile/tablet via CSS) */}
