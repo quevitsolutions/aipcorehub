@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../store/gameStore.js';
 import { formatNumber } from '../utils/format.js';
 import { useContract } from '../hooks/useContract.js';
+import { useBnbPrice } from '../hooks/useBnbPrice.js';
 import { ethers } from 'ethers';
 import { CONTRACTS } from '../config/constants.js';
 import { AIPCORE_ABI } from '../config/abi.js';
@@ -69,6 +70,8 @@ export default function UpgradeScreen() {
   const unlocked = BOOSTERS.filter(b => nodeId && nodeTier >= b.tier);
   const nextTier  = BOOSTERS.find(b => b.tier === nodeTier + 1);
   const locked    = BOOSTERS.filter(b => b.tier > nodeTier + 1);
+  const bnbPrice  = useBnbPrice();
+  const usdLabel  = (bnb) => bnbPrice > 0 ? ` ≈ $${(parseFloat(bnb || 0) * bnbPrice).toFixed(2)}` : '';
 
   const currentCoinsPerHr = nodeTier >= 2
     ? (BOOSTERS.find(b => b.tier === nodeTier)?.coinsPerHr || 100)
@@ -205,6 +208,7 @@ export default function UpgradeScreen() {
               <div style={{ flex: 1, background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: '10px 12px', textAlign: 'center' }}>
                 <div style={{ fontSize: 12, fontWeight: 900, color: '#fff' }}>{parseFloat(tierCosts[nextTier.tier - 1] || '0').toFixed(3)} BNB</div>
                 <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontWeight: 700, marginTop: 2 }}>UNLOCK COST</div>
+                {bnbPrice > 0 && <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', fontWeight: 700, marginTop: 1 }}>{usdLabel(tierCosts[nextTier.tier - 1])}</div>}
               </div>
             </div>
 
@@ -257,6 +261,7 @@ export default function UpgradeScreen() {
                 <div style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.4)', marginTop: 3 }}>
                   {parseFloat(tierCosts[b.tier - 1] || '0').toFixed(3)} BNB
                 </div>
+                {bnbPrice > 0 && <div style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.3)', marginTop: 1 }}>{usdLabel(tierCosts[b.tier - 1])}</div>}
               </motion.div>
             ))}
           </div>

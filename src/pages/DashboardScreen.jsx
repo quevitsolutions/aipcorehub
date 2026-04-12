@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useGameStore } from '../store/gameStore.js';
 import { useContract } from '../hooks/useContract.js';
 import { formatNumber, formatBNB, shortAddr } from '../utils/format.js';
+import { useBnbPrice } from '../hooks/useBnbPrice.js';
 import { CONTRACTS } from '../config/constants.js';
 
 export default function DashboardScreen() {
@@ -12,6 +13,8 @@ export default function DashboardScreen() {
     conversionHistory, isFreeActive, globalStats
   } = useGameStore();
   const { loadNodeData, connectWallet, claimPool, fetchTeamCounts } = useContract();
+  const bnbPrice = useBnbPrice();
+  const usd = (bnb) => bnbPrice > 0 ? <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.4)', display: 'block', marginTop: 2 }}>≈ ${(parseFloat(bnb || 0) * bnbPrice).toFixed(2)}</span> : null;
 
   const [levelCounts, setLevelCounts] = useState([]);
 
@@ -77,12 +80,14 @@ export default function DashboardScreen() {
         }}>
           <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-dim)', letterSpacing: 1 }}>TOTAL LIFETIME EARNINGS</span>
           <span style={{ fontSize: '28px', fontWeight: 900, color: 'var(--neon-lime)', marginTop: 4 }}>{formatBNB(totalEarned)}</span>
+          {usd(totalEarned)}
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
           <div className="partner-card" style={{ flexDirection: 'column', alignItems: 'flex-start', margin: 0, padding: 16 }}>
             <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-dim)' }}>SELF CONTRIBUTION</span>
             <span style={{ fontSize: '16px', fontWeight: 900, color: '#fff' }}>{formatBNB(poolQual.totalDeposited)}</span>
+            {usd(poolQual.totalDeposited)}
           </div>
           <div className="partner-card" style={{ flexDirection: 'column', alignItems: 'flex-start', margin: 0, padding: 16 }}>
             <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-dim)' }}>TAPPING COINS</span>
@@ -91,10 +96,12 @@ export default function DashboardScreen() {
           <div className="partner-card" style={{ flexDirection: 'column', alignItems: 'flex-start', margin: 0, padding: 16 }}>
             <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-dim)' }}>UNCLAIMED MINING</span>
             <span style={{ fontSize: '16px', fontWeight: 900, color: 'var(--neon-lime)' }}>{formatBNB(pendingReward)}</span>
+            {usd(pendingReward)}
           </div>
           <div className="partner-card" style={{ flexDirection: 'column', alignItems: 'flex-start', margin: 0, padding: 16 }}>
             <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-dim)' }}>POOL REWARDS</span>
             <span style={{ fontSize: '16px', fontWeight: 900 }}>{formatBNB(poolClaimable)}</span>
+            {usd(poolClaimable)}
           </div>
         </div>
 
@@ -179,7 +186,8 @@ export default function DashboardScreen() {
             <div style={{ fontSize: '20px', fontWeight: 900, color: 'var(--neon-lime)' }}>
               {parseFloat(globalStats?.total_volume_bnb || 0).toFixed(2)}
             </div>
-            <div style={{ fontSize: '9px', fontWeight: 800, color: 'var(--text-dim)', marginTop: 4 }}>TOTAL VOL (BNB)</div>
+            <div style={{ fontSize: '9px', fontWeight: 800, color: 'var(--text-dim)', marginTop: 2 }}>TOTAL VOL (BNB)</div>
+            {bnbPrice > 0 && <div style={{ fontSize: '9px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', marginTop: 1 }}>≈ ${(parseFloat(globalStats?.total_volume_bnb || 0) * bnbPrice).toFixed(0)}</div>}
           </div>
           <div>
             <div style={{ fontSize: '20px', fontWeight: 900 }}>{globalStats?.active_nodes || 0}</div>
