@@ -39,8 +39,29 @@ export default function TeamScreen() {
       setLoadingMembers(true);
       try {
         const { walletAddress } = useGameStore.getState();
-        const members = await api.fetchNetworkLevelMembers(walletAddress, levelIndex);
-        setLevelMembers(members);
+        
+        // 1. Fetch Source of Truth from Blockchain (Instant & Complete)
+        const members = await fetchTeamLevelMembers(targetNodeId, levelIndex, 50);
+        setLevelMembers(members); // Show members immediately
+
+        // 2. Fetch Extra Metrics from Backend (Async Enrichment)
+        api.fetchNetworkLevelMembers(walletAddress, levelIndex).then(backendData => {
+          if (!backendData || !Array.isArray(backendData)) return;
+          
+          const sizeMap = {};
+          backendData.forEach(b => {
+            if (b.wallet_address) sizeMap[b.wallet_address.toLowerCase()] = b.team_size;
+          });
+
+          setLevelMembers(prev => prev.map(m => {
+            const addr = (m.wallet_address || m.wallet || "").toLowerCase();
+            return {
+              ...m,
+              team_size: sizeMap[addr] !== undefined ? sizeMap[addr] : 0
+            };
+          }));
+        }).catch(e => console.warn("Backend metrics failed:", e));
+        
       } catch (err) {
         console.error(err);
       }
