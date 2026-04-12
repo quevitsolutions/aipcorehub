@@ -90,18 +90,26 @@ export default function ReferralScreen() {
       <div className="booster-card" style={{ padding: '20px', marginBottom: '32px', border: '1px solid rgba(163, 255, 18, 0.05)' }}>
         <h4 style={{ fontSize: '11px', fontWeight: 800, color: '#A3FF12', marginBottom: '12px', letterSpacing: '1px' }}>YOUR REFERRAL LINK</h4>
         <div style={{ 
-          display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.3)', 
-          borderRadius: '12px', padding: '12px 14px',
-          border: '1px solid rgba(255,255,255,0.05)'
-        }}>
-          <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '12px', color: '#fff', fontWeight: 600, opacity: 0.8 }}>
-            {inviteLink}
+          display: 'flex', flexDirection: 'column', gap: 4,
+          background: 'rgba(163, 255, 18, 0.05)', 
+          borderRadius: '16px', padding: '16px',
+          border: '1px solid rgba(163, 255, 18, 0.2)',
+          boxShadow: '0 0 20px rgba(163, 255, 18, 0.05)',
+          cursor: 'pointer'
+        }} onClick={() => copyLink(inviteLink)}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+             <span style={{ fontSize: '10px', fontWeight: 900, color: 'var(--neon-lime)', letterSpacing: 1.5 }}>TAP TO COPY LINK</span>
+             <span style={{ fontSize: '12px' }}>📋</span>
           </div>
-          <button 
-            onClick={() => copyLink(inviteLink)}
-            style={{ background: 'none', border: 'none', color: 'var(--neon-lime)', fontSize: '16px', cursor: 'pointer', marginLeft: '12px' }}>
-            📋
-          </button>
+          <div style={{ 
+            display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.4)', 
+            borderRadius: '12px', padding: '12px 14px',
+            border: '1px solid rgba(163, 255, 18, 0.1)'
+          }}>
+            <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '13px', color: 'var(--neon-lime)', fontWeight: 800 }}>
+              {inviteLink}
+            </div>
+          </div>
         </div>
 
         {/* ─ Social Share Buttons ─ */}
