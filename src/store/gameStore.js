@@ -1,6 +1,6 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { api } from '../services/api.js';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import { api } from "../services/api.js";
 
 const DEMO_TAP_LIMIT = 20;
 const MAX_ENERGY = 500;
@@ -13,7 +13,7 @@ export const useGameStore = create(
       // Wallet
       walletAddress: null,
       isConnected: false,
-      bnbBalance: '0.00',
+      bnbBalance: "0.00",
       isAdmin: false,
       leaderboard: [],
       referralList: [],
@@ -25,7 +25,7 @@ export const useGameStore = create(
       teamHistory: [],
       globalHistory: [],
       isHistoryLoading: false,
- 
+
       // Backend Sync
       isSyncing: false,
       lastBackendSync: null,
@@ -70,7 +70,7 @@ export const useGameStore = create(
 
       // Pool Qualification
       poolQual: {
-        poolName: 'None',
+        poolName: "None",
         isQualified: false,
         nextPoolId: 0,
         totalDeposited: 0,
@@ -78,11 +78,11 @@ export const useGameStore = create(
         missingTier: 0,
         missingTeam: 0,
         totalEarned: 0,
-        remainingCap: 0
+        remainingCap: 0,
       },
 
       // UI
-      activeTab: 'earn',
+      activeTab: "earn",
       showUpgradePopup: false,
 
       // Referral
@@ -90,12 +90,15 @@ export const useGameStore = create(
       referralCode: null,
 
       // Actions
-      setWallet: (address) => set({ 
-        walletAddress: address, 
-        isConnected: !!address,
-        // Reset node data if disconnecting
-        ...(address ? {} : { hasNode: false, nodeId: null, nodeTier: 0, nodeActive: false })
-      }),
+      setWallet: (address) =>
+        set({
+          walletAddress: address,
+          isConnected: !!address,
+          // Reset node data if disconnecting
+          ...(address
+            ? {}
+            : { hasNode: false, nodeId: null, nodeTier: 0, nodeActive: false }),
+        }),
 
       setBnbBalance: (balance) => set({ bnbBalance: balance }),
 
@@ -103,13 +106,13 @@ export const useGameStore = create(
         set({
           walletAddress: null,
           isConnected: false,
-          bnbBalance: '0.00',
+          bnbBalance: "0.00",
           hasNode: false,
           nodeId: null,
           nodeTier: 0,
-          nodeActive: false
+          nodeActive: false,
         });
-        localStorage.removeItem('aipcore-game-state');
+        localStorage.removeItem("aipcore-game-state");
       },
 
       setNodeData: (data) => {
@@ -117,23 +120,23 @@ export const useGameStore = create(
         const rawTier = data.tier !== undefined ? Number(data.tier) : 0;
         const currentTier = get().nodeTier || 0;
         // Never downgrade an already-known tier from the blockchain
-        const tier = rawTier > 0 ? rawTier : (currentTier > 0 ? currentTier : 1);
+        const tier = rawTier > 0 ? rawTier : currentTier > 0 ? currentTier : 1;
 
         const newMiningRate = 1000 * Math.pow(2, Math.max(0, tier - 1));
-        const newMaxEnergy  = 500 + (tier - 1) * 200;
+        const newMaxEnergy = 500 + (tier - 1) * 200;
         const isActuallyActive = data.nodeId && Number(data.nodeId) > 0;
 
         set({
-          hasNode:    isActuallyActive,
-          nodeId:     isActuallyActive ? Number(data.nodeId) : null,
-          nodeTier:   isActuallyActive ? tier : 0,
+          hasNode: isActuallyActive,
+          nodeId: isActuallyActive ? Number(data.nodeId) : null,
+          nodeTier: isActuallyActive ? tier : 0,
           nodeActive: data.active,
           miningRate: newMiningRate,
-          maxEnergy:  newMaxEnergy,
-          energy:     Math.min(newMaxEnergy, get().energy),
-          isLocked:   !isActuallyActive,
-// ...
-          demoTaps:   0
+          maxEnergy: newMaxEnergy,
+          energy: Math.min(newMaxEnergy, get().energy),
+          isLocked: !isActuallyActive,
+          // ...
+          demoTaps: 0,
         });
 
         // Instantly inform the server of the authoritative blockchain tier
@@ -144,33 +147,33 @@ export const useGameStore = create(
 
       handleTap: () => {
         const state = get();
-        if (state.energy <= 0) return { status: 'NO_ENERGY' };
- 
+        if (state.energy <= 0) return { status: "NO_ENERGY" };
+
         if (!state.hasNode && !state.isFreeActive) {
           if (state.demoTaps >= DEMO_TAP_LIMIT) {
             set({ isLocked: true, showNodePopup: true });
-            return { status: 'LOCKED' };
+            return { status: "LOCKED" };
           }
           set((s) => ({
             demoTaps: s.demoTaps + 1,
             taps: s.taps + 1,
             energy: Math.max(0, s.energy - 1),
-            localReward: s.localReward + s.miningRate
+            localReward: s.localReward + s.miningRate,
           }));
-          return { status: 'DEMO', taps: get().taps };
+          return { status: "DEMO", taps: get().taps };
         }
- 
+
         // Optimistic Update
         set((s) => ({
           taps: s.taps + 1,
           energy: Math.max(0, s.energy - 1),
-          localReward: s.localReward + s.miningRate
+          localReward: s.localReward + s.miningRate,
         }));
- 
+
         // Trigger background sync every 10 taps
         if (get().taps % 10 === 0) get().syncWithBackend();
- 
-        return { status: 'SUCCESS', taps: get().taps };
+
+        return { status: "SUCCESS", taps: get().taps };
       },
 
       rechargeEnergy: () => {
@@ -181,7 +184,7 @@ export const useGameStore = create(
         const now = Date.now();
         const elapsedSec = (now - state.lastClaimTime) / 1000;
         const cappedSec = Math.min(86400, elapsedSec); // Max 24h
-        
+
         let ratePerSec = 0;
 
         if (state.hasNode && state.nodeTier >= 1) {
@@ -195,7 +198,7 @@ export const useGameStore = create(
           // 10 coins / hour for free members
           ratePerSec = 10 / 3600;
         }
-        
+
         const totalMined = cappedSec * ratePerSec;
         set({ pendingMined: totalMined });
       },
@@ -212,11 +215,11 @@ export const useGameStore = create(
           if (res?.success && res?.user) {
             set({
               localReward: Number(res.user.local_reward || 0),
-              lastClaimTime: new Date(res.user.last_claim_time).getTime()
+              lastClaimTime: new Date(res.user.last_claim_time).getTime(),
             });
           }
         } catch (err) {
-          console.warn('Claim API failed:', err.message);
+          console.warn("Claim API failed:", err.message);
         }
       },
 
@@ -233,71 +236,74 @@ export const useGameStore = create(
           localReward: s.localReward + reward,
           streak: day,
           lastClaimDate: new Date().toDateString(),
-          showDailyPopup: false
+          showDailyPopup: false,
         }));
         return reward;
       },
 
-      updateChainData: (data) => set(s => ({
-        pendingReward:  data.pendingReward  ?? s.pendingReward,
-        teamSize:       data.teamSize       ?? s.teamSize,
-        directRefs:     data.directRefs     ?? s.directRefs,
-        totalEarned:    data.totalEarned    ?? s.totalEarned,
-        poolClaimable:  data.poolClaimable  ?? s.poolClaimable,
-        poolQual: {
-          ...s.poolQual,
-          poolName:       data.poolName       ?? s.poolQual.poolName,
-          totalDeposited: data.totalDeposited ?? s.poolQual.totalDeposited,
-          missingDirects: data.missingDirects ?? s.poolQual.missingDirects,
-          missingTier:    data.missingTier    ?? s.poolQual.missingTier,
-          missingTeam:    data.missingTeam    ?? s.poolQual.missingTeam,
-        }
-      })),
- 
+      updateChainData: (data) =>
+        set((s) => ({
+          pendingReward: data.pendingReward ?? s.pendingReward,
+          teamSize: data.teamSize ?? s.teamSize,
+          directRefs: data.directRefs ?? s.directRefs,
+          totalEarned: data.totalEarned ?? s.totalEarned,
+          poolClaimable: data.poolClaimable ?? s.poolClaimable,
+          poolQual: {
+            ...s.poolQual,
+            poolName: data.poolName ?? s.poolQual.poolName,
+            totalDeposited: data.totalDeposited ?? s.poolQual.totalDeposited,
+            missingDirects: data.missingDirects ?? s.poolQual.missingDirects,
+            missingTier: data.missingTier ?? s.poolQual.missingTier,
+            missingTeam: data.missingTeam ?? s.poolQual.missingTeam,
+          },
+        })),
+
       syncWithBackend: async () => {
         const state = get();
         if (!state.walletAddress) return;
-        
+
         try {
           await api.syncState({
             walletAddress: state.walletAddress,
             taps: state.taps,
             energy: state.energy,
-            nodeTier: state.nodeTier
+            nodeTier: state.nodeTier,
           });
         } catch (err) {
           console.warn("API Sync Failed:", err.message);
         }
       },
- 
+
       fetchUserData: async () => {
         const { walletAddress, referrerId } = get();
         if (!walletAddress) return;
-        
+
         try {
-           const data = await api.fetchUser(walletAddress, referrerId);
-           if (data) {
-             const currentTier = get().nodeTier || 0;
-             const backendTier = Number(data.node_tier || 0);
+          const data = await api.fetchUser(walletAddress, referrerId);
+          if (data) {
+            const currentTier = get().nodeTier || 0;
+            const backendTier = Number(data.node_tier || 0);
 
-             const now = Date.now();
-             const creationTime = new Date(data.created_at).getTime();
-             const isFreeActive = backendTier === 0 && (now - creationTime) < (30 * 24 * 60 * 60 * 1000);
+            const now = Date.now();
+            const creationTime = new Date(data.created_at).getTime();
+            const isFreeActive =
+              backendTier === 0 &&
+              now - creationTime < 30 * 24 * 60 * 60 * 1000;
 
-             set({
-               taps:          data.taps || 0,
-               localReward:   Number(data.local_reward || 0),
-               energy:        data.energy || 0,
-               directRefs:    data.direct_refs || 0,
-               teamSize:      data.team_size || 0,
-               nodeTier:      backendTier > currentTier ? backendTier : currentTier,
-               isPremium:     data.is_premium || false,
-               pendingMined:  Number(data.pending_mined || 0),
-               lastClaimTime: new Date(data.last_claim_time).getTime(),
-               createdAt:     data.created_at,
-               isFreeActive:  isFreeActive
-             });
-           }
+            set({
+              taps: data.taps || 0,
+              localReward: Number(data.local_reward || 0),
+              energy: data.energy || 0,
+              directRefs: data.direct_refs || 0,
+              teamSize: data.team_size || 0,
+              nodeTier: backendTier > currentTier ? backendTier : currentTier,
+              isPremium: data.is_premium || false,
+              pendingMined: Number(data.pending_mined || 0),
+              lastClaimTime: new Date(data.last_claim_time).getTime(),
+              createdAt: data.created_at,
+              isFreeActive: isFreeActive,
+            });
+          }
         } catch (err) {
           console.warn("API Fetch Failed:", err.message);
         }
@@ -336,13 +342,15 @@ export const useGameStore = create(
 
       claimTaskAction: async (taskId) => {
         const { walletAddress, tasks } = get();
-        if (!walletAddress) throw new Error('Not connected');
-        
+        if (!walletAddress) throw new Error("Not connected");
+
         const res = await api.claimTask(walletAddress, taskId);
         if (res?.success) {
           set({
             localReward: Number(res.new_balance || 0),
-            tasks: tasks.map(t => t.id === taskId ? { ...t, is_completed: true } : t)
+            tasks: tasks.map((t) =>
+              t.id === taskId ? { ...t, is_completed: true } : t,
+            ),
           });
           return res;
         }
@@ -359,18 +367,18 @@ export const useGameStore = create(
 
           // Priority 2: Blockchain Owner (Backup in case of build/env issues)
           if (!isAdmin) {
-             const { blockchain } = await import('../services/blockchain.js');
-             const owner = await blockchain.getOwner();
-             if (owner && walletAddress.toLowerCase() === owner.toLowerCase()) {
-               isAdmin = true;
-             }
+            const { blockchain } = await import("../services/blockchain.js");
+            const owner = await blockchain.getOwner();
+            if (owner && walletAddress.toLowerCase() === owner.toLowerCase()) {
+              isAdmin = true;
+            }
           }
 
           set({ isAdmin });
-           if (isAdmin) {
-             get().fetchAdminOverview();
-             get().loadSnapshots();
-             get().fetchAdminAdjustments();
+          if (isAdmin) {
+            get().fetchAdminOverview();
+            get().loadSnapshots();
+            get().fetchAdminAdjustments();
           }
           get().fetchGlobalProtocolStats();
         } catch (e) {
@@ -384,7 +392,9 @@ export const useGameStore = create(
         try {
           const stats = await api.fetchAdminOverview(walletAddress);
           set({ adminStats: stats });
-        } catch (e) { console.warn(e); }
+        } catch (e) {
+          console.warn(e);
+        }
       },
 
       fetchAdminAdjustments: async () => {
@@ -393,14 +403,18 @@ export const useGameStore = create(
         try {
           const logs = await api.fetchAdminAdjustmentHistory(walletAddress);
           set({ adjustmentLogs: Array.isArray(logs) ? logs : [] });
-        } catch (e) { console.warn(e); }
+        } catch (e) {
+          console.warn(e);
+        }
       },
 
       fetchGlobalProtocolStats: async () => {
         try {
           const stats = await api.fetchGlobalStats();
           if (stats) set({ globalStats: stats });
-        } catch (e) { console.warn("Global Stats Fetch Failed:", e.message); }
+        } catch (e) {
+          console.warn("Global Stats Fetch Failed:", e.message);
+        }
       },
 
       takeSnapshot: async (name) => {
@@ -409,7 +423,9 @@ export const useGameStore = create(
         try {
           await api.createSnapshot(walletAddress, name);
           get().loadSnapshots();
-        } catch (e) { console.warn(e); }
+        } catch (e) {
+          console.warn(e);
+        }
       },
 
       loadSnapshots: async () => {
@@ -418,7 +434,9 @@ export const useGameStore = create(
         try {
           const list = await api.fetchSnapshots(walletAddress);
           set({ snapshotHistory: Array.isArray(list) ? list : [] });
-        } catch (e) { console.warn(e); }
+        } catch (e) {
+          console.warn(e);
+        }
       },
 
       fetchUserConversions: async () => {
@@ -433,11 +451,22 @@ export const useGameStore = create(
       },
 
       fetchTeamHistory: async () => {
-        const { walletAddress } = get();
+        const { walletAddress, nodeId } = get();
         if (!walletAddress) return;
         set({ isHistoryLoading: true });
         try {
-          const list = await api.fetchIncomeHistory(walletAddress);
+          let list = null;
+
+          // Try fetching perfectly accurate on-chain data directly first
+          if (nodeId && nodeId > 0) {
+            list = await blockchain.fetchTeamHistoryOnChain(nodeId, 50);
+          }
+
+          // Fallback to postgres db sync if on-chain fails or missing
+          if (!list || list.length === 0) {
+            list = await api.fetchIncomeHistory(walletAddress);
+          }
+
           set({ teamHistory: Array.isArray(list) ? list : [] });
         } catch (e) {
           console.warn("Team History Fetch Failed:", e.message);
@@ -445,7 +474,7 @@ export const useGameStore = create(
           set({ isHistoryLoading: false });
         }
       },
-      
+
       fetchGlobalHistory: async () => {
         try {
           const list = await api.fetchGlobalHistory();
@@ -454,14 +483,20 @@ export const useGameStore = create(
           console.warn("Global History Fetch Failed:", e.message);
         }
       },
- 
-      reset: () => set({
-        taps: 0, demoTaps: 0, localReward: 0, conversionHistory: [],
-        energy: MAX_ENERGY, isLocked: false, showNodePopup: false
-      })
+
+      reset: () =>
+        set({
+          taps: 0,
+          demoTaps: 0,
+          localReward: 0,
+          conversionHistory: [],
+          energy: MAX_ENERGY,
+          isLocked: false,
+          showNodePopup: false,
+        }),
     }),
     {
-      name: 'aipcore-game-state',
+      name: "aipcore-game-state",
       partialize: (s) => ({
         walletAddress: s.walletAddress,
         isConnected: s.isConnected,
@@ -476,8 +511,8 @@ export const useGameStore = create(
         maxEnergy: s.maxEnergy,
         streak: s.streak,
         lastClaimDate: s.lastClaimDate,
-        referrerId: s.referrerId
-      })
-    }
-  )
+        referrerId: s.referrerId,
+      }),
+    },
+  ),
 );
