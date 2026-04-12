@@ -153,6 +153,7 @@ export default function EarnScreen() {
   const hourlyBase = hasNode ? (nodeTier >= 2 ? 200 : 100) : 10;
   const multiplier = isPremium ? 2 : 1;
   const ratePerHour = hourlyBase * multiplier;
+  const displayTier = Number(nodeTier || 1);
   
   const localMined = useLocalMining(lastClaimTime, ratePerHour, hasNode || isFreeActive);
 
@@ -205,7 +206,6 @@ export default function EarnScreen() {
     addLocalReward(task.reward);
   };
 
-  const displayTier = Math.max(1, nodeTier || 1);
   const daysLeft = createdAt ? Math.max(0, 30 - Math.floor((now - new Date(createdAt).getTime()) / (24 * 3600000))) : 0;
   const isExpired = !hasNode && daysLeft <= 0;
 
@@ -316,10 +316,13 @@ export default function EarnScreen() {
             )}
           </div>
 
-          {/* ── Mobile-Optimized Action Bar ── */}
           <div style={{ flexShrink: 0, padding: '20px 0 10px', background: 'linear-gradient(to top, var(--bg-dark) 50%, transparent)' }}>
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
-              <span style={{ fontSize: 10, fontWeight: 900, color: 'rgba(255,255,255,0.4)', letterSpacing: 1.5 }}>SESSION ENDS IN: <span style={{ color: '#fff' }}>{formatTime(timeRemaining)}</span></span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, padding: '0 8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ width: 6, height: 6, borderRadius: '50%', background: ratePerHour > 0 ? 'var(--neon-lime)' : '#666', boxShadow: ratePerHour > 0 ? '0 0 10px var(--neon-lime)' : 'none' }} />
+                <span style={{ fontSize: 10, fontWeight: 900, color: 'rgba(255,255,255,0.6)', letterSpacing: 0.5 }}>RATE: <span style={{ color: 'var(--neon-lime)' }}>{ratePerHour} $AIP/HR</span></span>
+              </div>
+              <span style={{ fontSize: 10, fontWeight: 900, color: 'rgba(255,255,255,0.4)', letterSpacing: 1 }}>ENDS IN: <span style={{ color: '#fff' }}>{formatTime(timeRemaining)}</span></span>
             </div>
 
             <div style={{ display: 'flex', gap: 10, alignItems: 'stretch' }}>
