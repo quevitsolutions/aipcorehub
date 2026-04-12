@@ -57,6 +57,7 @@ const ensureSchema = async () => {
     console.log('Checking database schema...');
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_streak INTEGER DEFAULT 0`);
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_daily_claim TIMESTAMP`);
+    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_synced_block INTEGER DEFAULT ${DEPLOY_BLOCK}`);
     await query(`ALTER TABLE income_history ADD COLUMN IF NOT EXISTS tier INTEGER DEFAULT 0`);
     await query(`ALTER TABLE income_history ADD COLUMN IF NOT EXISTS layer INTEGER DEFAULT 0`);
     await query(`ALTER TABLE income_history ADD COLUMN IF NOT EXISTS is_missed BOOLEAN DEFAULT FALSE`);
@@ -107,11 +108,19 @@ const syncUserHistory = async (wallet) => {
   if (!wallet) return;
   try {
     const currentPrice = await getBnbPrice();
-    console.log(`Syncing income history for ${wallet}...`);
+    const user = await query('SELECT last_synced_block FROM users WHERE wallet_address = $1', [wallet]);
+    const startBlock = (user.rows.length > 0 && user.rows[0].last_synced_block) 
+      ? Math.max(DEPLOY_BLOCK, user.rows[0].last_synced_block + 1)
+      : DEPLOY_BLOCK;
+    
+    const latestBlock = await provider.getBlockNumber();
+    if (startBlock > latestBlock) return;
+
+    console.log(`Syncing income history for ${wallet} from block ${startBlock} to ${latestBlock}...`);
 
     // 1. Fetch AIPCore RewardDistributed Events
     const filterAIP = aipcoreContract.filters.RewardDistributed(wallet);
-    const logsAIP = await aipcoreContract.queryFilter(filterAIP, DEPLOY_BLOCK, 'latest');
+    const logsAIP = await aipcoreContract.queryFilter(filterAIP, startBlock, latestBlock);
 
     for (const log of logsAIP) {
       const { fromId, amount, time, rewardType, tier, layer, isMissed } = log.args;
@@ -147,7 +156,7 @@ const syncUserHistory = async (wallet) => {
 
     // 2. Fetch RewardPool RewardClaimed Events
     const filterPool = rewardPoolContract.filters.RewardClaimed(null, wallet);
-    const logsPool = await rewardPoolContract.queryFilter(filterPool, DEPLOY_BLOCK, 'latest');
+    const logsPool = await rewardPoolContract.queryFilter(filterPool, startBlock, latestBlock);
 
     for (const log of logsPool) {
       const { nodeId, amount } = log.args;
@@ -165,6 +174,9 @@ const syncUserHistory = async (wallet) => {
         [wallet, REWARDPOOL_ADDRESS, 'Global Pool', Number(nodeId), bnbAmount, usdAmount, 0, 0, false, txHash, timestamp]
       );
     }
+    // Update last synced block
+    await query('UPDATE users SET last_synced_block = $1 WHERE wallet_address = $2', [latestBlock, wallet]);
+
   } catch (err) {
     console.error(`Sync error for ${wallet}:`, err.message);
   }
@@ -236,9 +248,6 @@ app.get('/api/user/:walletAddress', async (req, res) => {
            FROM users
            WHERE referrer_id = u.id
            UNION ALL
-           SELECT child.id, child.referrer_id, parent.depth + 1
-           FROM users child
-           INNER JOIN team parent ON child.referrer_id = parent.id
            WHERE parent.depth < 18
          )
          SELECT COUNT(*) FROM team

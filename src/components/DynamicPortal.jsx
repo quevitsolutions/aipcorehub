@@ -51,7 +51,7 @@ export default function DynamicPortal() {
             }}
           >
             <img 
-              src="/assets/egg_orange.png" 
+              src="/assets/egg_mini.png" 
               alt="processing" 
               style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
             />

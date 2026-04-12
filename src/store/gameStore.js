@@ -551,6 +551,7 @@ export const useGameStore = create(
     }),
     {
       name: "aipcore-game-state",
+      version: 2,
       partialize: (s) => ({
         walletAddress: s.walletAddress,
         isConnected: s.isConnected,

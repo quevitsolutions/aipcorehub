@@ -248,14 +248,12 @@ export default function EarnScreen() {
       {view === 'mining' ? (
         <>
           {/* ── Balance ── */}
-          <div className="balance-container" style={{ margin: '4px 0 8px' }}>
-            <div className="balance-main">
-              <img src="/assets/gold_coin.png" className="balance-coin" style={{ width: 40, clipPath: 'circle(50%)' }} alt="coin" loading="lazy" />
+            <div className="balance-main" style={{ gap: '8px' }}>
+              <span style={{ fontSize: '18px', fontWeight: 900, color: '#FFD700', letterSpacing: '1px' }}>$AIP</span>
               <span className="balance-value" style={{ fontSize: 40 }}>
                 {Math.floor(displayReward).toLocaleString('en-US')}
               </span>
             </div>
-          </div>
 
           {/* ── Egg Zone ── */}
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', minHeight: 240 }}>
@@ -279,12 +277,11 @@ export default function EarnScreen() {
               </AnimatePresence>
 
               {/* EGG */}
-              <div style={{ position: 'relative', width: 210, height: 210, zIndex: 10 }}>
-                <img src="/assets/egg_orange.png"
-                  loading="lazy"
+                <img src="/assets/egg_mini.png"
+                  loading="eager"
                   style={{ 
-                    width: '100%', height: '100%', objectFit: 'contain', mixBlendMode: 'screen', clipPath: 'circle(48% at 50% 50%)', 
-                    filter: isExpired ? 'grayscale(1) brightness(0.5)' : `drop-shadow(0 0 ${20 * maturity}px rgba(203,255,1,0.5))` 
+                    width: '100%', height: '100%', objectFit: 'contain',
+                    filter: isExpired ? 'grayscale(1) brightness(0.5)' : `drop-shadow(0 0 ${20 * maturity}px rgba(163,255,18,0.5))` 
                   }}
                   alt="Mining Egg" />
                 
@@ -341,7 +338,7 @@ export default function EarnScreen() {
                   {maturity >= 1 ? '🥚 READY TO HATCH' : 'COLLECT MINED'}
                 </span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <img src="/assets/gold_coin.png" style={{ width: 14, clipPath: 'circle(50%)' }} alt="coin" />
+                  <span style={{ fontSize: '10px', fontWeight: 900, color: '#FFD700' }}>$AIP</span>
                   <span style={{ fontSize: 15, fontWeight: 900, color: localMined > 0 ? '#000' : '#FFFFFF' }}>
                     {Math.floor(localMined).toLocaleString('en-US')}
                   </span>
