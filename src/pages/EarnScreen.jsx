@@ -277,6 +277,7 @@ export default function EarnScreen() {
               </AnimatePresence>
 
               {/* EGG */}
+              <div style={{ position: 'relative', width: 210, height: 210, zIndex: 10 }}>
                 <img src="/assets/egg_mini.png"
                   loading="eager"
                   style={{ 
@@ -297,6 +298,7 @@ export default function EarnScreen() {
                   </div>
                 )}
               </div>
+            </div>
 
               {/* BOOST pill - Only for node owners */}
               {hasNode && (

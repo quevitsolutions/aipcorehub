@@ -153,7 +153,6 @@ export const useWalletLifecycle = () => {
         setTimeout(() => fetchTeamHistory(), 2000);
       });
 
-      // 2. Secondary Actions (Delayed to prevent RPC/API congestion)
       setTimeout(() => {
         fetchUserData().catch(() => {});
         fetchAdminStatus();
@@ -163,7 +162,7 @@ export const useWalletLifecycle = () => {
     } else if (!isConnected) {
       disconnectWallet();
     }
-  }, [isConnected, address, fetchUserData]);
+  }, [isConnected, address]);
 
   return {
     setupListeners: () => {}, 
