@@ -250,7 +250,7 @@ export default function EarnScreen() {
           {/* ── Balance ── */}
           <div className="balance-container" style={{ margin: '4px 0 8px' }}>
             <div className="balance-main">
-              <img src="/assets/gold_coin.png" className="balance-coin" style={{ width: 40, clipPath: 'circle(50%)' }} alt="coin" />
+              <img src="/assets/gold_coin.png" className="balance-coin" style={{ width: 40, clipPath: 'circle(50%)' }} alt="coin" loading="lazy" />
               <span className="balance-value" style={{ fontSize: 40 }}>
                 {Math.floor(displayReward).toLocaleString('en-US')}
               </span>
@@ -281,6 +281,7 @@ export default function EarnScreen() {
               {/* EGG */}
               <div style={{ position: 'relative', width: 210, height: 210, zIndex: 10 }}>
                 <img src="/assets/egg_orange.png"
+                  loading="lazy"
                   style={{ 
                     width: '100%', height: '100%', objectFit: 'contain', mixBlendMode: 'screen', clipPath: 'circle(48% at 50% 50%)', 
                     filter: isExpired ? 'grayscale(1) brightness(0.5)' : `drop-shadow(0 0 ${20 * maturity}px rgba(203,255,1,0.5))` 

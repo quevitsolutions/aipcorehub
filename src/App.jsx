@@ -119,7 +119,9 @@ export default function App() {
   }, [isConnected, sponsorWallet, isNewUser]);
 
   useEffect(() => {
-    if (!isConnected) return;
+    const { initialLoaded } = useGameStore.getState();
+    if (!isConnected || !initialLoaded) return;
+    
     const now = Date.now();
     // Show if never claimed, or if 24 hours have passed since the last claim
     if (!lastClaimDate || (now - lastClaimDate >= 24 * 60 * 60 * 1000)) {

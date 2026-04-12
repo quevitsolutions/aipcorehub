@@ -139,18 +139,27 @@ export const useWalletLifecycle = () => {
 
   useEffect(() => {
     if (isConnected && address) {
+      // 1. Critical Actions (Immediate)
       setWallet(address);
       fetchBnbBalance(address);
-      fetchAdminStatus();
-      fetchUserConversions();
-      fetchUserData().catch(() => {});
-      // Load node data first, then fetch history once nodeId is known
-      loadNodeData(address).then(() => {
-        fetchTeamHistory();
+      
+      // Load critical node data (Dashboard stats)
+      loadNodeData(address).then((nId) => {
+        // Only fetch team history if we have a nodeId, and do it after a small delay
+        if (nId > 0) {
+          setTimeout(() => fetchTeamHistory(), 1500);
+        }
       }).catch(() => {
-        // Still try history even if chain call partially fails
-        fetchTeamHistory();
+        setTimeout(() => fetchTeamHistory(), 2000);
       });
+
+      // 2. Secondary Actions (Delayed to prevent RPC/API congestion)
+      setTimeout(() => {
+        fetchUserData().catch(() => {});
+        fetchAdminStatus();
+        fetchUserConversions();
+      }, 3000);
+
     } else if (!isConnected) {
       disconnectWallet();
     }

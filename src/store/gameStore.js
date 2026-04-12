@@ -32,6 +32,7 @@ export const useGameStore = create(
       isSyncing: false,
       isProcessing: false,
       processingLabel: "",
+      initialLoaded: false,
       lastBackendSync: null,
 
       // Node
@@ -282,10 +283,19 @@ export const useGameStore = create(
       },
 
       fetchUserData: async () => {
-        const { walletAddress, referrerId, isSyncing } = get();
+        const { walletAddress, referrerId, isSyncing, lastBackendSync } = get();
         if (!walletAddress || isSyncing) return;
 
-        set({ isSyncing: true });
+        // Skip sync if we did it in the last 60 seconds (unless initialLoaded is false)
+        const now = Date.now();
+        if (get().initialLoaded && lastBackendSync && (now - lastBackendSync < 60000)) {
+            return;
+        }
+
+        // Show syncing portal only for initial load or if explicitly forced
+        const showPortal = !get().initialLoaded;
+        if (showPortal) set({ isSyncing: true });
+        
         try {
           const data = await api.fetchUser(walletAddress, referrerId);
           if (data) {
@@ -314,12 +324,14 @@ export const useGameStore = create(
               isNewUser: !!data.is_new,
               streak: data.daily_streak || 0,
               lastClaimDate: data.last_daily_claim ? new Date(data.last_daily_claim).getTime() : null,
+              lastBackendSync: Date.now(),
+              initialLoaded: true,
             });
           }
         } catch (err) {
           console.warn("API Fetch Failed:", err.message);
         } finally {
-          set({ isSyncing: false });
+          set({ isSyncing: false, initialLoaded: true });
         }
       },
 
