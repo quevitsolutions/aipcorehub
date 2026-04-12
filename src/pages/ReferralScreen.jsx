@@ -49,7 +49,7 @@ export default function ReferralScreen() {
     <div className="page page-referral" style={{ paddingBottom: '120px' }}>
       <div style={{ textAlign: 'center', padding: '10px 0 20px' }}>
         <h2 style={{ fontSize: '24px', fontWeight: 900, marginBottom: '8px' }}>INVITE FRIENDS</h2>
-        <p style={{ fontSize: '11px', color: 'var(--text-dim)', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+        <p style={{ fontSize: '11px', color: '#FFFFFF', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
           Grow your pod and earn massive bonuses
         </p>
       </div>
@@ -64,7 +64,7 @@ export default function ReferralScreen() {
         }}>
           <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'rgba(79,195,247,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>🔗</div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 10, fontWeight: 800, color: 'rgba(255,255,255,0.5)', letterSpacing: 1 }}>REFERRED BY</div>
+            <div style={{ fontSize: 10, fontWeight: 800, color: '#FFB74D', letterSpacing: 1 }}>REFERRED BY</div>
             <div style={{ fontSize: 14, fontWeight: 900, color: '#4FC3F7', marginTop: 2 }}>{shortAddr(sponsorWallet)}</div>
           </div>
           <div style={{ fontSize: 9, fontWeight: 800, color: 'rgba(79,195,247,0.6)', background: 'rgba(79,195,247,0.08)', padding: '4px 8px', borderRadius: 8 }}>SPONSOR</div>
@@ -75,18 +75,18 @@ export default function ReferralScreen() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px' }}>
         <div className="booster-card" style={{ margin: 0, padding: '16px', alignItems: 'center', border: '1px solid rgba(163, 255, 18, 0.15)', background: 'rgba(203,255,1,0.04)' }}>
           <span style={{ fontSize: '28px', fontWeight: 900, color: 'var(--neon-lime)' }}>{directRefs}</span>
-          <span style={{ fontSize: '10px', color: 'var(--text-dim)', fontWeight: 800, marginTop: '4px' }}>FRIENDS INVITED</span>
-          <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.4)', fontWeight: 700, marginTop: 2 }}>{hasNode ? 'Activated Node' : 'Free User'}</span>
+          <span style={{ fontSize: '10px', color: '#FFB74D', fontWeight: 800, marginTop: '4px' }}>FRIENDS INVITED</span>
+          <span style={{ fontSize: '9px', color: '#FFD700', fontWeight: 700, marginTop: 2 }}>{hasNode ? 'Activated Node' : 'Free User'}</span>
         </div>
         <div className="booster-card" style={{ margin: 0, padding: '16px', alignItems: 'center', border: '1px solid rgba(163, 255, 18, 0.1)' }}>
           <span style={{ fontSize: '24px', fontWeight: 900, color: 'var(--neon-lime)' }}>{(localReward / 1000000).toFixed(1)}M</span>
-          <span style={{ fontSize: '10px', color: 'var(--text-dim)', fontWeight: 800, marginTop: '4px' }}>EST. REWARDS</span>
+          <span style={{ fontSize: '10px', color: '#FFD700', fontWeight: 800, marginTop: '4px' }}>EST. REWARDS</span>
         </div>
       </div>
 
       {/* Referral Link Container */}
       <div className="booster-card" style={{ padding: '20px', marginBottom: '32px', border: '1px solid rgba(163, 255, 18, 0.05)' }}>
-        <h4 style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-dim)', marginBottom: '12px', letterSpacing: '1px' }}>YOUR REFERRAL LINK</h4>
+        <h4 style={{ fontSize: '11px', fontWeight: 800, color: '#A3FF12', marginBottom: '12px', letterSpacing: '1px' }}>YOUR REFERRAL LINK</h4>
         <div style={{ 
           display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.3)', 
           borderRadius: '12px', padding: '12px 14px',
@@ -117,7 +117,7 @@ export default function ReferralScreen() {
               <span style={{ fontSize: 22 }}>💬</span>
               <div style={{ textAlign: 'left' }}>
                 <div style={{ fontSize: 13, fontWeight: 900, color: '#25D366' }}>Share on WhatsApp</div>
-                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', fontWeight: 700 }}>Send referral invite to contacts</div>
+                <div style={{ fontSize: 10, color: '#A3FF12', fontWeight: 700 }}>Send referral invite to contacts</div>
               </div>
               <span style={{ marginLeft: 'auto', fontSize: 14, color: '#25D366' }}>→</span>
             </button>
@@ -130,7 +130,7 @@ export default function ReferralScreen() {
               <span style={{ fontSize: 22 }}>✈️</span>
               <div style={{ textAlign: 'left' }}>
                 <div style={{ fontSize: 13, fontWeight: 900, color: '#2AABEE' }}>Share on Telegram</div>
-                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', fontWeight: 700 }}>Reach your Telegram community</div>
+                <div style={{ fontSize: 10, color: '#4FC3F7', fontWeight: 700 }}>Reach your Telegram community</div>
               </div>
               <span style={{ marginLeft: 'auto', fontSize: 14, color: '#2AABEE' }}>→</span>
             </button>
@@ -143,7 +143,7 @@ export default function ReferralScreen() {
               <span style={{ fontSize: 22 }}>𝕏</span>
               <div style={{ textAlign: 'left' }}>
                 <div style={{ fontSize: 13, fontWeight: 900, color: '#fff' }}>Share on X / Twitter</div>
-                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', fontWeight: 700 }}>Tweet with crypto hashtags</div>
+                <div style={{ fontSize: 10, color: '#FF5252', fontWeight: 700 }}>Tweet with crypto hashtags</div>
               </div>
               <span style={{ marginLeft: 'auto', fontSize: 14, color: '#fff' }}>→</span>
             </button>
@@ -153,7 +153,7 @@ export default function ReferralScreen() {
       </div>
 
       {/* My Recent Invites */}
-      <h3 style={{ fontSize: '12px', fontWeight: 900, color: 'var(--text-dim)', marginBottom: '12px', letterSpacing: '1px' }}>MY RECENT INVITES</h3>
+      <h3 style={{ fontSize: '12px', fontWeight: 900, color: '#4FC3F7', marginBottom: '12px', letterSpacing: '1px' }}>MY RECENT INVITES</h3>
       <div className="booster-card" style={{ padding: '8px 16px', marginBottom: '32px' }}>
         {referralList.length === 0 ? (
           <div style={{ padding: '20px', textAlign: 'center', fontSize: '11px', opacity: 0.5 }}>No friends invited yet. Start sharing your link!</div>
@@ -172,7 +172,7 @@ export default function ReferralScreen() {
                   {friend.node_tier > 0 ? `✅ Node Active (T${friend.node_tier})` : '🔵 Free Member'}
                 </span>
               </div>
-              <span style={{ fontSize: '12px', fontWeight: 900, color: friend.node_tier > 0 ? 'var(--neon-lime)' : 'rgba(255,255,255,0.6)' }}>{(friend.local_reward / 1000).toFixed(1)}K</span>
+              <span style={{ fontSize: '12px', fontWeight: 900, color: friend.node_tier > 0 ? 'var(--neon-lime)' : '#FFFFFF' }}>{(friend.local_reward / 1000).toFixed(1)}K</span>
             </div>
           ))
         )}
@@ -180,7 +180,7 @@ export default function ReferralScreen() {
 
       {/* Top Referrers Leaderboard */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '12px' }}>
-        <h3 style={{ fontSize: '12px', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '1px' }}>GLOBAL LEADERBOARD</h3>
+        <h3 style={{ fontSize: '12px', fontWeight: 900, color: '#FF5252', letterSpacing: '1px' }}>GLOBAL LEADERBOARD</h3>
         <span style={{ fontSize: '10px', color: 'var(--neon-lime)', fontWeight: 800 }}>LIVE STATS</span>
       </div>
       
@@ -195,7 +195,7 @@ export default function ReferralScreen() {
               <span style={{ fontSize: '13px', fontWeight: 800, color: u.wallet_address === walletAddress ? 'var(--neon-lime)' : '#fff' }}>
                 {shortAddr(u.wallet_address)} {u.wallet_address === walletAddress && '(YOU)'}
               </span>
-              <span style={{ fontSize: '10px', color: 'var(--text-dim)' }}>{formatNumber(u.taps)} total taps</span>
+              <span style={{ fontSize: '10px', color: '#FFFFFF' }}>{formatNumber(u.taps)} total taps</span>
             </div>
             <span style={{ fontSize: '13px', fontWeight: 900, color: 'var(--neon-lime)' }}>{(u.local_reward / 1000000).toFixed(2)}M</span>
           </div>

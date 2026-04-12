@@ -52,7 +52,7 @@ export default function DailyPopup() {
           {!hasNode && (
             <div style={{ background: 'rgba(255,149,0,0.1)', border: '1px solid rgba(255,149,0,0.3)', padding: '12px', borderRadius: '12px', marginBottom: '24px', textAlign: 'center' }}>
               <span style={{ fontSize: '12px', fontWeight: 900, color: '#FF9500' }}>⭐ FREE OPERATIVE</span>
-              <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.7)', marginTop: '4px', lineHeight: 1.4, fontWeight: 700 }}>
+              <p style={{ fontSize: '10px', color: '#FF5252', marginTop: '4px', lineHeight: 1.4, fontWeight: 700 }}>
                 You're on a free trial mining 10 coins/hr. <strong>Upgrade to an Active Node</strong> to earn real <strong>BNB</strong>, mine at <strong>10x speed</strong>, and unlock ecosystem rewards!
               </p>
             </div>
@@ -99,7 +99,7 @@ export default function DailyPopup() {
               marginTop: '16px', 
               background: 'none', 
               border: 'none', 
-              color: 'var(--text-dim)', 
+              color: '#4FC3F7', 
               fontSize: '12px', 
               fontWeight: 800, 
               cursor: 'pointer',

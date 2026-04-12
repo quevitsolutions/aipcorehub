@@ -38,7 +38,7 @@ export default function TopBar() {
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <div style={{ background: 'rgba(255,255,255,0.05)', padding: '4px 12px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontSize: '10px', color: 'var(--text-dim)', fontWeight: 800 }}>BALANCE</span>
+              <span style={{ fontSize: '10px', color: '#A3FF12', fontWeight: 800 }}>BALANCE</span>
               <span style={{ fontSize: '12px', fontWeight: 900 }}>{bnbBalance} BNB</span>
               {bnbUsd && <span style={{ fontSize: '9px', fontWeight: 700, color: '#4FC3F7' }}>{bnbUsd}</span>}
             </div>
@@ -54,7 +54,7 @@ export default function TopBar() {
               ⬡ NODE #{nodeId}
             </div>
           </div>
-          <div style={{ fontSize: '9px', fontWeight: 800, color: 'var(--text-dim)', letterSpacing: '1px' }}>
+          <div style={{ fontSize: '9px', fontWeight: 800, color: '#4FC3F7', letterSpacing: '1px' }}>
             TIER {nodeTier || 1} • {nodeActive ? 'ACTIVE' : 'IDLE'}
           </div>
         </div>

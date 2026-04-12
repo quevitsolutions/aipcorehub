@@ -9,7 +9,7 @@
   --bg-dark:     #0D1117;
   --bg-card:     #161B22;
   --text-white:  #E6EDF3;
-  --text-dim:    #8B949E;
+  --text-dim: #FFFFFF;
   --bg-glass:    rgba(22, 27, 34, 0.85);
   --glass-blur:  blur(25px);
   --neon-glow:   0 0 20px rgba(163, 255, 18, 0.2);
@@ -178,7 +178,7 @@ html, body, #root {
   padding: 13px 24px;
   border: none;
   background: none;
-  color: var(--text-dim);
+  color: #FF5252;
   font-family: var(--font-main);
   font-size: 14px;
   font-weight: 700;
@@ -254,7 +254,7 @@ html, body, #root {
   display: flex; flex-direction: column; align-items: center;
   margin: 20px 0; gap: 8px;
 }
-.balance-label { font-size: 14px; color: var(--text-dim); font-weight: 500; }
+.balance-label { font-size: 14px; color: #FFFFFF; font-weight: 500; }
 .balance-main  { display: flex; align-items: center; gap: 12px; }
 .balance-coin  { width: 48px; height: 48px; object-fit: contain; }
 .balance-value {
@@ -356,7 +356,7 @@ html, body, #root {
 
 .modal-pill { width: 40px; height: 4px; background: rgba(255,255,255,0.2); border-radius: 2px; margin-bottom: 24px; }
 .modal-title { font-size: 24px; font-weight: 900; margin-bottom: 8px; }
-.modal-sub   { font-size: 13px; color: var(--text-dim); text-align: center; margin-bottom: 24px; }
+.modal-sub   { font-size: 13px; color: #FFB74D; text-align: center; margin-bottom: 24px; }
 
 /* Streak Grid */
 .streak-grid-aipcore {
@@ -369,7 +369,7 @@ html, body, #root {
   border: 1px solid rgba(255,255,255,0.05);
 }
 .day-box.active { background: rgba(203,255,1,0.1); border-color: var(--neon-lime); }
-.day-box .d-num { font-size: 10px; font-weight: 800; color: var(--text-dim); }
+.day-box .d-num { font-size: 10px; font-weight: 800; color: #FFD700; }
 .day-box .d-val { font-size: 12px; font-weight: 900; }
 .day-box.active .d-num { color: var(--neon-lime); }
 
@@ -398,9 +398,9 @@ html, body, #root {
 }
 .booster-img { width: 80%; height: 80%; object-fit: contain; }
 .booster-name { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
-.booster-desc { font-size: 11px; color: var(--text-dim); margin-bottom: 12px; font-weight: 500; }
+.booster-desc { font-size: 11px; color: #A3FF12; margin-bottom: 12px; font-weight: 500; }
 .booster-stat { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px; }
-.booster-stat-label { color: var(--text-dim); }
+.booster-stat-label { color: #4FC3F7; }
 .booster-stat-value { font-weight: 700; }
 
 .booster-card:hover, .partner-card:hover {
@@ -449,7 +449,7 @@ html, body, #root {
 .tab-item {
   flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
   background: none; border: none; cursor: pointer;
-  color: var(--text-dim); transition: 0.2s; position: relative;
+  color: #FF5252; transition: 0.2s; position: relative;
 }
 .tab-item.active { color: #fff; }
 .tab-icon  { font-size: 24px; }
@@ -488,7 +488,7 @@ html, body, #root {
   padding: 16px; margin-bottom: 12px;
   display: flex; flex-direction: column; gap: 8px;
 }
-.contract-label { font-size: 12px; color: var(--text-dim); font-weight: 700; }
+.contract-label { font-size: 12px; color: #FFFFFF; font-weight: 700; }
 .contract-addr  { font-family: monospace; font-size: 13px; color: var(--neon-lime); word-break: break-all; }
 
 /* ══════════════════════════════════════════

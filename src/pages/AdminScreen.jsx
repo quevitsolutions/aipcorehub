@@ -78,7 +78,7 @@ function TaskManagementAdmin() {
 
       {/* Active Tasks List */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        <h4 style={{ fontSize: '11px', color: 'var(--text-dim)', fontWeight: 800 }}>LIVE SYSTEM TASKS ({Array.isArray(tasks) ? tasks.length : 0})</h4>
+        <h4 style={{ fontSize: '11px', color: '#FFB74D', fontWeight: 800 }}>LIVE SYSTEM TASKS ({Array.isArray(tasks) ? tasks.length : 0})</h4>
         {Array.isArray(tasks) && tasks.map(t => (
           <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -163,19 +163,19 @@ function UserManagementAdmin({ adminWallet }) {
             style={{ padding: '16px', borderRadius: '16px', background: 'rgba(203,255,1,0.05)', border: '1px solid rgba(203,255,1,0.2)', marginBottom: '16px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
               <div>
-                <div style={{ fontSize: '10px', color: 'var(--text-dim)', fontWeight: 800 }}>NODE ID</div>
+                <div style={{ fontSize: '10px', color: '#FFD700', fontWeight: 800 }}>NODE ID</div>
                 <div style={{ fontSize: '14px', fontWeight: 900 }}>#{targetUser.id}</div>
               </div>
               <div>
-                <div style={{ fontSize: '10px', color: 'var(--text-dim)', fontWeight: 800 }}>CURRENT TIER</div>
+                <div style={{ fontSize: '10px', color: '#A3FF12', fontWeight: 800 }}>CURRENT TIER</div>
                 <div style={{ fontSize: '14px', fontWeight: 900, color: 'var(--neon-lime)' }}>TIER {targetUser.node_tier}</div>
               </div>
               <div>
-                <div style={{ fontSize: '10px', color: 'var(--text-dim)', fontWeight: 800 }}>COIN BALANCE</div>
+                <div style={{ fontSize: '10px', color: '#4FC3F7', fontWeight: 800 }}>COIN BALANCE</div>
                 <div style={{ fontSize: '14px', fontWeight: 900 }}>{formatNumber(targetUser.local_reward)} 🪙</div>
               </div>
               <div>
-                <div style={{ fontSize: '10px', color: 'var(--text-dim)', fontWeight: 800 }}>DIRECT REFS</div>
+                <div style={{ fontSize: '10px', color: '#FF5252', fontWeight: 800 }}>DIRECT REFS</div>
                 <div style={{ fontSize: '14px', fontWeight: 900 }}>{targetUser.direct_refs}</div>
               </div>
             </div>
@@ -252,11 +252,11 @@ export default function AdminScreen() {
       {/* Stats Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '32px' }}>
         <div style={{ background: 'var(--bg-card)', padding: '20px', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)' }}>
-          <span style={{ fontSize: '11px', color: 'var(--text-dim)', fontWeight: 800 }}>TOTAL USERS</span>
+          <span style={{ fontSize: '11px', color: '#FFFFFF', fontWeight: 800 }}>TOTAL USERS</span>
           <div style={{ fontSize: '24px', fontWeight: 900, marginTop: '4px' }}>{adminStats?.total_users || 0}</div>
         </div>
         <div style={{ background: 'var(--bg-card)', padding: '20px', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)' }}>
-          <span style={{ fontSize: '11px', color: 'var(--text-dim)', fontWeight: 800 }}>MINING VOLUME</span>
+          <span style={{ fontSize: '11px', color: '#FFB74D', fontWeight: 800 }}>MINING VOLUME</span>
           <div style={{ fontSize: '24px', fontWeight: 900, marginTop: '4px', color: 'var(--neon-lime)' }}>
             {formatNumber(adminStats?.total_reward || 0)}
           </div>
@@ -291,23 +291,23 @@ export default function AdminScreen() {
 
       {/* Admin Audit Logs */}
       <div style={{ background: 'var(--bg-card)', padding: '24px', borderRadius: '32px', marginBottom: '32px', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
-        <h3 style={{ fontSize: '13px', fontWeight: 900, marginBottom: '20px', letterSpacing: '0.5px', color: 'var(--text-dim)' }}>RECENT COMMAND ADJUSTMENTS</h3>
+        <h3 style={{ fontSize: '13px', fontWeight: 900, marginBottom: '20px', letterSpacing: '0.5px', color: '#FFD700' }}>RECENT COMMAND ADJUSTMENTS</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {adjustmentLogs.length > 0 ? adjustmentLogs.slice(0, 10).map((log, idx) => (
             <div key={log.id || idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
               <div>
                 <div style={{ fontSize: '12px', fontWeight: 800 }}>{shortAddr(log.target_wallet)}</div>
-                <div style={{ fontSize: '10px', color: 'var(--text-dim)', marginTop: '2px' }}>{log.reason}</div>
+                <div style={{ fontSize: '10px', color: '#A3FF12', marginTop: '2px' }}>{log.reason}</div>
               </div>
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: '13px', fontWeight: 900, color: log.amount > 0 ? 'var(--neon-lime)' : '#ff6262' }}>
                   {log.amount > 0 ? '+' : ''}{formatNumber(log.amount)}
                 </div>
-                <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.3)' }}>{new Date(log.timestamp).toLocaleDateString()}</div>
+                <div style={{ fontSize: '9px', color: '#A3FF12' }}>{new Date(log.timestamp).toLocaleDateString()}</div>
               </div>
             </div>
           )) : (
-            <div style={{ textAlign: 'center', fontSize: '11px', color: 'var(--text-dim)', padding: '20px' }}>No recent adjustments found.</div>
+            <div style={{ textAlign: 'center', fontSize: '11px', color: '#4FC3F7', padding: '20px' }}>No recent adjustments found.</div>
           )}
         </div>
       </div>
@@ -341,7 +341,7 @@ export default function AdminScreen() {
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
           <div>
-            <label style={{ fontSize: '10px', color: 'var(--text-dim)', display: 'block', marginBottom: '4px' }}>CONVERSION RATE</label>
+            <label style={{ fontSize: '10px', color: '#FF5252', display: 'block', marginBottom: '4px' }}>CONVERSION RATE</label>
             <input 
               type="number" 
               value={conversionRate}
@@ -350,7 +350,7 @@ export default function AdminScreen() {
             />
           </div>
           <div>
-            <label style={{ fontSize: '10px', color: 'var(--text-dim)', display: 'block', marginBottom: '4px' }}>TOKEN ADDRESS</label>
+            <label style={{ fontSize: '10px', color: '#FFFFFF', display: 'block', marginBottom: '4px' }}>TOKEN ADDRESS</label>
             <input 
               type="text" 
               placeholder="0x..."
@@ -363,13 +363,13 @@ export default function AdminScreen() {
       </div>
 
       {/* Snapshot History */}
-      <h3 style={{ fontSize: '12px', fontWeight: 900, color: 'var(--text-dim)', marginBottom: '16px', paddingLeft: '8px' }}>SNAPSHOT HISTORY</h3>
+      <h3 style={{ fontSize: '12px', fontWeight: 900, color: '#FFB74D', marginBottom: '16px', paddingLeft: '8px' }}>SNAPSHOT HISTORY</h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {(snapshotHistory || []).map(snap => (
           <div key={snap.id} style={{ background: 'rgba(255,255,255,0.02)', padding: '16px 20px', borderRadius: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <div style={{ fontWeight: 800, fontSize: '14px' }}>{snap.name}</div>
-              <div style={{ fontSize: '11px', color: 'var(--text-dim)', marginTop: '2px' }}>
+              <div style={{ fontSize: '11px', color: '#FFD700', marginTop: '2px' }}>
                 {snap.total_users} Users • {formatNumber(snap.total_coins)} Coins
               </div>
             </div>

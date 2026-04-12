@@ -56,14 +56,14 @@ export default function TaskScreen() {
 
       <div style={{ textAlign: 'center', marginBottom: 32 }}>
         <div style={{ fontSize: '48px', marginBottom: 8 }}>💎</div>
-        <p style={{ fontSize: '12px', color: 'var(--text-dim)', fontWeight: 700 }}>COMPLETE TASKS & UNLOCK REWARDS</p>
+        <p style={{ fontSize: '12px', color: '#FFB74D', fontWeight: 700 }}>COMPLETE TASKS & UNLOCK REWARDS</p>
       </div>
 
-      <h3 style={{ fontSize: '14px', fontWeight: 800, margin: '24px 0 16px', color: 'var(--text-dim)' }}>GLOBAL TASKS</h3>
+      <h3 style={{ fontSize: '14px', fontWeight: 800, margin: '24px 0 16px', color: '#FFD700' }}>GLOBAL TASKS</h3>
 
       <div className="flex-column" style={{ gap: 12, paddingBottom: 60 }}>
         {!Array.isArray(tasks) || tasks.length === 0 ? (
-          <div style={{ textAlign: 'center', color: 'var(--text-dim)', fontSize: 13, padding: '20px' }}>
+          <div style={{ textAlign: 'center', color: '#A3FF12', fontSize: 13, padding: '20px' }}>
             No active tasks available right now.
           </div>
         ) : (
@@ -109,7 +109,7 @@ export default function TaskScreen() {
                       disabled={isClaiming || locked}
                       style={{ 
                         background: isClaiming || locked ? 'rgba(255,255,255,0.1)' : 'var(--neon-lime)', 
-                        color: isClaiming || locked ? 'rgba(255,255,255,0.4)' : '#000', border: 'none',
+                        color: isClaiming || locked ? '#FF5252' : '#000', border: 'none',
                         padding: '6px 14px', borderRadius: '40px', fontSize: '11px', fontWeight: 900,
                         cursor: isClaiming || locked ? 'not-allowed' : 'pointer'
                       }}
@@ -122,7 +122,7 @@ export default function TaskScreen() {
                 {/* Visual Progress Bar for Referral Tasks */}
                 {task.type === 'referral_count' && (
                   <div style={{ marginTop: 8 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.5)', marginBottom: 6 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, fontWeight: 700, color: '#4FC3F7', marginBottom: 6 }}>
                       <span>{Math.min(currentCount, targetCount)} / {targetCount} Peers Recruited</span>
                       <span>{targetCount > 0 ? Math.floor(Math.min((currentCount / targetCount) * 100, 100)) : 0}%</span>
                     </div>

@@ -246,7 +246,7 @@ export default function MarketingScreen() {
             <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: i < arr.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
               <div>
                 <div style={{ fontSize: 13, fontWeight: 800, color: '#fff' }}>{row.period}</div>
-                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', fontWeight: 700, marginTop: 2 }}>{row.note}</div>
+                <div style={{ fontSize: 10, color: '#A3FF12', fontWeight: 700, marginTop: 2 }}>{row.note}</div>
               </div>
               <div style={{ fontSize: 16, fontWeight: 900, color: 'var(--neon-lime)' }}>{row.value}</div>
             </div>
@@ -270,7 +270,7 @@ export default function MarketingScreen() {
               </div>
               <div>
                 <div style={{ fontSize: 13, fontWeight: 800, color: '#fff' }}>{item.text}</div>
-                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontWeight: 600, marginTop: 2 }}>{item.sub}</div>
+                <div style={{ fontSize: 11, color: '#4FC3F7', fontWeight: 600, marginTop: 2 }}>{item.sub}</div>
               </div>
             </div>
           ))}
@@ -292,7 +292,7 @@ export default function MarketingScreen() {
             style={{ margin: '0 20px 16px', background: 'rgba(255,149,0,0.08)', border: '1px solid rgba(255,149,0,0.3)', borderRadius: 16, padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <div style={{ fontSize: 12, fontWeight: 900, color: '#FF9500' }}>⚠️ LOW BNB BALANCE</div>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: 700, marginTop: 2 }}>
+              <div style={{ fontSize: 11, color: '#FF5252', fontWeight: 700, marginTop: 2 }}>
                 You have {parseFloat(bnbBalance || 0).toFixed(4)} BNB — need min ~0.05 BNB
               </div>
             </div>

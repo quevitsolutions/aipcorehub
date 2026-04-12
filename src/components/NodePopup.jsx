@@ -67,7 +67,7 @@ export default function NodePopup() {
                 textAlign: 'center'
               }}>
                 <span style={{ fontSize: '24px' }}>{item.icon}</span>
-                <span style={{ fontSize: '10px', fontWeight: 900, color: 'var(--text-dim)' }}>{item.text}</span>
+                <span style={{ fontSize: '10px', fontWeight: 900, color: '#FFB74D' }}>{item.text}</span>
               </div>
             ))}
           </div>
@@ -111,7 +111,7 @@ export default function NodePopup() {
               marginTop: '16px', 
               background: 'none', 
               border: 'none', 
-              color: 'var(--text-dim)', 
+              color: '#FFD700', 
               fontSize: '12px', 
               fontWeight: 800, 
               cursor: 'pointer',

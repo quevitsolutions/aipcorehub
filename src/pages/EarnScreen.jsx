@@ -122,7 +122,7 @@ function RegistrationGate({ setActiveTab }) {
       </button>
 
       <button onClick={() => setActiveTab('contracts')}
-        style={{ background: 'none', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '10px 20px', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
+        style={{ background: 'none', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '10px 20px', color: '#FFD700', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
         Learn More →
       </button>
     </div>
@@ -225,7 +225,7 @@ export default function EarnScreen() {
             style={{ 
               padding: '6px 16px', borderRadius: 10, border: 'none', fontSize: 11, fontWeight: 800, cursor: 'pointer',
               background: view === 'mining' ? 'var(--neon-lime)' : 'transparent',
-              color: view === 'mining' ? '#000' : 'rgba(255,255,255,0.5)',
+              color: view === 'mining' ? '#000' : '#A3FF12',
               transition: 'all 0.2s'
             }}>⛏️ MINING</button>
           <button 
@@ -233,7 +233,7 @@ export default function EarnScreen() {
             style={{ 
               padding: '6px 16px', borderRadius: 10, border: 'none', fontSize: 11, fontWeight: 800, cursor: 'pointer',
               background: view === 'history' ? 'var(--neon-lime)' : 'transparent',
-              color: view === 'history' ? '#000' : 'rgba(255,255,255,0.5)',
+              color: view === 'history' ? '#000' : '#4FC3F7',
               transition: 'all 0.2s'
             }}>📜 HISTORY</button>
         </div>
@@ -336,12 +336,12 @@ export default function EarnScreen() {
                 transition: 'all 0.3s'
               }}>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                <span style={{ fontSize: 16, fontWeight: 900, color: localMined > 0 ? '#000' : 'rgba(255,255,255,0.3)', letterSpacing: 1 }}>
+                <span style={{ fontSize: 16, fontWeight: 900, color: localMined > 0 ? '#000' : '#FF5252', letterSpacing: 1 }}>
                   {maturity >= 1 ? '🥚 READY TO HATCH' : 'COLLECT MINED'}
                 </span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <img src="/assets/gold_coin.png" style={{ width: 14, clipPath: 'circle(50%)' }} alt="coin" />
-                  <span style={{ fontSize: 15, fontWeight: 900, color: localMined > 0 ? '#000' : 'rgba(255,255,255,0.3)' }}>
+                  <span style={{ fontSize: 15, fontWeight: 900, color: localMined > 0 ? '#000' : '#FFFFFF' }}>
                     {Math.floor(localMined).toLocaleString('en-US')}
                   </span>
                 </div>
@@ -359,7 +359,7 @@ export default function EarnScreen() {
                 style={{
                   padding: '6px 14px', borderRadius: 16, fontSize: 11, fontWeight: 900, cursor: 'pointer',
                   background: historyMode === 'personal' ? 'var(--neon-lime)' : 'transparent',
-                  color: historyMode === 'personal' ? '#000' : 'rgba(255,255,255,0.5)'
+                  color: historyMode === 'personal' ? '#000' : '#FFB74D'
                 }}
               >MY TEAM</div>
               <div 
@@ -367,18 +367,18 @@ export default function EarnScreen() {
                 style={{
                   padding: '6px 14px', borderRadius: 16, fontSize: 11, fontWeight: 900, cursor: 'pointer',
                   background: historyMode === 'global' ? 'var(--neon-lime)' : 'transparent',
-                  color: historyMode === 'global' ? '#000' : 'rgba(255,255,255,0.5)'
+                  color: historyMode === 'global' ? '#000' : '#FFD700'
                 }}
               >LIVE FEED 🌍</div>
             </div>
 
-            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', cursor: 'pointer', paddingRight: 8 }} onClick={() => historyMode === 'personal' ? fetchTeamHistory() : fetchGlobalHistory()}>🔄</span>
+            <span style={{ fontSize: 10, color: '#A3FF12', cursor: 'pointer', paddingRight: 8 }} onClick={() => historyMode === 'personal' ? fetchTeamHistory() : fetchGlobalHistory()}>🔄</span>
           </div>
 
           <AnimatePresence mode="wait">
             {isHistoryLoading ? (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
-                style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.3)' }}>
+                style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4FC3F7' }}>
                 Syncing Blockchain Events...
               </motion.div>
             ) : (historyMode === 'personal' ? teamHistory : globalHistory).length === 0 ? (
@@ -397,7 +397,7 @@ export default function EarnScreen() {
                 }, {})).map(([dateLabel, items], groupIdx) => (
                   <div key={dateLabel} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {/* Day divider */}
-                    <div style={{ fontSize: 11, fontWeight: 900, color: 'rgba(255,255,255,0.4)', letterSpacing: 1, paddingLeft: 4, textTransform: 'uppercase' }}>
+                    <div style={{ fontSize: 11, fontWeight: 900, color: '#FF5252', letterSpacing: 1, paddingLeft: 4, textTransform: 'uppercase' }}>
                       {dateLabel}
                     </div>
 
@@ -448,16 +448,16 @@ export default function EarnScreen() {
                               
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
                                 {historyMode === 'global' && item.wallet_address && (
-                                  <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', fontWeight: 700 }}>To {item.wallet_address}</span>
+                                  <span style={{ fontSize: 10, color: '#FFFFFF', fontWeight: 700 }}>To {item.wallet_address}</span>
                                 )}
                                 {historyMode === 'personal' && item.from_node_id > 0 && (
-                                  <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', fontWeight: 600 }}>From #{item.from_node_id}</span>
+                                  <span style={{ fontSize: 10, color: '#FFB74D', fontWeight: 600 }}>From #{item.from_node_id}</span>
                                 )}
                                 {item.tier > 0 && (
                                   <span style={{ fontSize: 9, color: 'var(--neon-lime)', opacity: 0.8 }}>Tier {item.tier}</span>
                                 )}
                                 {item.layer > 0 && (
-                                  <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)' }}>Lvl {item.layer}</span>
+                                  <span style={{ fontSize: 9, color: '#FFD700' }}>Lvl {item.layer}</span>
                                 )}
                                 <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.2)' }}>
                                   {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

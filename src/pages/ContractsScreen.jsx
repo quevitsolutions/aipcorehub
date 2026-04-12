@@ -115,7 +115,7 @@ export default function ContractsScreen() {
           </h1>
 
           <p style={{
-            fontSize: 14, color: 'rgba(255,255,255,0.5)', lineHeight: 1.6,
+            fontSize: 14, color: '#4FC3F7', lineHeight: 1.6,
             maxWidth: 340, margin: '0 auto 32px', fontWeight: 500
           }}>
             A fully decentralized, node-driven passive mining network on BNB Chain. Turn your wallet into a high-yield mining rig.
@@ -141,7 +141,7 @@ export default function ContractsScreen() {
           }}>
             {['18 TIERS', '100% COMMUNITY DISTRIBUTION', 'BSC SMART CONTRACTS'].map((tag, i) => (
               <div key={i} style={{
-                fontSize: 10, fontWeight: 800, color: 'rgba(255,255,255,0.4)',
+                fontSize: 10, fontWeight: 800, color: '#FF5252',
                 background: 'rgba(255,255,255,0.03)', padding: '6px 12px', borderRadius: 8,
                 border: '1px solid rgba(255,255,255,0.05)'
               }}>{tag}</div>
@@ -166,7 +166,7 @@ export default function ContractsScreen() {
           </div>
           <div style={{ display: 'flex', gap: '8px 16px', justifyContent: 'center', flexWrap: 'wrap' }}>
             {INCOME_STREAMS.map((s) => (
-              <span key={s.title} style={{ fontSize: 10, fontWeight: 800, color: 'rgba(255,255,255,0.6)' }}>
+              <span key={s.title} style={{ fontSize: 10, fontWeight: 800, color: '#FFFFFF' }}>
                 <span style={{ color: s.color }}>■</span> {s.title} ({s.pct})
               </span>
             ))}
@@ -208,7 +208,7 @@ export default function ContractsScreen() {
               textAlign: 'center', border: '1px solid rgba(255,255,255,0.03)'
             }}>
               <div style={{ fontSize: 18, marginBottom: 4 }}>{icon}</div>
-              <div style={{ fontSize: 10, fontWeight: 800, color: 'rgba(255,255,255,0.6)', marginBottom: 2 }}>{tier}</div>
+              <div style={{ fontSize: 10, fontWeight: 800, color: '#FFB74D', marginBottom: 2 }}>{tier}</div>
               <div style={{ fontSize: 11, fontWeight: 900, color: 'var(--neon-lime)' }}>{rate} <span style={{ fontSize: 8, opacity: 0.5}}>/hr</span></div>
             </div>
           ))}
@@ -222,7 +222,7 @@ export default function ContractsScreen() {
           <span style={{ color: '#A3FF12' }}>CONTRACTS</span>
         </h2>
         
-        <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', textAlign: 'center', marginBottom: 24, lineHeight: 1.5 }}>
+        <p style={{ fontSize: 12, color: '#FFD700', textAlign: 'center', marginBottom: 24, lineHeight: 1.5 }}>
           Code is law. All distribution mechanics and pools run autonomously on the Binance Smart Chain. No central admin can alter payouts.
         </p>
 
@@ -239,7 +239,7 @@ export default function ContractsScreen() {
               <div style={{ fontSize: 11, color: 'var(--neon-lime)', fontFamily: 'monospace', wordBreak: 'break-all', marginBottom: 8 }}>
                 {c.address}
               </div>
-              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', lineHeight: 1.4 }}>{c.desc}</div>
+              <div style={{ fontSize: 10, color: '#A3FF12', lineHeight: 1.4 }}>{c.desc}</div>
             </div>
           ))}
         </div>
@@ -252,7 +252,7 @@ export default function ContractsScreen() {
           border: '1px solid rgba(163,255,18,0.15)', borderRadius: 20, padding: 24, textAlign: 'center'
         }}>
           <h3 style={{ fontSize: 16, fontWeight: 900, marginBottom: 12 }}>JOIN THE COMMUNITY</h3>
-          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 20 }}>
+          <p style={{ fontSize: 12, color: '#4FC3F7', marginBottom: 20 }}>
             Connect with thousands of other node operators in our official Telegram group to share strategies and earn together.
           </p>
           <a href="https://t.me/AIPCoreOfficial" target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>

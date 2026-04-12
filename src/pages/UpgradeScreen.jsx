@@ -98,7 +98,7 @@ export default function UpgradeScreen() {
             <h1 style={{ fontSize: 28, fontWeight: 900, color: '#fff', letterSpacing: '-0.02em', marginBottom: 8 }}>
               SUPERCHARGE YOUR MINING
             </h1>
-            <p style={{ fontSize: 13, color: 'var(--text-dim)', fontWeight: 600, lineHeight: 1.5, maxWidth: 300, margin: '0 auto' }}>
+            <p style={{ fontSize: 13, color: '#FFB74D', fontWeight: 600, lineHeight: 1.5, maxWidth: 300, margin: '0 auto' }}>
               Upgrade to an Active Node and unlock the full potential of the AIPCore ecosystem.
             </p>
           </motion.div>
@@ -119,7 +119,7 @@ export default function UpgradeScreen() {
                 <div style={{ fontSize: 24 }}>{benefit.icon}</div>
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 800, color: '#fff', marginBottom: 4 }}>{benefit.title}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-dim)', lineHeight: 1.4, fontWeight: 600 }}>{benefit.desc}</div>
+                  <div style={{ fontSize: 11, color: '#FFD700', lineHeight: 1.4, fontWeight: 600 }}>{benefit.desc}</div>
                 </div>
               </div>
             ))}
@@ -142,7 +142,7 @@ export default function UpgradeScreen() {
                 {parseFloat(tierCosts[0]).toFixed(3)} BNB <span style={{ fontSize: 11, fontWeight: 700, color: '#4FC3F7', marginLeft: 4 }}>≈ ${(parseFloat(tierCosts[0]) * bnbPrice).toFixed(2)} USD</span>
               </span>
             </button>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 16, color: 'rgba(255,255,255,0.5)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 16, color: '#A3FF12' }}>
               <span style={{ fontSize: 14 }}>🔒</span>
               <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '1px' }}>100% ON-CHAIN SECURE & TRANSPARENT</span>
             </div>
@@ -155,16 +155,16 @@ export default function UpgradeScreen() {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
           style={{ background: 'linear-gradient(135deg, rgba(203,255,1,0.1) 0%, rgba(203,255,1,0.03) 100%)', border: '1px solid rgba(203,255,1,0.2)', borderRadius: 24, padding: '18px 20px', marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <div style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.6)', letterSpacing: 2 }}>CURRENT MINING RATE</div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: '#4FC3F7', letterSpacing: 2 }}>CURRENT MINING RATE</div>
             <div style={{ fontSize: 32, fontWeight: 900, color: 'var(--neon-lime)', lineHeight: 1.1, marginTop: 4 }}>
               {currentCoinsPerHr} <span style={{ fontSize: 16 }}>🪙/hr</span>
             </div>
             <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.65)', marginTop: 4 }}>TIER {displayTier} ACTIVE</div>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.6)', letterSpacing: 2 }}>DAILY EARNINGS</div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: '#FF5252', letterSpacing: 2 }}>DAILY EARNINGS</div>
             <div style={{ fontSize: 22, fontWeight: 900, color: '#fff', marginTop: 4 }}>{(currentCoinsPerHr * 24).toLocaleString()} 🪙</div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.5)', marginTop: 4 }}>24HR AUTO-MINE</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#FFFFFF', marginTop: 4 }}>24HR AUTO-MINE</div>
           </div>
         </motion.div>
       )}
@@ -183,11 +183,11 @@ export default function UpgradeScreen() {
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 16, fontWeight: 900, color: '#fff' }}>{nextTier.name}</div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.6)', marginTop: 2 }}>TIER {nextTier.tier} UNLOCK</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#FFB74D', marginTop: 2 }}>TIER {nextTier.tier} UNLOCK</div>
                 {/* Mining gain preview */}
                 <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontWeight: 700, textDecoration: 'line-through' }}>{currentCoinsPerHr} 🪙/hr</span>
-                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>→</span>
+                  <span style={{ fontSize: 12, color: '#FFD700', fontWeight: 700, textDecoration: 'line-through' }}>{currentCoinsPerHr} 🪙/hr</span>
+                  <span style={{ fontSize: 11, color: '#A3FF12' }}>→</span>
                   <span style={{ fontSize: 14, color: 'var(--neon-lime)', fontWeight: 900 }}>{nextTier.coinsPerHr} 🪙/hr</span>
                   <span style={{ fontSize: 10, background: 'rgba(203,255,1,0.15)', color: 'var(--neon-lime)', padding: '2px 7px', borderRadius: 20, fontWeight: 800 }}>
                     +{nextTier.coinsPerHr - currentCoinsPerHr} MORE
@@ -199,15 +199,15 @@ export default function UpgradeScreen() {
             <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
               <div style={{ flex: 1, background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: '10px 12px', textAlign: 'center' }}>
                 <div style={{ fontSize: 12, fontWeight: 900, color: '#fff' }}>{(nextTier.coinsPerHr * 24).toLocaleString()} 🪙</div>
-                <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontWeight: 700, marginTop: 2 }}>PER DAY</div>
+                <div style={{ fontSize: 9, color: '#4FC3F7', fontWeight: 700, marginTop: 2 }}>PER DAY</div>
               </div>
               <div style={{ flex: 1, background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: '10px 12px', textAlign: 'center' }}>
                 <div style={{ fontSize: 12, fontWeight: 900, color: '#fff' }}>{(nextTier.coinsPerHr * 720).toLocaleString()} 🪙</div>
-                <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontWeight: 700, marginTop: 2 }}>PER MONTH</div>
+                <div style={{ fontSize: 9, color: '#FF5252', fontWeight: 700, marginTop: 2 }}>PER MONTH</div>
               </div>
               <div style={{ flex: 1, background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: '10px 12px', textAlign: 'center' }}>
                 <div style={{ fontSize: 12, fontWeight: 900, color: '#fff' }}>{parseFloat(tierCosts[nextTier.tier - 1] || '0').toFixed(3)} BNB</div>
-                <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontWeight: 700, marginTop: 2 }}>UNLOCK COST</div>
+                <div style={{ fontSize: 9, color: '#FFFFFF', fontWeight: 700, marginTop: 2 }}>UNLOCK COST</div>
                 {bnbPrice > 0 && <div style={{ fontSize: 10, color: '#4FC3F7', fontWeight: 700, marginTop: 2 }}>{usdLabel(tierCosts[nextTier.tier - 1])}</div>}
               </div>
             </div>
@@ -247,7 +247,7 @@ export default function UpgradeScreen() {
       {/* ─ LOCKED TIERS ─ */}
       {locked.length > 0 && nodeId && (
         <>
-          <div style={{ fontSize: 11, fontWeight: 900, color: 'rgba(255,255,255,0.6)', letterSpacing: 3, marginBottom: 12 }}>🔒 LOCKED TIERS — UPGRADE TO UNLOCK</div>
+          <div style={{ fontSize: 11, fontWeight: 900, color: '#FFB74D', letterSpacing: 3, marginBottom: 12 }}>🔒 LOCKED TIERS — UPGRADE TO UNLOCK</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             {locked.map((b, i) => (
               <motion.div key={b.tier}
@@ -257,8 +257,8 @@ export default function UpgradeScreen() {
                 <div style={{ fontSize: 26, marginBottom: 8, filter: 'grayscale(0.6)' }}>{b.icon}</div>
                 <div style={{ fontSize: 12, fontWeight: 900, color: '#fff', marginBottom: 2 }}>{b.name}</div>
                 <div style={{ fontSize: 10, fontWeight: 800, color: 'rgba(255,255,255,0.55)' }}>TIER {b.tier}</div>
-                <div style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.7)', marginTop: 6 }}>{b.coinsPerHr} 🪙/hr</div>
-                <div style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.4)', marginTop: 3 }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: '#FFD700', marginTop: 6 }}>{b.coinsPerHr} 🪙/hr</div>
+                <div style={{ fontSize: 9, fontWeight: 700, color: '#A3FF12', marginTop: 3 }}>
                   {parseFloat(tierCosts[b.tier - 1] || '0').toFixed(3)} BNB
                 </div>
                 {bnbPrice > 0 && <div style={{ fontSize: 9, fontWeight: 700, color: '#4FC3F7', marginTop: 2 }}>{usdLabel(tierCosts[b.tier - 1])}</div>}

@@ -262,7 +262,7 @@ export default function LoginScreen({ onConnect }) {
               </motion.button>
 
               {/* Supported wallets note */}
-              <div style={{ marginTop: 14, fontSize: 11, color: 'rgba(255,255,255,0.3)', fontWeight: 600, letterSpacing: 0.5 }}>
+              <div style={{ marginTop: 14, fontSize: 11, color: '#FFFFFF', fontWeight: 600, letterSpacing: 0.5 }}>
                 MetaMask · WalletConnect · Trust Wallet · Coinbase
               </div>
             </div>

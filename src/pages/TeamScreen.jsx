@@ -52,7 +52,7 @@ export default function TeamScreen() {
     return (
       <div className="page" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
         <h2 style={{ fontSize: '24px', fontWeight: 900, marginBottom: '8px' }}>MY NETWORK</h2>
-        <p style={{ color: 'var(--text-dim)', fontSize: '13px', fontWeight: 600 }}>Please connect your wallet to view your team.</p>
+        <p style={{ color: '#FFFFFF', fontSize: '13px', fontWeight: 600 }}>Please connect your wallet to view your team.</p>
       </div>
     );
   }
@@ -67,7 +67,7 @@ export default function TeamScreen() {
     <div className="page page-team" style={{ paddingBottom: '100px' }}>
       <div style={{ textAlign: 'center', padding: '10px 0 30px' }}>
         <h2 style={{ fontSize: '24px', fontWeight: 900, marginBottom: '8px' }}>MY NETWORK</h2>
-        <p style={{ fontSize: '12px', color: 'var(--text-dim)', fontWeight: 700, letterSpacing: '0.05em' }}>
+        <p style={{ fontSize: '12px', color: '#FFB74D', fontWeight: 700, letterSpacing: '0.05em' }}>
           LEVEL WISE TEAM BREAKDOWN
         </p>
       </div>
@@ -76,19 +76,19 @@ export default function TeamScreen() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px' }}>
         <div className="booster-card" style={{ margin: 0, padding: '16px', alignItems: 'center', border: '1px solid rgba(163, 255, 18, 0.1)' }}>
           <span style={{ fontSize: '24px', fontWeight: 900, color: 'var(--neon-lime)' }}>{calculatedDirects}</span>
-          <span style={{ fontSize: '10px', color: 'var(--text-dim)', fontWeight: 800, marginTop: '4px' }}>DIRECT COUNT</span>
+          <span style={{ fontSize: '10px', color: '#FFD700', fontWeight: 800, marginTop: '4px' }}>DIRECT COUNT</span>
         </div>
         <div className="booster-card" style={{ margin: 0, padding: '16px', alignItems: 'center', border: '1px solid rgba(163, 255, 18, 0.1)' }}>
           <span style={{ fontSize: '24px', fontWeight: 900, color: 'var(--neon-lime)' }}>{calculatedTotal}</span>
-          <span style={{ fontSize: '10px', color: 'var(--text-dim)', fontWeight: 800, marginTop: '4px' }}>TEAM MATRIX COUNT</span>
+          <span style={{ fontSize: '10px', color: '#A3FF12', fontWeight: 800, marginTop: '4px' }}>TEAM MATRIX COUNT</span>
         </div>
       </div>
 
       {/* Level List */}
-      <h3 style={{ fontSize: '13px', fontWeight: 900, color: 'var(--text-dim)', marginBottom: '16px', paddingLeft: '4px' }}>TEAM BY LEVEL</h3>
+      <h3 style={{ fontSize: '13px', fontWeight: 900, color: '#4FC3F7', marginBottom: '16px', paddingLeft: '4px' }}>TEAM BY LEVEL</h3>
       
       {loadingCounts ? (
-        <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-dim)', fontSize: '12px', fontWeight: 700 }}>
+        <div style={{ textAlign: 'center', padding: '40px', color: '#FF5252', fontSize: '12px', fontWeight: 700 }}>
           LOADING NETWORK DATA...
         </div>
       ) : (
@@ -129,7 +129,7 @@ export default function TeamScreen() {
                       {count} Users
                     </span>
                     {count > 0 && (
-                      <span style={{ fontSize: '12px', color: 'var(--text-dim)', transform: isExpanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}>
+                      <span style={{ fontSize: '12px', color: '#FFFFFF', transform: isExpanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}>
                         〉
                       </span>
                     )}
@@ -144,13 +144,13 @@ export default function TeamScreen() {
                     background: 'rgba(0,0,0,0.2)'
                   }}>
                     {loadingMembers ? (
-                      <div style={{ padding: '20px 0', textAlign: 'center', fontSize: '11px', color: 'var(--text-dim)', fontWeight: 700 }}>
+                      <div style={{ padding: '20px 0', textAlign: 'center', fontSize: '11px', color: '#FFB74D', fontWeight: 700 }}>
                         FETCHING MEMBERS...
                       </div>
                     ) : (
                       <div style={{ padding: '12px 0' }}>
                         {/* Member Header */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--text-dim)', fontWeight: 800, paddingBottom: '8px', borderBottom: '1px solid rgba(255,255,255,0.05)', marginBottom: '8px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#FFD700', fontWeight: 800, paddingBottom: '8px', borderBottom: '1px solid rgba(255,255,255,0.05)', marginBottom: '8px' }}>
                           <span style={{ flex: 1 }}>NODE ID / WALLET</span>
                           <span style={{ width: '60px', textAlign: 'center' }}>TIER</span>
                           <span style={{ width: '80px', textAlign: 'right' }}>JOINED</span>
@@ -158,7 +158,7 @@ export default function TeamScreen() {
                         
                         {/* Member Rows */}
                         {levelMembers.length === 0 ? (
-                          <div style={{ padding: '10px 0', textAlign: 'center', fontSize: '12px', color: 'var(--text-dim)' }}>No members found.</div>
+                          <div style={{ padding: '10px 0', textAlign: 'center', fontSize: '12px', color: '#A3FF12' }}>No members found.</div>
                         ) : (
                           levelMembers.map((m, i) => (
                             <div key={i} style={{ 
@@ -171,17 +171,17 @@ export default function TeamScreen() {
                                 {Number(m?.[3] || 0) > 0 ? (
                                   <span style={{ background: 'var(--neon-lime)', color: '#000', fontSize: '8px', fontWeight: 900, padding: '2px 6px', borderRadius: '4px' }}>NODE</span>
                                 ) : (
-                                  <span style={{ border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.4)', fontSize: '8px', fontWeight: 900, padding: '1px 5px', borderRadius: '4px' }}>FREE</span>
+                                  <span style={{ border: '1px solid rgba(255,255,255,0.15)', color: '#FFFFFF', fontSize: '8px', fontWeight: 900, padding: '1px 5px', borderRadius: '4px' }}>FREE</span>
                                 )}
                               </div>
-                              <span style={{ fontSize: '10px', color: 'var(--text-dim)', fontWeight: 600 }}>
+                              <span style={{ fontSize: '10px', color: '#4FC3F7', fontWeight: 600 }}>
                                 {formatDate(Number(m[0]))}
                               </span>
                             </div>
                           ))
                         )}
                         {levelMembers.length === 50 && (
-                          <div style={{ padding: '8px 0', textAlign: 'center', fontSize: '10px', color: 'var(--text-dim)', fontStyle: 'italic' }}>
+                          <div style={{ padding: '8px 0', textAlign: 'center', fontSize: '10px', color: '#FF5252', fontStyle: 'italic' }}>
                             Showing latest 50 members
                           </div>
                         )}

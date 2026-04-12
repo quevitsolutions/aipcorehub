@@ -44,7 +44,7 @@ function DesktopSidebar({ activeTab, setActiveTab, nodeId, nodeTier, isAdmin, ha
         <div style={{ width: 32, height: 32, background: 'var(--neon-lime)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 900, color: '#000' }}>A</div>
         <div>
           <div style={{ fontSize: 15, fontWeight: 900 }}>AIPCORE <span style={{ fontSize: 9, color: 'var(--neon-lime)', opacity: 0.7 }}>PRO</span></div>
-          {nodeId && <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', fontWeight: 700 }}>NODE #{nodeId} · T{nodeTier}</div>}
+          {nodeId && <div style={{ fontSize: 9, color: '#A3FF12', fontWeight: 700 }}>NODE #{nodeId} · T{nodeTier}</div>}
         </div>
       </div>
 
