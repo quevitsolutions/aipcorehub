@@ -248,12 +248,14 @@ export default function EarnScreen() {
       {view === 'mining' ? (
         <>
           {/* ── Balance ── */}
-            <div className="balance-main" style={{ gap: '8px' }}>
-              <span style={{ fontSize: '18px', fontWeight: 900, color: '#FFD700', letterSpacing: '1px' }}>$AIP</span>
-              <span className="balance-value" style={{ fontSize: 40 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: '20px', fontWeight: 900, color: '#FFD700', letterSpacing: '2px' }}>$AIP</span>
+              <span className="balance-value" style={{ fontSize: 48, fontWeight: 900, color: '#fff', textShadow: '0 0 20px rgba(255,255,255,0.1)' }}>
                 {Math.floor(displayReward).toLocaleString('en-US')}
               </span>
             </div>
+          </div>
 
           {/* ── Egg Zone ── */}
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', minHeight: 240 }}>
@@ -277,12 +279,16 @@ export default function EarnScreen() {
               </AnimatePresence>
 
               {/* EGG */}
-              <div style={{ position: 'relative', width: 210, height: 210, zIndex: 10 }}>
+              <div style={{ 
+                position: 'relative', width: 220, height: 220, zIndex: 10,
+                WebkitMaskImage: 'radial-gradient(circle, black 50%, transparent 95%)',
+                maskImage: 'radial-gradient(circle, black 50%, transparent 95%)'
+              }}>
                 <img src="/assets/egg_orange.png"
                   loading="eager"
                   style={{ 
                     width: '100%', height: '100%', objectFit: 'contain',
-                    filter: isExpired ? 'grayscale(1) brightness(0.5)' : `drop-shadow(0 0 ${20 * maturity}px rgba(163,255,18,0.5))` 
+                    filter: isExpired ? 'grayscale(1) brightness(0.5)' : `drop-shadow(0 0 ${25 * maturity}px rgba(255,165,0,0.4))` 
                   }}
                   alt="Mining Egg" />
                 
@@ -300,14 +306,24 @@ export default function EarnScreen() {
               </div>
             </div>
 
-              {/* BOOST pill - Only for node owners */}
+              {/* BOOST pill - Repositioned to sit on the right side of the egg base */}
               {hasNode && (
-                <motion.div onClick={() => setActiveTab('mine')}
-                  animate={{ boxShadow: ['0 0 8px rgba(203,255,1,0.3)', '0 0 22px rgba(203,255,1,0.7)', '0 0 8px rgba(203,255,1,0.3)'] }}
-                  transition={{ duration: 2.5, repeat: Infinity }}
-                  style={{ marginTop: 8, background: 'var(--neon-lime)', borderRadius: 40, padding: '7px 20px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', zIndex: 20 }}>
-                  <span style={{ fontSize: 13, fontWeight: 900, color: '#000', letterSpacing: 1 }}>BOOST</span>
-                  <span style={{ fontSize: 11, fontWeight: 900, color: 'rgba(0,0,0,0.6)' }}>T{displayTier}→{displayTier + 1} ⬆</span>
+                <motion.div 
+                  onClick={() => setActiveTab('mine')}
+                  whileTap={{ scale: 0.95 }}
+                  animate={{ 
+                    boxShadow: ['0 0 10px rgba(163,255,18,0.2)', '0 0 25px rgba(163,255,18,0.6)', '0 0 10px rgba(163,255,18,0.2)'],
+                    x: [0, 2, 0]
+                  }}
+                  transition={{ duration: 3, repeat: Infinity }}
+                  style={{ 
+                    position: 'absolute', right: -20, top: '50%', transform: 'translateY(-50%)',
+                    background: 'var(--neon-lime)', borderRadius: 40, padding: '8px 18px', 
+                    display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', zIindex: 30,
+                    boxShadow: '0 4px 15px rgba(0,0,0,0.4)'
+                  }}>
+                  <span style={{ fontSize: 13, fontWeight: 900, color: '#000', letterSpacing: 0.5 }}>BOOST</span>
+                  <span style={{ fontSize: 11, fontWeight: 900, color: 'rgba(0,0,0,0.5)' }}>T{displayTier}→{displayTier + 1}</span>
                 </motion.div>
               )}
 

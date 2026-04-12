@@ -242,16 +242,19 @@ app.get('/api/user/:walletAddress', async (req, res) => {
       `SELECT u.*, 
        (SELECT COUNT(*) FROM users WHERE referrer_id = u.id) as direct_refs,
        -- Recursive CTE for team size (18 levels deep)
-       (
-         WITH RECURSIVE team AS (
-           SELECT id, referrer_id, 1 as depth
-           FROM users
-           WHERE referrer_id = u.id
-           UNION ALL
-           WHERE parent.depth < 18
-         )
-         SELECT COUNT(*) FROM team
-       ) as team_size
+        (
+          WITH RECURSIVE team AS (
+            SELECT id, referrer_id, 1 as depth
+            FROM users
+            WHERE referrer_id = u.id
+            UNION ALL
+            SELECT child.id, child.referrer_id, parent.depth + 1
+            FROM users child
+            INNER JOIN team parent ON child.referrer_id = parent.id
+            WHERE parent.depth < 18
+          )
+          SELECT COUNT(*) FROM team
+        ) as team_size
        FROM users u 
        WHERE u.wallet_address = $1`,
       [walletAddress]
