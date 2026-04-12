@@ -278,7 +278,7 @@ export default function EarnScreen() {
 
               {/* EGG */}
               <div style={{ position: 'relative', width: 210, height: 210, zIndex: 10 }}>
-                <img src="/assets/egg_mini.png"
+                <img src="/assets/egg_orange.png"
                   loading="eager"
                   style={{ 
                     width: '100%', height: '100%', objectFit: 'contain',
