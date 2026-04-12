@@ -306,62 +306,64 @@ export default function EarnScreen() {
               </div>
             </div>
 
-              {/* BOOST pill - Repositioned to sit on the right side of the egg base */}
-              {hasNode && (
-                <motion.div 
-                  onClick={() => setActiveTab('mine')}
-                  whileTap={{ scale: 0.95 }}
-                  animate={{ 
-                    boxShadow: ['0 0 10px rgba(163,255,18,0.2)', '0 0 25px rgba(163,255,18,0.6)', '0 0 10px rgba(163,255,18,0.2)'],
-                    x: [0, 2, 0]
-                  }}
-                  transition={{ duration: 3, repeat: Infinity }}
-                  style={{ 
-                    position: 'absolute', right: -20, top: '50%', transform: 'translateY(-50%)',
-                    background: 'var(--neon-lime)', borderRadius: 40, padding: '8px 18px', 
-                    display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', zIindex: 30,
-                    boxShadow: '0 4px 15px rgba(0,0,0,0.4)'
-                  }}>
-                  <span style={{ fontSize: 13, fontWeight: 900, color: '#000', letterSpacing: 0.5 }}>BOOST</span>
-                  <span style={{ fontSize: 11, fontWeight: 900, color: 'rgba(0,0,0,0.5)' }}>T{displayTier}→{displayTier + 1}</span>
-                </motion.div>
-              )}
-
+              {/* TRIAL LEFT - Centered and subtle */}
               {!hasNode && isFreeActive && (
-                <div style={{ marginTop: 12, background: 'rgba(255,255,255,0.05)', padding: '6px 16px', borderRadius: 20, border: '1px solid rgba(255,255,255,0.1)' }}>
-                  <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--neon-lime)' }}>{daysLeft} DAYS TRIAL LEFT</span>
+                <div style={{ marginTop: 24, background: 'rgba(255,255,255,0.05)', padding: '6px 20px', borderRadius: 20, border: '1px solid rgba(255,255,255,0.1)' }}>
+                  <span style={{ fontSize: 11, fontWeight: 900, color: 'var(--neon-lime)', letterSpacing: 0.5 }}>{daysLeft} DAYS TRIAL LEFT</span>
                 </div>
               )}
             </div>
-
-          {/* ── Claim Module ── */}
-          <div style={{ flexShrink: 0, padding: '12px 0 0px', background: 'linear-gradient(to top, var(--bg-dark) 60%, transparent)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
-              <span style={{ fontSize: 10, fontWeight: 800, color: 'rgba(255,255,255,0.45)', letterSpacing: 1 }}>SESSION ENDS IN</span>
-              <span style={{ fontSize: 11, fontWeight: 900, color: '#fff' }}>{formatTime(timeRemaining)}</span>
             </div>
 
-            <button
-              onClick={onClaim}
-              disabled={localMined <= 0}
-              style={{
-                width: '100%', background: localMined > 0 ? 'var(--neon-lime)' : 'rgba(255,255,255,0.08)',
-                border: 'none', borderRadius: 20, padding: '18px', cursor: localMined > 0 ? 'pointer' : 'default',
-                boxShadow: localMined > 0 ? '0 0 30px rgba(203,255,1,0.3)' : 'none',
-                transition: 'all 0.3s'
-              }}>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                <span style={{ fontSize: 16, fontWeight: 900, color: localMined > 0 ? '#000' : '#FF5252', letterSpacing: 1 }}>
-                  {maturity >= 1 ? '🥚 READY TO HATCH' : 'COLLECT MINED'}
-                </span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: '10px', fontWeight: 900, color: '#FFD700' }}>$AIP</span>
-                  <span style={{ fontSize: 15, fontWeight: 900, color: localMined > 0 ? '#000' : '#FFFFFF' }}>
-                    {Math.floor(localMined).toLocaleString('en-US')}
+          {/* ── Mobile-Optimized Action Bar ── */}
+          <div style={{ flexShrink: 0, padding: '20px 0 10px', background: 'linear-gradient(to top, var(--bg-dark) 50%, transparent)' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
+              <span style={{ fontSize: 10, fontWeight: 900, color: 'rgba(255,255,255,0.4)', letterSpacing: 1.5 }}>SESSION ENDS IN: <span style={{ color: '#fff' }}>{formatTime(timeRemaining)}</span></span>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, alignItems: 'stretch' }}>
+              {/* BOOST / UPGRADE (70%) */}
+              <button
+                onClick={() => setActiveTab('mine')}
+                style={{
+                  flex: 0.7,
+                  background: 'var(--neon-lime)',
+                  border: 'none', borderRadius: 16, padding: '16px 10px', cursor: 'pointer',
+                  boxShadow: '0 0 25px rgba(163, 255, 18, 0.4)',
+                  position: 'relative', overflow: 'hidden'
+                }}
+              >
+                <motion.div animate={{ opacity: [1, 0.6, 1] }} transition={{ duration: 2, repeat: Infinity }}
+                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                  <span style={{ fontSize: 15, fontWeight: 950, color: '#000', letterSpacing: 0.5 }}>{hasNode ? 'BOOST' : 'UPGRADE'} NODE</span>
+                  <span style={{ fontSize: 10, fontWeight: 900, color: 'rgba(0,0,0,0.5)' }}>
+                    {hasNode ? `TIER ${displayTier} → ${displayTier + 1} 🚀` : 'ACTIVATE CORE ⚡'}
                   </span>
+                </motion.div>
+              </button>
+
+              {/* COLLECT (30%) */}
+              <button
+                onClick={onClaim}
+                disabled={localMined <= 0}
+                style={{
+                  flex: 0.3,
+                  background: localMined > 0 ? '#4FC3F7' : 'rgba(255,255,255,0.04)',
+                  border: 'none', borderRadius: 16, padding: '16px 5px', cursor: localMined > 0 ? 'pointer' : 'default',
+                  transition: 'all 0.3s'
+                }}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                  <span style={{ fontSize: 13, fontWeight: 950, color: localMined > 0 ? '#000' : 'rgba(255,255,255,0.2)' }}>{maturity >= 1 ? '🥚' : 'CLAIM'}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                    <span style={{ fontSize: 9, fontWeight: 900, color: localMined > 0 ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.1)' }}>$AIP</span>
+                    <span style={{ fontSize: 11, fontWeight: 950, color: localMined > 0 ? '#000' : 'rgba(255,255,255,0.2)' }}>
+                      {Math.floor(localMined)}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            </button>
+              </button>
+            </div>
           </div>
         </>
       ) : (

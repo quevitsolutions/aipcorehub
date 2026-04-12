@@ -15,47 +15,46 @@ export default function TopBar() {
       backdropFilter: 'blur(15px)',
       WebkitBackdropFilter: 'blur(15px)',
       borderBottom: '1px solid rgba(163, 255, 18, 0.1)',
-      padding: '0 16px',
+      padding: '0 12px',
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      height: '64px', gap: 8
+      height: '68px', gap: 10
     }}>
 
       {/* ─ Branding Left (Hidden on Desktop) ─ */}
-      <div className="mobile-only" style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+      <div className="mobile-only" style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
         <div style={{
-          width: 32, height: 32, background: 'var(--neon-lime)',
+          width: 30, height: 30, background: 'var(--neon-lime)',
           borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 18, color: '#000', fontWeight: 900,
-          boxShadow: '0 0 15px rgba(163,255,18,0.3)'
+          fontSize: 16, color: '#000', fontWeight: 900,
+          boxShadow: '0 0 12px rgba(163,255,18,0.25)'
         }}>A</div>
-        <div style={{ color: '#fff', fontSize: 17, fontWeight: 900, letterSpacing: '-0.02em' }}>
-          AIPCORE <span style={{ fontSize: 9, opacity: 0.5, color: 'var(--neon-lime)' }}>PRO</span>
+        <div style={{ color: '#fff', fontSize: 16, fontWeight: 900, letterSpacing: '-0.01em' }}>
+          AIPCORE <span style={{ fontSize: 9, opacity: 0.6, color: 'var(--neon-lime)' }}>PRO</span>
         </div>
       </div>
 
-      {/* ─ Node ID + Tier pill (center) ─ */}
+      {/* ─ Node ID + Tier pill (center/right) ─ */}
       {isConnected && nodeId ? (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <div style={{ background: 'rgba(255,255,255,0.05)', padding: '4px 12px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontSize: '10px', color: '#A3FF12', fontWeight: 800 }}>BALANCE</span>
-              <span style={{ fontSize: '12px', fontWeight: 900 }}>{bnbBalance} BNB</span>
-              {bnbUsd && <span style={{ fontSize: '9px', fontWeight: 700, color: '#4FC3F7' }}>{bnbUsd}</span>}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '4px 10px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <span style={{ fontSize: '11px', fontWeight: 900, color: '#fff' }}>{bnbBalance}</span>
+              <span style={{ fontSize: '9px', fontWeight: 800, color: '#A3FF12' }}>BNB</span>
             </div>
             <div 
               onClick={() => setActiveTab('contracts')}
               style={{ 
                 background: 'linear-gradient(135deg, var(--neon-lime) 0%, #a3ff12 100%)',
-                color: '#000', padding: '4px 12px', borderRadius: '12px',
-                fontSize: '11px', fontWeight: 900, cursor: 'pointer',
-                boxShadow: '0 0 10px rgba(203, 255, 1, 0.2)'
+                color: '#000', padding: '4px 10px', borderRadius: '10px',
+                fontSize: '11px', fontWeight: 950, cursor: 'pointer',
+                boxShadow: '0 0 12px rgba(203, 255, 1, 0.25)'
               }}
             >
-              ⬡ NODE #{nodeId}
+              #{nodeId}
             </div>
           </div>
-          <div style={{ fontSize: '9px', fontWeight: 800, color: '#4FC3F7', letterSpacing: '1px' }}>
-            TIER {nodeTier || 1} • {nodeActive ? 'ACTIVE' : 'IDLE'}
+          <div style={{ fontSize: '9px', fontWeight: 800, color: '#4FC3F7', letterSpacing: '0.5px' }}>
+            T{nodeTier || 1} · {nodeActive ? 'ACTIVE' : 'IDLE'}
           </div>
         </div>
       ) : isConnected ? (
