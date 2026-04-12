@@ -65,6 +65,7 @@ const ensureSchema = async () => {
     await query(`ALTER TABLE income_history ADD COLUMN IF NOT EXISTS is_missed BOOLEAN DEFAULT FALSE`);
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS claimed_milestones TEXT DEFAULT '[]'`);
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS node_id INTEGER UNIQUE`);
+    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS sponsor_node_id INTEGER`);
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS node_active BOOLEAN DEFAULT TRUE`);
     
     // Seed Genesis Node (ID 36999)
@@ -207,27 +208,19 @@ const syncUserHistory = async (wallet) => {
       // Upsert the node. We map referrerId (contract) to the PG internal ID
       try {
         await query(
-          `INSERT INTO users (wallet_address, node_id, node_active, created_at)
-           VALUES ($1, $2, TRUE, $3)
+          `INSERT INTO users (wallet_address, node_id, sponsor_node_id, node_active, created_at)
+           VALUES ($1, $2, $3, TRUE, $4)
            ON CONFLICT (node_id) DO UPDATE 
            SET wallet_address = EXCLUDED.wallet_address,
+               sponsor_node_id = EXCLUDED.sponsor_node_id,
                node_active = TRUE,
                updated_at = CURRENT_TIMESTAMP`,
-          [node.toLowerCase(), Number(userId), joinedAt]
+          [node.toLowerCase(), Number(userId), Number(referrerId), joinedAt]
         );
-
-        // Link the referrer
-        await query(`
-          UPDATE users u
-          SET referrer_id = p.id
-          FROM users p
-          WHERE u.node_id = $1 AND p.node_id = $2
-        `, [Number(userId), Number(referrerId)]);
-
       } catch (e) { console.error("Node Sync Err:", e.message); }
     }
 
-    // 4. Repair any missing links (Offline View Helper Enhancement)
+    // 4. Fast SQL-Native Repair (Rebuilds tree instantly from DB data)
     await repairTreeLinks();
 
     // 5. Fetch TierUnlocked Events
@@ -969,33 +962,27 @@ app.get('/api/network/counts/:walletAddress', async (req, res) => {
 });
 
 /**
- * Tree Repair Helper: Automatically restores broken referral links 
- * using contract Node IDs as the map. Crucial for 'Offline View' accuracy.
+ * High-Speed Tree Repair Helper: Rebuilds the referral links entirely in SQL.
+ * No RPC calls involved, allowing 100% database-native tree restoration.
  */
 async function repairTreeLinks() {
   try {
-    // 1. Fetch missing parent-child links from on-chain history 
-    // This is expensive so we only do it for null referrer nodes
-    const brokenNodes = await query('SELECT node_id FROM users WHERE referrer_id IS NULL AND node_id != 36999');
+    // Single query to link orphans by their stored sponsor_node_id mapping
+    const result = await query(`
+      UPDATE users u
+      SET referrer_id = p.id
+      FROM users p
+      WHERE u.sponsor_node_id = p.node_id
+      AND u.referrer_id IS NULL 
+      AND u.sponsor_node_id IS NOT NULL
+      RETURNING u.id
+    `);
     
-    for (const row of brokenNodes.rows) {
-      const nid = row.node_id;
-      // Fetch node info from contract to find its sponsor
-      const nodeInfo = await aipcoreContract.nodes(nid);
-      const sponsorId = Number(nodeInfo.sponsor);
-      
-      if (sponsorId > 0) {
-        // Try to link to a parent that exists in our DB
-        await query(`
-          UPDATE users u
-          SET referrer_id = p.id
-          FROM users p
-          WHERE u.node_id = $1 AND p.node_id = $2
-        `, [nid, sponsorId]);
-      }
+    if (result.rowCount > 0) {
+      console.log(`✅ Repaired ${result.rowCount} tree links in SQL`);
     }
   } catch (err) {
-    console.error("Tree repair failed:", err.message);
+    console.error("SQL Tree repair failed:", err.message);
   }
 }
 

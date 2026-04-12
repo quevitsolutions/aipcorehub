@@ -156,6 +156,11 @@ export default function TeamScreen() {
                       <div style={{ padding: '20px 0', textAlign: 'center', fontSize: '11px', color: '#FFB74D', fontWeight: 700 }}>
                         FETCHING MEMBERS...
                       </div>
+                    ) : levelMembers.length === 0 && levelCounts[index] > 0 ? (
+                      <div style={{ padding: '20px 10px', textAlign: 'center' }}>
+                         <div style={{ fontSize: '12px', color: '#FFD54F', fontWeight: 800, marginBottom: '4px' }}>REFRESHING DATABASE...</div>
+                         <div style={{ fontSize: '9px', color: '#999', textTransform: 'uppercase', letterSpacing: '1px' }}>Establishing on-chain connections</div>
+                      </div>
                     ) : (
                       <div style={{ padding: '12px 0' }}>
                         {/* Member Header */}
