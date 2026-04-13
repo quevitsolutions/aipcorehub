@@ -135,7 +135,7 @@ export default function EarnScreen() {
     hasNode, lastClaimTime, teamHistory, isHistoryLoading,
     claimMined, setActiveTab, addLocalReward, fetchTeamHistory,
     isFreeActive, createdAt, globalHistory, fetchGlobalHistory,
-    initialLoaded, pendingMined, lastSyncTime, localReward
+    initialLoaded, pendingMined, lastSyncTime
   } = useGameStore();
 
   const [view, setView] = useState('mining'); // 'mining' | 'history'
