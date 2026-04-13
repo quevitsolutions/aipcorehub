@@ -14,6 +14,7 @@ export default function ReferralScreen() {
   const fetchReferralData = store?.fetchReferralData;
   const sponsorWallet = store?.sponsorWallet;
   const hasNode = store?.hasNode;
+  const nodeId = store?.nodeId;
   const loadingReferrals = store?.loadingReferrals || false;
   const activatedRefs = store?.activatedRefs || 0;
 
