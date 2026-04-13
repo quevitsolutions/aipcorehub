@@ -319,6 +319,8 @@ export const useGameStore = create(
               energy: data.energy || 0,
               directRefs: data.direct_refs || 0,
               teamSize: data.team_size || 0,
+              hasNode: backendTier > 0 || (data.node_id && data.node_id > 0),
+              nodeId: data.node_id || null,
               nodeTier: backendTier > currentTier ? backendTier : currentTier,
               isPremium: data.is_premium || false,
               pendingMined: Number(data.pending_mined || 0),
