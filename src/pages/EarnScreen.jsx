@@ -214,10 +214,9 @@ export default function EarnScreen() {
   
   const isExpired = initialLoaded && !hasNode && daysLeft <= 0;
 
-  // Render the gate ONLY if data is loaded, user has no node, isn't on free trial, and isn't expired
-  if (initialLoaded && !hasNode && !isFreeActive && !isExpired) {
-    return <RegistrationGate setActiveTab={setActiveTab} />;
-  }
+  // We no longer use the full-screen RegistrationGate here, 
+  // as the "Session Expired" overlay on the mining egg handles the activation nudge better.
+  // This ensures users can always see their dashboard and balance.
 
   return (
     <div className="page-earn" style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', overflowY: 'auto', overflowX: 'hidden' }}>
