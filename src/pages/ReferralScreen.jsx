@@ -267,6 +267,7 @@ export default function ReferralScreen() {
               <span style={{ fontSize: '12px', fontWeight: 900, color: isActivated ? 'var(--neon-lime)' : '#FFFFFF' }}>{(friend.local_reward / 1000).toFixed(1)}K</span>
             </div>
           );});
+        })()}
       </div>
 
       {/* Top Referrers Leaderboard */}
