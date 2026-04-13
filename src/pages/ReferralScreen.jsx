@@ -162,26 +162,37 @@ export default function ReferralScreen() {
         </div>
       </div>
 
-      {/* My Recent Invites */}
-      <h3 style={{ fontSize: '12px', fontWeight: 900, color: '#4FC3F7', marginBottom: '12px', letterSpacing: '1px' }}>MY RECENT INVITES</h3>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+        <h3 style={{ fontSize: '12px', fontWeight: 900, color: '#4FC3F7', margin: 0, letterSpacing: '1px' }}>MY RECENT INVITES</h3>
+        <button 
+          onClick={fetchReferralData}
+          style={{ background: 'none', border: 'none', color: '#4FC3F7', cursor: 'pointer', fontSize: '14px', padding: '4px' }}
+          title="Refresh List"
+        >
+          🔄
+        </button>
+      </div>
       
       {/* Referral Filter Tabs */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-        <button onClick={() => setInviteTab('activated')} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: inviteTab === 'activated' ? '1px solid var(--neon-lime)' : '1px solid rgba(255,255,255,0.1)', background: inviteTab === 'activated' ? 'rgba(163,255,18,0.1)' : 'transparent', color: inviteTab === 'activated' ? 'var(--neon-lime)' : '#FFFFFF', fontWeight: 800, fontSize: '11px', cursor: 'pointer' }}>
+        <button onClick={() => setInviteTab('activated')} style={{ flex: 1, padding: '10px', borderRadius: '12px', border: inviteTab === 'activated' ? '1px solid var(--neon-lime)' : '1px solid rgba(255,255,255,0.05)', background: inviteTab === 'activated' ? 'rgba(163,255,18,0.08)' : 'rgba(255,255,255,0.02)', color: inviteTab === 'activated' ? 'var(--neon-lime)' : '#FFFFFF', fontWeight: 800, fontSize: '11px', cursor: 'pointer' }}>
           ACTIVATED NODES
         </button>
-        <button onClick={() => setInviteTab('free')} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: inviteTab === 'free' ? '1px solid #4FC3F7' : '1px solid rgba(255,255,255,0.1)', background: inviteTab === 'free' ? 'rgba(79,195,247,0.1)' : 'transparent', color: inviteTab === 'free' ? '#4FC3F7' : '#FFFFFF', fontWeight: 800, fontSize: '11px', cursor: 'pointer' }}>
+        <button onClick={() => setInviteTab('free')} style={{ flex: 1, padding: '10px', borderRadius: '12px', border: inviteTab === 'free' ? '1px solid #4FC3F7' : '1px solid rgba(255,255,255,0.05)', background: inviteTab === 'free' ? 'rgba(79,195,247,0.08)' : 'rgba(255,255,255,0.02)', color: inviteTab === 'free' ? '#4FC3F7' : '#FFFFFF', fontWeight: 800, fontSize: '11px', cursor: 'pointer' }}>
           FREE MEMBERS
         </button>
       </div>
 
       <div className="booster-card" style={{ padding: '8px 16px', marginBottom: '32px' }}>
         {(() => {
-          const filteredList = referralList.filter(f => inviteTab === 'activated' ? Number(f.node_tier) > 0 : Number(f.node_tier) === 0);
+          const filteredList = referralList.filter(f => {
+            const tier = Number(f.node_tier || 0);
+            return inviteTab === 'activated' ? tier > 0 : tier === 0;
+          });
           
           if (filteredList.length === 0) {
             return (
-              <div style={{ padding: '20px', textAlign: 'center', fontSize: '11px', opacity: 0.5, color: '#FFF' }}>
+              <div style={{ padding: '30px 20px', textAlign: 'center', fontSize: '11px', color: 'rgba(255,255,255,0.3)', fontWeight: 600 }}>
                 No {inviteTab === 'activated' ? 'activated nodes' : 'free members'} found.
               </div>
             );

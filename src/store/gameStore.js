@@ -331,6 +331,9 @@ export const useGameStore = create(
               lastBackendSync: Date.now(),
               initialLoaded: true,
             });
+
+            // Automatically refresh the referral list to stay synced with counters
+            get().fetchReferralData();
           }
         } catch (err) {
           console.warn("API Fetch Failed:", err.message);

@@ -444,9 +444,19 @@ app.get('/api/user/:walletAddress', async (req, res) => {
       if (req.query.ref.toLowerCase() !== walletAddress.toLowerCase()) {
         const refObj = await query('SELECT id, wallet_address FROM users WHERE LOWER(wallet_address) = LOWER($1)', [req.query.ref]);
         if (refObj.rows.length > 0) {
-          await query('UPDATE users SET referrer_id = $1 WHERE LOWER(wallet_address) = LOWER($2) AND referrer_id IS NULL', [refObj.rows[0].id, walletAddress]);
-          user.referrer_id = refObj.rows[0].id;
-          user.sponsor_wallet = refObj.rows[0].wallet_address;
+          // Perform the update and ensure we don't overwrite if it was set in a parallel request
+          const updateRes = await query(`
+            UPDATE users 
+            SET referrer_id = $1 
+            WHERE LOWER(wallet_address) = LOWER($2) 
+            AND referrer_id IS NULL 
+            RETURNING referrer_id
+          `, [refObj.rows[0].id, walletAddress]);
+          
+          if (updateRes.rows.length > 0) {
+            user.referrer_id = refObj.rows[0].id;
+            user.sponsor_wallet = refObj.rows[0].wallet_address;
+          }
         }
       }
     }
@@ -1214,7 +1224,11 @@ app.get('/api/referrals/:walletAddress', async (req, res) => {
     if (parent.rows.length === 0) return res.json([]);
 
     const result = await query(
-      `SELECT wallet_address, local_reward, created_at as joined_at, node_tier, node_id,
+      `SELECT wallet_address, 
+              local_reward, 
+              created_at as joined_at, 
+              COALESCE(node_tier, 0) as node_tier, 
+              COALESCE(node_id, 0) as node_id,
               (SELECT COUNT(*) FROM users WHERE referrer_id = u.id) as direct_count,
               (SELECT COUNT(*) FROM users WHERE matrix_parent_id = u.id) as team_size
        FROM users u
@@ -1224,7 +1238,7 @@ app.get('/api/referrals/:walletAddress', async (req, res) => {
     );
     res.json(result.rows);
   } catch (err) {
-    console.error(err);
+    console.error('Referral list fetch failed:', err);
     res.status(500).json({ error: 'Failed to fetch referrals' });
   }
 });
