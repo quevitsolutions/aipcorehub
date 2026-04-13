@@ -983,7 +983,7 @@ app.get('/api/network/counts/:walletAddress', async (req, res) => {
     const rootRes = await query(`
       SELECT id, matrix_counts, sponsor_node_id 
       FROM users 
-      WHERE wallet_address = $1
+      WHERE LOWER(wallet_address) = LOWER($1)
     `, [walletAddress]);
     
     if (rootRes.rows.length === 0) return res.status(404).json({ error: 'User not found' });
@@ -1135,7 +1135,7 @@ app.get('/api/leaderboard', async (req, res) => {
 app.get('/api/referrals/:walletAddress', async (req, res) => {
   const { walletAddress } = req.params;
   try {
-    const parent = await query('SELECT id FROM users WHERE wallet_address = $1', [walletAddress]);
+    const parent = await query('SELECT id FROM users WHERE LOWER(wallet_address) = LOWER($1)', [walletAddress]);
     if (parent.rows.length === 0) return res.json([]);
 
     const result = await query(
