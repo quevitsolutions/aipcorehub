@@ -133,7 +133,10 @@ const ensureSchema = async () => {
         WHERE NOT EXISTS (SELECT 1 FROM tasks WHERE name = $1)
       `, [t.name, t.reward, t.type, t.icon]);
     }
-
+    console.log('✅ Schema check complete');
+  } catch (err) {
+    console.error('Schema update error:', err.message);
+  }
 };
 
 /**
