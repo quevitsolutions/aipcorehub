@@ -366,7 +366,7 @@ app.get('/api/user/:walletAddress', async (req, res) => {
           SELECT COUNT(*) FROM team
         ) as team_size
        FROM users u 
-       WHERE u.wallet_address = $1`,
+       WHERE LOWER(u.wallet_address) = LOWER($1)`,
       [walletAddress]
     );
     
@@ -396,9 +396,9 @@ app.get('/api/user/:walletAddress', async (req, res) => {
     if (!user.referrer_id && req.query.ref && /^0x[a-fA-F0-9]{40}$/i.test(req.query.ref)) {
       // Don't allow self-referral
       if (req.query.ref.toLowerCase() !== walletAddress.toLowerCase()) {
-        const refObj = await query('SELECT id, wallet_address FROM users WHERE wallet_address ILIKE $1', [req.query.ref]);
+        const refObj = await query('SELECT id, wallet_address FROM users WHERE LOWER(wallet_address) = LOWER($1)', [req.query.ref]);
         if (refObj.rows.length > 0) {
-          await query('UPDATE users SET referrer_id = $1 WHERE wallet_address = $2 AND referrer_id IS NULL', [refObj.rows[0].id, walletAddress]);
+          await query('UPDATE users SET referrer_id = $1 WHERE LOWER(wallet_address) = LOWER($2) AND referrer_id IS NULL', [refObj.rows[0].id, walletAddress]);
           user.referrer_id = refObj.rows[0].id;
           user.sponsor_wallet = refObj.rows[0].wallet_address;
         }
@@ -450,7 +450,7 @@ app.post('/api/mining/claim', async (req, res) => {
   if (!walletAddress) return res.status(400).json({ error: 'Wallet required' });
 
   try {
-    const userResult = await query('SELECT * FROM users WHERE wallet_address = $1', [walletAddress]);
+    const userResult = await query('SELECT * FROM users WHERE LOWER(wallet_address) = LOWER($1)', [walletAddress]);
     if (userResult.rows.length === 0) return res.status(404).json({ error: 'User not found' });
     
     const user = userResult.rows[0];
@@ -480,7 +480,7 @@ app.post('/api/mining/claim', async (req, res) => {
        SET local_reward = local_reward + $2, 
            last_claim_time = CURRENT_TIMESTAMP,
            updated_at = CURRENT_TIMESTAMP
-       WHERE wallet_address = $1
+       WHERE LOWER(wallet_address) = LOWER($1)
        RETURNING *`,
       [walletAddress, reward]
     );
@@ -503,7 +503,7 @@ app.post('/api/mining/upgrade', async (req, res) => {
        SET node_tier = COALESCE($2, node_tier),
            is_premium = COALESCE($3, is_premium),
            updated_at = CURRENT_TIMESTAMP
-       WHERE wallet_address = $1
+       WHERE LOWER(wallet_address) = LOWER($1)
        RETURNING *`,
       [walletAddress, tier, isPremium]
     );
@@ -552,7 +552,7 @@ app.post('/api/tasks/claim', async (req, res) => {
     if (claimCheck.rows.length > 0) return res.status(400).json({ error: 'Task already claimed' });
 
     // 3. User & Business Logic Checks
-    const userResult = await query('SELECT * FROM users WHERE wallet_address = $1', [walletAddress]);
+    const userResult = await query('SELECT * FROM users WHERE LOWER(wallet_address) = LOWER($1)', [walletAddress]);
     if (userResult.rows.length === 0) return res.status(404).json({ error: 'User mapping not found' });
     const user = userResult.rows[0];
 
@@ -577,7 +577,7 @@ app.post('/api/tasks/claim', async (req, res) => {
     await query('BEGIN');
     await query('INSERT INTO user_tasks (wallet_address, task_id) VALUES ($1, $2)', [walletAddress, taskId]);
     const updateResult = await query(
-      'UPDATE users SET local_reward = local_reward + $2 WHERE wallet_address = $1 RETURNING local_reward',
+      'UPDATE users SET local_reward = local_reward + $2 WHERE LOWER(wallet_address) = LOWER($1) RETURNING local_reward',
       [walletAddress, task.reward]
     );
     await query('COMMIT');
