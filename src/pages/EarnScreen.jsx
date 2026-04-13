@@ -135,7 +135,7 @@ export default function EarnScreen() {
     hasNode, lastClaimTime, teamHistory, isHistoryLoading,
     claimMined, setActiveTab, addLocalReward, fetchTeamHistory,
     isFreeActive, createdAt, globalHistory, fetchGlobalHistory,
-    initialLoaded
+    initialLoaded, pendingMined
   } = useGameStore();
 
   const [view, setView] = useState('mining'); // 'mining' | 'history'
@@ -158,6 +158,7 @@ export default function EarnScreen() {
   const displayTier = Number(nodeTier || 1);
 
   const localMined = useLocalMining(lastClaimTime, ratePerHour, hasNode || isFreeActive);
+  const totalMined = Number(pendingMined || 0) + localMined;
 
   // Live timer — re-renders every second
   const [, setTick] = useState(0);
@@ -179,7 +180,7 @@ export default function EarnScreen() {
   };
 
   const onClaim = async () => {
-    if (localMined <= 0) return;
+    if (totalMined <= 0) return;
     setIsExploding(true);
 
     // Tell store to request an authoritative claim from postgres
@@ -353,20 +354,20 @@ export default function EarnScreen() {
               {/* COLLECT (30%) */}
               <button
                 onClick={onClaim}
-                disabled={localMined <= 0}
+                disabled={totalMined < 1}
                 style={{
                   flex: 0.3,
-                  background: localMined > 0 ? '#4FC3F7' : 'rgba(255,255,255,0.04)',
-                  border: 'none', borderRadius: 16, padding: '16px 5px', cursor: localMined > 0 ? 'pointer' : 'default',
+                  background: totalMined >= 1 ? '#4FC3F7' : 'rgba(255,255,255,0.04)',
+                  border: 'none', borderRadius: 16, padding: '16px 5px', cursor: totalMined >= 1 ? 'pointer' : 'default',
                   transition: 'all 0.3s'
                 }}
               >
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                  <span style={{ fontSize: 13, fontWeight: 950, color: localMined > 0 ? '#000' : 'rgba(255,255,255,0.2)' }}>{maturity >= 1 ? '🥚' : 'CLAIM'}</span>
+                  <span style={{ fontSize: 13, fontWeight: 950, color: totalMined >= 1 ? '#000' : 'rgba(255,255,255,0.2)' }}>{maturity >= 1 ? '🥚' : 'CLAIM'}</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                    <span style={{ fontSize: 9, fontWeight: 900, color: localMined > 0 ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.1)' }}>$AIP</span>
-                    <span style={{ fontSize: 11, fontWeight: 950, color: localMined > 0 ? '#000' : 'rgba(255,255,255,0.2)' }}>
-                      {Math.floor(localMined)}
+                    <span style={{ fontSize: 9, fontWeight: 900, color: totalMined >= 1 ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.1)' }}>$AIP</span>
+                    <span style={{ fontSize: 11, fontWeight: 950, color: totalMined >= 1 ? '#000' : 'rgba(255,255,255,0.2)' }}>
+                      {Math.floor(totalMined)}
                     </span>
                   </div>
                 </div>
