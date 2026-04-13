@@ -82,6 +82,8 @@ const ensureSchema = async () => {
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS matrix_counts JSONB DEFAULT '[]'`);
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_rpc_sync TIMESTAMP`);
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by_memo TEXT`);
+    // Ensure activated_refs exists (used for milestone tracking)
+    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS activated_refs INTEGER DEFAULT 0`);
     
     // Seed Genesis Node (ID 36999)
     const genesisId = 36999;
@@ -1430,6 +1432,84 @@ app.get('/api/referrals/stats/:walletAddress', async (req, res) => {
   } catch (err) {
     console.error('Stats error:', err);
     res.status(500).json({ error: 'Failed to fetch referral stats' });
+  }
+});
+
+/**
+ * POST /api/referrals/track
+ * Belt-and-suspenders: Explicitly records a referred free user with their sponsor.
+ * Called by the frontend when a new user connects with a ?ref= token.
+ * Safe to call multiple times — idempotent (never overwrites an existing sponsor).
+ */
+app.post('/api/referrals/track', async (req, res) => {
+  const { walletAddress, refToken } = req.body;
+  if (!walletAddress || !refToken) return res.status(400).json({ error: 'walletAddress and refToken required' });
+
+  // Prevent self-referral
+  if (refToken.toLowerCase() === walletAddress.toLowerCase()) {
+    return res.status(400).json({ error: 'Self-referral not allowed' });
+  }
+
+  try {
+    // 1. Ensure the free user exists in DB (upsert)
+    await query(
+      `INSERT INTO users (wallet_address, referred_by_memo)
+       VALUES (LOWER($1), $2)
+       ON CONFLICT (LOWER(wallet_address)) DO NOTHING`,
+      [walletAddress, refToken]
+    );
+
+    // 2. Resolve sponsor from ref token (wallet address or node ID)
+    const sponsor = await findSponsorByRef(refToken);
+    if (!sponsor) {
+      // Sponsor not yet in DB — store memo for later reconciliation
+      await query(
+        `UPDATE users SET referred_by_memo = COALESCE(referred_by_memo, $1) WHERE LOWER(wallet_address) = LOWER($2)`,
+        [refToken, walletAddress]
+      );
+      return res.json({ success: true, linked: false, reason: 'Sponsor not found yet — memo stored for later reconciliation' });
+    }
+
+    // 3. Link referral — only if not already linked (one-time, never overwrite)
+    const updateRes = await query(
+      `UPDATE users
+       SET referrer_id = $1,
+           referred_by_memo = COALESCE(referred_by_memo, $2)
+       WHERE LOWER(wallet_address) = LOWER($3)
+         AND referrer_id IS NULL
+       RETURNING id, wallet_address, referrer_id`,
+      [sponsor.id, refToken, walletAddress]
+    );
+
+    if (updateRes.rows.length > 0) {
+      console.log(`🔗 Referral Tracked: ${walletAddress} -> sponsor ${sponsor.wallet_address} (ID: ${sponsor.id})`);
+      return res.json({
+        success: true,
+        linked: true,
+        user_wallet: walletAddress,
+        sponsor_wallet: sponsor.wallet_address,
+        sponsor_node_id: sponsor.node_id || null
+      });
+    }
+
+    // Already linked — return current state
+    const current = await query(
+      `SELECT u.wallet_address, s.wallet_address as sponsor_wallet, s.node_id as sponsor_node_id
+       FROM users u
+       LEFT JOIN users s ON s.id = u.referrer_id
+       WHERE LOWER(u.wallet_address) = LOWER($1)`,
+      [walletAddress]
+    );
+    return res.json({
+      success: true,
+      linked: false,
+      reason: 'Already linked',
+      ...current.rows[0]
+    });
+
+  } catch (err) {
+    console.error('Referral track error:', err);
+    res.status(500).json({ error: 'Failed to track referral' });
   }
 });
 

@@ -341,6 +341,16 @@ export const useGameStore = create(
 
             // Automatically refresh the referral list to stay synced with counters
             get().fetchReferralData();
+
+            // 🔗 Belt-and-suspenders: if this is a new user who came via referral link,
+            // explicitly call /api/referrals/track to guarantee the DB link is stored.
+            if (data.is_new && finalReferrer) {
+              api.trackReferral(walletAddress, finalReferrer).then(result => {
+                if (result?.linked) {
+                  console.log(`✅ Referral confirmed: ${walletAddress} → ${result.sponsor_wallet}`);
+                }
+              }).catch(() => {});
+            }
           }
         } catch (err) {
           console.warn("API Fetch Failed:", err.message);

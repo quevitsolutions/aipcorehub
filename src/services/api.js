@@ -38,6 +38,20 @@ class ApiService {
     return res.json();
   }
 
+  async trackReferral(walletAddress, refToken) {
+    try {
+      const res = await fetch(`${this.baseUrl}/referrals/track`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress, refToken })
+      });
+      return res.json();
+    } catch (err) {
+      console.warn('Referral track silently failed:', err.message);
+      return null;
+    }
+  }
+
   async claimMining(walletAddress) {
     const res = await fetch(`${this.baseUrl}/mining/claim`, {
       method: 'POST',
