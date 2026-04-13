@@ -201,7 +201,7 @@ export default function ReferralScreen() {
             <span style={{ fontSize: '10px', fontWeight: 900, color: '#A3FF12', letterSpacing: '2px' }}>SYNCING...</span>
           </div>
         )}
-
+        {(() => {
           const safeList = Array.isArray(referralList) ? referralList : [];
           const filteredList = safeList.filter(f => {
             const tier = Number(f?.node_tier || 0);
