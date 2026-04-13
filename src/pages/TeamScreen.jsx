@@ -154,8 +154,8 @@ export default function TeamScreen() {
       setLoadingMembers(true);
       try {
         // PRIMARY: Direct blockchain via getMatrixUsers (always accurate, gasless view)
-        // CRITICAL FIX: Layers are 1-indexed in the contract
-        const rpcMembers = await fetchTeamLevelMembers(nodeId, levelIndex + 1);
+        // Contract layers are 0-indexed (Layer 0 = Level 1)
+        const rpcMembers = await fetchTeamLevelMembers(nodeId, levelIndex);
         const members = (rpcMembers || []).map(m => ({
           wallet_address: m.wallet,
           node_id: m.nodeId,

@@ -307,8 +307,8 @@ class BlockchainService {
   async getMatrixLevelCounts(nodeId) {
     try {
       // Fetch matrix counts by checking getMatrixUsers for each level
-      // We only fetch first 10 levels via multicall for speed/limit reasons
-      const layers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+      // Contract uses 0-indexed layers (Layer 0 = Level 1)
+      const layers = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
       const calls = layers.map(layer => ({
         target: CONTRACTS.AIPCORE,
         // Safe limit to ensure the gasless view call doesn't timeout or exceed block limits
