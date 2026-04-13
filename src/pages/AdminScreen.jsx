@@ -1,96 +1,89 @@
 import { useState, useEffect } from 'react';
 import { useGameStore } from '../store/gameStore.js';
-import { formatNumber } from '../utils/format.js';
+import { formatNumber, shortAddr } from '../utils/format.js';
 import { api } from '../services/api.js';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 
+const inputStyle = {
+  background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)',
+  borderRadius: '12px', padding: '12px', color: '#fff', fontSize: '12px', fontFamily: 'inherit'
+};
+
+// ── Stat Card ──────────────────────────────────────────────────────────────────
+function StatCard({ label, value, color = '#fff', sub }) {
+  return (
+    <div style={{ background: 'rgba(255,255,255,0.03)', padding: '16px 20px', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.06)' }}>
+      <div style={{ fontSize: '10px', fontWeight: 800, color: color, letterSpacing: 1, marginBottom: 6 }}>{label}</div>
+      <div style={{ fontSize: '22px', fontWeight: 900 }}>{value}</div>
+      {sub && <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.35)', marginTop: 4 }}>{sub}</div>}
+    </div>
+  );
+}
+
+// ── Task Management ────────────────────────────────────────────────────────────
 function TaskManagementAdmin() {
   const { walletAddress } = useGameStore();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [newTask, setNewTask] = useState({ name: '', reward: '', icon: '💎', url: '', type: 'social' });
 
-  useEffect(() => {
-    if (walletAddress) loadTasks();
-  }, [walletAddress]);
+  useEffect(() => { if (walletAddress) loadTasks(); }, [walletAddress]);
 
   const loadTasks = async () => {
-    try {
-      const data = await api.fetchTasks(walletAddress);
-      setTasks(data);
-    } catch (e) {
-      console.warn('Failed to load tasks for admin');
-    }
+    try { setTasks(await api.fetchTasks(walletAddress)); } catch { }
   };
 
   const handleCreate = async () => {
     if (!newTask.name || !newTask.reward) return toast.error('Name & Reward required');
     setLoading(true);
     try {
-      await api.createAdminTask(walletAddress, {
-        ...newTask,
-        reward: Number(newTask.reward)
-      });
-      toast.success('Task created successfully');
+      await api.createAdminTask(walletAddress, { ...newTask, reward: Number(newTask.reward) });
+      toast.success('Task created!');
       setNewTask({ name: '', reward: '', icon: '💎', url: '', type: 'social' });
       loadTasks();
-    } catch (e) {
-      toast.error('Failed to create task');
-    }
+    } catch { toast.error('Failed to create task'); }
     setLoading(false);
   };
 
   const handleDelete = async (id) => {
-    try {
-      await api.deleteAdminTask(walletAddress, id);
-      toast.success('Task deleted');
-      loadTasks();
-    } catch (e) {
-      toast.error('Delete failed');
-    }
+    try { await api.deleteAdminTask(walletAddress, id); toast.success('Task deleted'); loadTasks(); }
+    catch { toast.error('Delete failed'); }
   };
 
   return (
-    <div style={{ background: 'var(--bg-card)', padding: '24px', borderRadius: '32px', marginBottom: '32px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-      <h3 style={{ fontSize: '14px', fontWeight: 900, marginBottom: '20px', letterSpacing: '0.5px' }}>GLOBAL TASK MANAGEMENT</h3>
-      
-      {/* Create Task Form */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
-        <input placeholder="Task Name (e.g. Follow Twitter)" value={newTask.name} onChange={e => setNewTask({...newTask, name: e.target.value})} style={inputStyle} />
-        <input placeholder="Reward Amount (e.g. 50000)" type="number" value={newTask.reward} onChange={e => setNewTask({...newTask, reward: e.target.value})} style={inputStyle} />
-        <input placeholder="URL Link (Optional)" value={newTask.url} onChange={e => setNewTask({...newTask, url: e.target.value})} style={inputStyle} />
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <input placeholder="Icon (💎)" value={newTask.icon} onChange={e => setNewTask({...newTask, icon: e.target.value})} style={{...inputStyle, flex: 0.3}} />
-          <select value={newTask.type} onChange={e => setNewTask({...newTask, type: e.target.value})} style={{...inputStyle, flex: 0.7}}>
+    <div style={{ background: 'var(--bg-card)', padding: '24px', borderRadius: '24px', marginBottom: '24px', border: '1px solid rgba(255,255,255,0.08)' }}>
+      <h3 style={{ fontSize: '13px', fontWeight: 900, marginBottom: '20px', letterSpacing: 1, color: '#FFB74D' }}>⚙️ GLOBAL TASK MANAGEMENT</h3>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+        <input placeholder="Task Name" value={newTask.name} onChange={e => setNewTask({ ...newTask, name: e.target.value })} style={inputStyle} />
+        <input placeholder="Reward (e.g. 50000)" type="number" value={newTask.reward} onChange={e => setNewTask({ ...newTask, reward: e.target.value })} style={inputStyle} />
+        <input placeholder="URL Link (optional)" value={newTask.url} onChange={e => setNewTask({ ...newTask, url: e.target.value })} style={inputStyle} />
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input placeholder="Icon" value={newTask.icon} onChange={e => setNewTask({ ...newTask, icon: e.target.value })} style={{ ...inputStyle, flex: 0.3 }} />
+          <select value={newTask.type} onChange={e => setNewTask({ ...newTask, type: e.target.value })} style={{ ...inputStyle, flex: 0.7 }}>
             <option value="social">Social Link</option>
             <option value="node">Node Required</option>
-            <option value="referral">Referral Requirement</option>
+            <option value="referral_count">Referral Task</option>
           </select>
         </div>
       </div>
-      
-      <button 
-        onClick={handleCreate} disabled={loading}
-        style={{ background: '#fff', color: '#000', fontWeight: 900, padding: '12px 20px', borderRadius: '12px', fontSize: '12px', width: '100%', marginBottom: '24px' }}>
+      <button onClick={handleCreate} disabled={loading}
+        style={{ background: '#fff', color: '#000', fontWeight: 900, padding: '12px', borderRadius: '12px', fontSize: '12px', width: '100%', marginBottom: '20px', cursor: 'pointer' }}>
         {loading ? '...' : '+ LAUNCH NEW GLOBAL TASK'}
       </button>
-
-      {/* Active Tasks List */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        <h4 style={{ fontSize: '11px', color: '#FFB74D', fontWeight: 800 }}>LIVE SYSTEM TASKS ({Array.isArray(tasks) ? tasks.length : 0})</h4>
-        {Array.isArray(tasks) && tasks.map(t => (
-          <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '12px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <span style={{ fontSize: '18px' }}>{t.icon}</span>
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span style={{ fontSize: '12px', fontWeight: 800 }}>{t.name}</span>
-                <span style={{ fontSize: '10px', color: 'var(--neon-lime)' }}>
-                  +{formatNumber(t.reward)} | {(t.type || 'social').toUpperCase()}
-                </span>
+      <h4 style={{ fontSize: '11px', color: '#FFB74D', fontWeight: 800, marginBottom: 10 }}>LIVE TASKS ({tasks.length})</h4>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {tasks.map(t => (
+          <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '10px 14px', borderRadius: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontSize: 18 }}>{t.icon}</span>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 800 }}>{t.name}</div>
+                <div style={{ fontSize: 10, color: 'var(--neon-lime)' }}>+{formatNumber(t.reward)} | {(t.type || 'social').toUpperCase()}</div>
               </div>
             </div>
-            <button onClick={() => handleDelete(t.id)} style={{ background: 'rgba(255,0,0,0.2)', color: '#ff4444', border: 'none', padding: '6px 12px', borderRadius: '8px', fontSize: '10px', fontWeight: 900, cursor: 'pointer' }}>
+            <button onClick={() => handleDelete(t.id)}
+              style={{ background: 'rgba(255,0,0,0.15)', color: '#ff4444', border: 'none', padding: '6px 12px', borderRadius: 8, fontSize: 10, fontWeight: 900, cursor: 'pointer' }}>
               DELETE
             </button>
           </div>
@@ -100,23 +93,20 @@ function TaskManagementAdmin() {
   );
 }
 
+// ── User Management ────────────────────────────────────────────────────────────
 function UserManagementAdmin({ adminWallet }) {
   const [searchWallet, setSearchWallet] = useState('');
   const [targetUser, setTargetUser] = useState(null);
   const [adjustAmount, setAdjustAmount] = useState('');
+  const [reason, setReason] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [isAdjusting, setIsAdjusting] = useState(false);
 
   const handleSearch = async () => {
     if (!searchWallet) return;
-    setIsSearching(true);
-    setTargetUser(null);
-    try {
-      const user = await api.fetchAdminUserDetails(adminWallet, searchWallet);
-      setTargetUser(user);
-    } catch (e) {
-      toast.error('User not found in system');
-    }
+    setIsSearching(true); setTargetUser(null);
+    try { setTargetUser(await api.fetchAdminUserDetails(adminWallet, searchWallet)); }
+    catch { toast.error('User not found in system'); }
     setIsSearching(false);
   };
 
@@ -124,74 +114,46 @@ function UserManagementAdmin({ adminWallet }) {
     if (!targetUser || !adjustAmount) return;
     const amount = Number(adjustAmount);
     if (isNaN(amount)) return toast.error('Invalid amount');
-
     setIsAdjusting(true);
     try {
-      const res = await api.adjustUserReward(adminWallet, targetUser.wallet_address, amount);
+      const res = await api.adjustUserReward(adminWallet, targetUser.wallet_address, amount, reason);
       if (res.success) {
-        toast.success(`Balance adjusted by ${amount > 0 ? '+' : ''}${amount} coins`);
-        setTargetUser(res.user);
-        setAdjustAmount('');
+        toast.success(`Balance adjusted: ${amount > 0 ? '+' : ''}${formatNumber(amount)} coins`);
+        setTargetUser(res.user); setAdjustAmount(''); setReason('');
       }
-    } catch (e) {
-      toast.error('Failed to update balance');
-    }
+    } catch { toast.error('Failed to update balance'); }
     setIsAdjusting(false);
   };
 
   return (
-    <div style={{ background: 'var(--bg-card)', padding: '24px', borderRadius: '32px', marginBottom: '32px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-      <h3 style={{ fontSize: '14px', fontWeight: 900, marginBottom: '20px', letterSpacing: '0.5px' }}>USER MANAGEMENT & ADJUSTMENTS</h3>
-      
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
-        <input 
-          placeholder="Search User Wallet (0x...)" 
-          value={searchWallet} 
-          onChange={e => setSearchWallet(e.target.value)} 
-          style={{ ...inputStyle, flex: 1 }} 
-        />
-        <button 
-          onClick={handleSearch} disabled={isSearching}
-          style={{ background: 'var(--neon-lime)', color: '#000', fontWeight: 900, padding: '0 20px', borderRadius: '12px', fontSize: '12px' }}>
+    <div style={{ background: 'var(--bg-card)', padding: '24px', borderRadius: '24px', marginBottom: '24px', border: '1px solid rgba(255,255,255,0.08)' }}>
+      <h3 style={{ fontSize: '13px', fontWeight: 900, marginBottom: '20px', letterSpacing: 1, color: '#4FC3F7' }}>👤 USER MANAGEMENT & ADJUSTMENTS</h3>
+      <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+        <input placeholder="Search User Wallet (0x...)" value={searchWallet}
+          onChange={e => setSearchWallet(e.target.value)} style={{ ...inputStyle, flex: 1 }} />
+        <button onClick={handleSearch} disabled={isSearching}
+          style={{ background: 'var(--neon-lime)', color: '#000', fontWeight: 900, padding: '0 20px', borderRadius: 12, fontSize: 12, cursor: 'pointer' }}>
           {isSearching ? '...' : 'SEARCH'}
         </button>
       </div>
-
       <AnimatePresence>
         {targetUser && (
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-            style={{ padding: '16px', borderRadius: '16px', background: 'rgba(203,255,1,0.05)', border: '1px solid rgba(203,255,1,0.2)', marginBottom: '16px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
-              <div>
-                <div style={{ fontSize: '10px', color: '#FFD700', fontWeight: 800 }}>NODE ID</div>
-                <div style={{ fontSize: '14px', fontWeight: 900 }}>#{targetUser.id}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '10px', color: '#A3FF12', fontWeight: 800 }}>CURRENT TIER</div>
-                <div style={{ fontSize: '14px', fontWeight: 900, color: 'var(--neon-lime)' }}>TIER {targetUser.node_tier}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '10px', color: '#4FC3F7', fontWeight: 800 }}>COIN BALANCE</div>
-                <div style={{ fontSize: '14px', fontWeight: 900 }}>{formatNumber(targetUser.local_reward)} 🪙</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '10px', color: '#FF5252', fontWeight: 800 }}>DIRECT REFS</div>
-                <div style={{ fontSize: '14px', fontWeight: 900 }}>{targetUser.direct_refs}</div>
-              </div>
+            style={{ padding: 16, borderRadius: 16, background: 'rgba(203,255,1,0.04)', border: '1px solid rgba(203,255,1,0.2)', marginBottom: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+              <div><div style={{ fontSize: 9, color: '#FFD700', fontWeight: 800 }}>NODE ID</div><div style={{ fontSize: 15, fontWeight: 900 }}>#{targetUser.node_id || '—'}</div></div>
+              <div><div style={{ fontSize: 9, color: '#A3FF12', fontWeight: 800 }}>TIER</div><div style={{ fontSize: 15, fontWeight: 900, color: 'var(--neon-lime)' }}>T{targetUser.node_tier}</div></div>
+              <div><div style={{ fontSize: 9, color: '#4FC3F7', fontWeight: 800 }}>BALANCE</div><div style={{ fontSize: 15, fontWeight: 900 }}>{formatNumber(targetUser.local_reward)}</div></div>
+              <div><div style={{ fontSize: 9, color: '#FF5252', fontWeight: 800 }}>REFS</div><div style={{ fontSize: 15, fontWeight: 900 }}>{targetUser.direct_refs || 0}</div></div>
             </div>
-
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <input 
-                type="number" 
-                placeholder="Amount (e.g. 500000 or -100000)" 
-                value={adjustAmount} 
-                onChange={e => setAdjustAmount(e.target.value)} 
-                style={{ ...inputStyle, flex: 1 }} 
-              />
-              <button 
-                onClick={handleAdjust} disabled={isAdjusting}
-                style={{ background: '#fff', color: '#000', fontWeight: 900, padding: '0 20px', borderRadius: '12px', fontSize: '11px' }}>
-                {isAdjusting ? '...' : 'APPLY ADJUSTMENT'}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 8 }}>
+              <input type="number" placeholder="Amount (e.g. +500000 or -100)" value={adjustAmount}
+                onChange={e => setAdjustAmount(e.target.value)} style={inputStyle} />
+              <input placeholder="Reason (optional)" value={reason}
+                onChange={e => setReason(e.target.value)} style={inputStyle} />
+              <button onClick={handleAdjust} disabled={isAdjusting}
+                style={{ background: '#fff', color: '#000', fontWeight: 900, padding: '0 16px', borderRadius: 12, fontSize: 11, cursor: 'pointer' }}>
+                {isAdjusting ? '...' : 'APPLY'}
               </button>
             </div>
           </motion.div>
@@ -201,187 +163,282 @@ function UserManagementAdmin({ adminWallet }) {
   );
 }
 
-const inputStyle = { background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '12px', color: '#fff', fontSize: '12px' };
-
+// ── Main Admin Screen ──────────────────────────────────────────────────────────
 export default function AdminScreen() {
-  const { walletAddress, adminStats, snapshotHistory, takeSnapshot, loadSnapshots } = useGameStore();
+  const {
+    walletAddress, adminStats, snapshotHistory, adjustmentLogs,
+    takeSnapshot, loadSnapshots, fetchAdminOverview, fetchAdminAdjustments
+  } = useGameStore();
+
   const [snapshotName, setSnapshotName] = useState('');
   const [conversionRate, setConversionRate] = useState(1000);
   const [tokenAddress, setTokenAddress] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [activeAdminTab, setActiveAdminTab] = useState('overview');
 
   useEffect(() => {
     loadSnapshots();
-  }, [loadSnapshots]);
+    fetchAdminOverview();
+    fetchAdminAdjustments();
+  }, []);
 
   const handleCreateSnapshot = async () => {
-    if (!snapshotName) return;
+    if (!snapshotName) return toast.error('Enter a snapshot name first');
     setIsLoading(true);
-    await takeSnapshot(snapshotName);
-    setSnapshotName('');
+    try {
+      await takeSnapshot(snapshotName);
+      toast.success(`Snapshot "${snapshotName}" captured!`);
+      setSnapshotName('');
+    } catch { toast.error('Snapshot failed'); }
     setIsLoading(false);
   };
 
   const exportCSV = async (snapshotId, name) => {
-    const data = await api.fetchSnapshotData(walletAddress, snapshotId);
-    if (!data || !data.data) return;
-
-    // Multi-sender/Bulk format: address,amount
-    let csvContent = "address,amount\n";
-    data.data.forEach(user => {
-      const realAmount = (parseFloat(user.local_reward) / conversionRate).toFixed(4);
-      if (parseFloat(realAmount) > 0) {
-        csvContent += `${user.wallet_address},${realAmount}\n`;
-      }
-    });
-
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `distribute_${name}_rate_${conversionRate}.csv`;
-    a.click();
+    const tid = toast.loading('Generating CSV...');
+    try {
+      const data = await api.fetchSnapshotData(walletAddress, snapshotId);
+      if (!data?.data) { toast.error('No data', { id: tid }); return; }
+      let csv = 'address,amount\n';
+      data.data.forEach(u => {
+        const amt = (parseFloat(u.local_reward) / conversionRate).toFixed(4);
+        if (parseFloat(amt) > 0) csv += `${u.wallet_address},${amt}\n`;
+      });
+      const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+      const a = document.createElement('a');
+      a.href = url; a.download = `airdrop_${name}_rate${conversionRate}.csv`; a.click();
+      URL.revokeObjectURL(url);
+      toast.success('CSV exported!', { id: tid });
+    } catch { toast.error('Export failed', { id: tid }); }
   };
 
+  const s = adminStats || {};
+  const totalCoins = parseFloat(s.total_reward || 0);
+  const nodeCoins = parseFloat(s.coins_node_holders || 0);
+  const freeCoins = parseFloat(s.coins_free_users || 0);
+  const otherCoins = totalCoins - nodeCoins - freeCoins;
+
+  const TABS = ['overview', 'snapshot', 'tasks', 'users', 'logs'];
+
   return (
-    <div className="page-content" style={{ padding: '0 20px 40px' }}>
-      <h2 style={{ fontSize: '24px', fontWeight: 900, color: 'var(--neon-lime)', marginBottom: '24px', letterSpacing: '1px' }}>
-        MASTER CONTROL
+    <div className="page-content" style={{ padding: '0 20px 60px' }}>
+      <h2 style={{ fontSize: '22px', fontWeight: 900, color: 'var(--neon-lime)', marginBottom: '8px', letterSpacing: 1 }}>
+        ⚡ MASTER CONTROL
       </h2>
+      <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', fontWeight: 700, marginBottom: 24 }}>
+        ADMIN ONLY · {shortAddr(walletAddress)}
+      </p>
 
-      {/* Stats Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '32px' }}>
-        <div style={{ background: 'var(--bg-card)', padding: '20px', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)' }}>
-          <span style={{ fontSize: '11px', color: '#FFFFFF', fontWeight: 800 }}>TOTAL USERS</span>
-          <div style={{ fontSize: '24px', fontWeight: 900, marginTop: '4px' }}>{adminStats?.total_users || 0}</div>
-        </div>
-        <div style={{ background: 'var(--bg-card)', padding: '20px', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)' }}>
-          <span style={{ fontSize: '11px', color: '#FFB74D', fontWeight: 800 }}>MINING VOLUME</span>
-          <div style={{ fontSize: '24px', fontWeight: 900, marginTop: '4px', color: 'var(--neon-lime)' }}>
-            {formatNumber(adminStats?.total_reward || 0)}
-          </div>
-        </div>
-      </div>
-
-      {/* Database Init Patch */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }}>
-        <button 
-          onClick={async () => {
-            setIsLoading(true);
-            try {
-              const res = await api.initAdminTasksDB(walletAddress);
-              toast.success(res.message);
-            } catch (err) {
-              toast.error('Init failed');
-            }
-            setIsLoading(false);
-          }}
-          disabled={isLoading}
-          style={{ background: 'rgba(255,100,100,0.2)', color: '#ff6262', border: '1px solid #ff6262', padding: '8px 16px', borderRadius: '8px', fontSize: '10px', fontWeight: 900 }}
-        >
-          {isLoading ? '...' : 'INITIALIZE TASKS DB TABLES (RUN ONCE)'}
-        </button>
-      </div>
-
-      {/* Task Creation & Management Controller */}
-      <TaskManagementAdmin />
-
-      {/* User Management Controller */}
-      <UserManagementAdmin adminWallet={walletAddress} />
-
-      {/* Admin Audit Logs */}
-      <div style={{ background: 'var(--bg-card)', padding: '24px', borderRadius: '32px', marginBottom: '32px', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
-        <h3 style={{ fontSize: '13px', fontWeight: 900, marginBottom: '20px', letterSpacing: '0.5px', color: '#FFD700' }}>RECENT COMMAND ADJUSTMENTS</h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {adjustmentLogs.length > 0 ? adjustmentLogs.slice(0, 10).map((log, idx) => (
-            <div key={log.id || idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
-              <div>
-                <div style={{ fontSize: '12px', fontWeight: 800 }}>{shortAddr(log.target_wallet)}</div>
-                <div style={{ fontSize: '10px', color: '#A3FF12', marginTop: '2px' }}>{log.reason}</div>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '13px', fontWeight: 900, color: log.amount > 0 ? 'var(--neon-lime)' : '#ff6262' }}>
-                  {log.amount > 0 ? '+' : ''}{formatNumber(log.amount)}
-                </div>
-                <div style={{ fontSize: '9px', color: '#A3FF12' }}>{new Date(log.timestamp).toLocaleDateString()}</div>
-              </div>
-            </div>
-          )) : (
-            <div style={{ textAlign: 'center', fontSize: '11px', color: '#4FC3F7', padding: '20px' }}>No recent adjustments found.</div>
-          )}
-        </div>
-      </div>
-
-      {/* Snapshot Controller */}
-      <div style={{ background: 'var(--bg-card)', padding: '24px', borderRadius: '32px', marginBottom: '32px', border: '1px solid rgba(203, 255, 1, 0.1)' }}>
-        <h3 style={{ fontSize: '14px', fontWeight: 900, marginBottom: '20px', letterSpacing: '0.5px' }}>SNAPSHOT & AIRDROP</h3>
-        
-        <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
-          <input 
-            type="text" 
-            placeholder="Snapshot Name (e.g. April Airdrop)"
-            value={snapshotName}
-            onChange={(e) => setSnapshotName(e.target.value)}
-            style={{ 
-              flex: 1, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', 
-              borderRadius: '12px', padding: '12px 16px', color: '#fff' 
-            }}
-          />
-          <button 
-            onClick={handleCreateSnapshot}
-            disabled={isLoading || !snapshotName}
-            style={{ 
-              background: 'var(--neon-lime)', color: '#000', fontWeight: 900, 
-              padding: '0 20px', borderRadius: '12px', fontSize: '12px' 
-            }}
-          >
-            {isLoading ? '...' : 'CAPTURE'}
+      {/* ── Tab Nav ── */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 24, overflowX: 'auto', paddingBottom: 4 }}>
+        {TABS.map(t => (
+          <button key={t} onClick={() => setActiveAdminTab(t)} style={{
+            padding: '8px 16px', borderRadius: 20, border: 'none', fontSize: 10, fontWeight: 900,
+            cursor: 'pointer', whiteSpace: 'nowrap',
+            background: activeAdminTab === t ? 'var(--neon-lime)' : 'rgba(255,255,255,0.05)',
+            color: activeAdminTab === t ? '#000' : '#fff',
+            letterSpacing: 1
+          }}>
+            {t.toUpperCase()}
           </button>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-          <div>
-            <label style={{ fontSize: '10px', color: '#FF5252', display: 'block', marginBottom: '4px' }}>CONVERSION RATE</label>
-            <input 
-              type="number" 
-              value={conversionRate}
-              onChange={(e) => setConversionRate(e.target.value)}
-              style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '8px', padding: '8px', color: '#fff' }}
-            />
-          </div>
-          <div>
-            <label style={{ fontSize: '10px', color: '#FFFFFF', display: 'block', marginBottom: '4px' }}>TOKEN ADDRESS</label>
-            <input 
-              type="text" 
-              placeholder="0x..."
-              value={tokenAddress}
-              onChange={(e) => setTokenAddress(e.target.value)}
-              style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '8px', padding: '8px', color: '#fff' }}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Snapshot History */}
-      <h3 style={{ fontSize: '12px', fontWeight: 900, color: '#FFB74D', marginBottom: '16px', paddingLeft: '8px' }}>SNAPSHOT HISTORY</h3>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        {(snapshotHistory || []).map(snap => (
-          <div key={snap.id} style={{ background: 'rgba(255,255,255,0.02)', padding: '16px 20px', borderRadius: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <div style={{ fontWeight: 800, fontSize: '14px' }}>{snap.name}</div>
-              <div style={{ fontSize: '11px', color: '#FFD700', marginTop: '2px' }}>
-                {snap.total_users} Users • {formatNumber(snap.total_coins)} Coins
-              </div>
-            </div>
-            <button 
-              onClick={() => exportCSV(snap.id, snap.name)}
-              style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--neon-lime)', border: '1px solid rgba(203,255,1,0.2)', padding: '8px 12px', borderRadius: '10px', fontSize: '11px', fontWeight: 900 }}
-            >
-              CSV EXPORT
-            </button>
-          </div>
         ))}
       </div>
+
+      {/* ══════════════ OVERVIEW TAB ══════════════ */}
+      {activeAdminTab === 'overview' && (
+        <>
+          {/* User Growth */}
+          <h4 style={{ fontSize: 11, fontWeight: 900, color: 'rgba(255,255,255,0.4)', letterSpacing: 2, marginBottom: 12 }}>NETWORK OVERVIEW</h4>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
+            <StatCard label="TOTAL USERS" value={formatNumber(s.total_users || 0)} color="#4FC3F7" />
+            <StatCard label="ACTIVE NODES" value={formatNumber(s.active_miners || 0)} color="var(--neon-lime)" />
+            <StatCard label="FREE TRIAL" value={formatNumber(s.free_trial_users || 0)} color="#4FC3F7" sub="Within 30-day window" />
+            <StatCard label="EXPIRED TRIAL" value={formatNumber(s.expired_users || 0)} color="#FF5252" sub="Need activation" />
+            <StatCard label="NEW (24H)" value={`+${s.new_users_24h || 0}`} color="#FFD700" />
+            <StatCard label="NEW (7D)" value={`+${s.new_users_7d || 0}`} color="#FFB74D" />
+          </div>
+
+          {/* Coin Distribution */}
+          <h4 style={{ fontSize: 11, fontWeight: 900, color: 'rgba(255,255,255,0.4)', letterSpacing: 2, marginBottom: 12 }}>COIN DISTRIBUTION SNAPSHOT</h4>
+          <div style={{ background: 'var(--bg-card)', padding: '20px', borderRadius: 24, border: '1px solid rgba(163,255,18,0.1)', marginBottom: 24 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 20 }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 10, color: '#FFD700', fontWeight: 800, marginBottom: 4 }}>TOTAL IN CIRCULATION</div>
+                <div style={{ fontSize: 20, fontWeight: 900, color: 'var(--neon-lime)' }}>{formatNumber(totalCoins)}</div>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 10, color: '#A3FF12', fontWeight: 800, marginBottom: 4 }}>AVG BALANCE</div>
+                <div style={{ fontSize: 20, fontWeight: 900 }}>{formatNumber(Math.floor(s.avg_balance || 0))}</div>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 10, color: '#4FC3F7', fontWeight: 800, marginBottom: 4 }}>TOP HOLDER</div>
+                <div style={{ fontSize: 20, fontWeight: 900 }}>{formatNumber(Math.floor(s.top_balance || 0))}</div>
+              </div>
+            </div>
+
+            {/* Distribution Bar */}
+            {totalCoins > 0 && (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, fontWeight: 800, color: 'rgba(255,255,255,0.4)', marginBottom: 6 }}>
+                  <span>NODE HOLDERS {((nodeCoins / totalCoins) * 100).toFixed(1)}%</span>
+                  <span>FREE {((freeCoins / totalCoins) * 100).toFixed(1)}%</span>
+                  <span>OTHER {((otherCoins / totalCoins) * 100).toFixed(1)}%</span>
+                </div>
+                <div style={{ height: 8, borderRadius: 4, overflow: 'hidden', display: 'flex' }}>
+                  <div style={{ width: `${(nodeCoins / totalCoins) * 100}%`, background: 'var(--neon-lime)', transition: 'width 0.6s' }} />
+                  <div style={{ width: `${(freeCoins / totalCoins) * 100}%`, background: '#4FC3F7', transition: 'width 0.6s' }} />
+                  <div style={{ flex: 1, background: 'rgba(255,255,255,0.08)' }} />
+                </div>
+              </div>
+            )}
+
+            {/* Breakdown rows */}
+            {[
+              { label: '⬡ Node Holders', value: nodeCoins, color: 'var(--neon-lime)' },
+              { label: '👤 Free Users', value: freeCoins, color: '#4FC3F7' },
+              { label: '📦 Other', value: Math.max(0, otherCoins), color: 'rgba(255,255,255,0.3)' },
+            ].map(item => (
+              <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.04)', fontSize: 12, fontWeight: 800 }}>
+                <span style={{ color: item.color }}>{item.label}</span>
+                <span>{formatNumber(Math.floor(item.value))} $AIP</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Top 10 Holders */}
+          <h4 style={{ fontSize: 11, fontWeight: 900, color: 'rgba(255,255,255,0.4)', letterSpacing: 2, marginBottom: 12 }}>TOP 10 COIN HOLDERS</h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24 }}>
+            {(s.top_holders || []).map((h, i) => (
+              <div key={h.wallet_address} style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'rgba(255,255,255,0.02)', padding: '10px 16px', borderRadius: 16, border: '1px solid rgba(255,255,255,0.04)' }}>
+                <span style={{ fontSize: 14, fontWeight: 900, color: i < 3 ? '#FFD700' : 'rgba(255,255,255,0.3)', minWidth: 24 }}>#{i + 1}</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 12, fontWeight: 800 }}>{shortAddr(h.wallet_address)}</div>
+                  <div style={{ fontSize: 9, color: h.node_tier > 0 ? 'var(--neon-lime)' : '#4FC3F7', fontWeight: 700 }}>
+                    {h.node_tier > 0 ? `⬡ Node T${h.node_tier} #${h.node_id}` : '👤 Free User'}
+                  </div>
+                </div>
+                <span style={{ fontSize: 13, fontWeight: 900, color: 'var(--neon-lime)' }}>{formatNumber(Math.floor(h.local_reward))}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* DB Init button */}
+          <button
+            onClick={async () => {
+              setIsLoading(true);
+              try { toast.success((await api.initAdminTasksDB(walletAddress)).message); }
+              catch { toast.error('Init failed'); }
+              setIsLoading(false);
+            }}
+            disabled={isLoading}
+            style={{ background: 'rgba(255,80,80,0.1)', color: '#ff6262', border: '1px solid rgba(255,80,80,0.3)', padding: '10px 16px', borderRadius: 10, fontSize: 10, fontWeight: 900, cursor: 'pointer', width: '100%' }}>
+            {isLoading ? '...' : '⚙️ RE-INITIALIZE TASKS DB TABLES'}
+          </button>
+        </>
+      )}
+
+      {/* ══════════════ SNAPSHOT TAB ══════════════ */}
+      {activeAdminTab === 'snapshot' && (
+        <>
+          <div style={{ background: 'var(--bg-card)', padding: '24px', borderRadius: '24px', marginBottom: 24, border: '1px solid rgba(163,255,18,0.12)' }}>
+            <h3 style={{ fontSize: 13, fontWeight: 900, marginBottom: 20, color: 'var(--neon-lime)' }}>📸 CAPTURE COIN SNAPSHOT</h3>
+            
+            {/* Pre-flight stats */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 20 }}>
+              <div style={{ background: 'rgba(163,255,18,0.05)', padding: 12, borderRadius: 12 }}>
+                <div style={{ fontSize: 9, color: 'var(--neon-lime)', fontWeight: 800 }}>ELIGIBLE WALLETS</div>
+                <div style={{ fontSize: 18, fontWeight: 900 }}>{formatNumber(s.total_users || 0)}</div>
+              </div>
+              <div style={{ background: 'rgba(79,195,247,0.05)', padding: 12, borderRadius: 12 }}>
+                <div style={{ fontSize: 9, color: '#4FC3F7', fontWeight: 800 }}>TOTAL COINS</div>
+                <div style={{ fontSize: 18, fontWeight: 900 }}>{formatNumber(Math.floor(totalCoins))}</div>
+              </div>
+              <div style={{ background: 'rgba(255,215,0,0.05)', padding: 12, borderRadius: 12 }}>
+                <div style={{ fontSize: 9, color: '#FFD700', fontWeight: 800 }}>RATE 1:{conversionRate}</div>
+                <div style={{ fontSize: 18, fontWeight: 900 }}>{(totalCoins / conversionRate).toFixed(2)}</div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+              <input type="text" placeholder="Snapshot Name (e.g. April 2026 Airdrop)"
+                value={snapshotName} onChange={e => setSnapshotName(e.target.value)}
+                style={{ ...inputStyle, flex: 1 }} />
+              <button onClick={handleCreateSnapshot} disabled={isLoading || !snapshotName}
+                style={{ background: 'var(--neon-lime)', color: '#000', fontWeight: 900, padding: '0 20px', borderRadius: 12, fontSize: 12, cursor: 'pointer' }}>
+                {isLoading ? '...' : '📸 CAPTURE'}
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <label style={{ fontSize: 10, color: '#FF5252', display: 'block', marginBottom: 4, fontWeight: 800 }}>TOKEN RATE (Coins : 1 Token)</label>
+                <input type="number" value={conversionRate} onChange={e => setConversionRate(Number(e.target.value))}
+                  style={{ ...inputStyle, width: '100%' }} />
+              </div>
+              <div>
+                <label style={{ fontSize: 10, color: '#fff', display: 'block', marginBottom: 4, fontWeight: 800 }}>TOKEN CONTRACT ADDRESS</label>
+                <input type="text" placeholder="0x..." value={tokenAddress} onChange={e => setTokenAddress(e.target.value)}
+                  style={{ ...inputStyle, width: '100%' }} />
+              </div>
+            </div>
+          </div>
+
+          {/* Snapshot History */}
+          <h4 style={{ fontSize: 11, fontWeight: 900, color: 'rgba(255,255,255,0.4)', letterSpacing: 2, marginBottom: 12 }}>SNAPSHOT HISTORY</h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {(snapshotHistory || []).length === 0 && (
+              <div style={{ textAlign: 'center', padding: 40, color: 'rgba(255,255,255,0.2)', fontSize: 12 }}>No snapshots yet.</div>
+            )}
+            {(snapshotHistory || []).map(snap => (
+              <div key={snap.id} style={{ background: 'rgba(255,255,255,0.02)', padding: '16px 20px', borderRadius: 18, display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: 14 }}>{snap.name}</div>
+                  <div style={{ fontSize: 11, color: '#FFD700', marginTop: 4 }}>
+                    {formatNumber(snap.total_users)} Wallets · {formatNumber(Math.floor(snap.total_coins))} Coins
+                  </div>
+                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>
+                    {new Date(snap.created_at).toLocaleString()}
+                  </div>
+                </div>
+                <button onClick={() => exportCSV(snap.id, snap.name)}
+                  style={{ background: 'rgba(163,255,18,0.1)', color: 'var(--neon-lime)', border: '1px solid rgba(163,255,18,0.3)', padding: '8px 14px', borderRadius: 10, fontSize: 11, fontWeight: 900, cursor: 'pointer' }}>
+                  ⬇ CSV
+                </button>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* ══════════════ TASKS TAB ══════════════ */}
+      {activeAdminTab === 'tasks' && <TaskManagementAdmin />}
+
+      {/* ══════════════ USERS TAB ══════════════ */}
+      {activeAdminTab === 'users' && <UserManagementAdmin adminWallet={walletAddress} />}
+
+      {/* ══════════════ LOGS TAB ══════════════ */}
+      {activeAdminTab === 'logs' && (
+        <div style={{ background: 'var(--bg-card)', padding: '24px', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <h3 style={{ fontSize: 13, fontWeight: 900, marginBottom: 20, color: '#FFD700' }}>📋 ADJUSTMENT AUDIT LOG</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {(adjustmentLogs || []).length === 0 ? (
+              <div style={{ textAlign: 'center', fontSize: 11, color: '#4FC3F7', padding: 40 }}>No adjustments made yet.</div>
+            ) : (
+              (adjustmentLogs || []).slice(0, 20).map((log, idx) => (
+                <div key={log.id || idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'rgba(255,255,255,0.02)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.04)' }}>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 800 }}>{shortAddr(log.target_wallet)}</div>
+                    <div style={{ fontSize: 10, color: '#A3FF12', marginTop: 2 }}>{log.reason || 'Manual Adjustment'}</div>
+                    <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.2)', marginTop: 2 }}>{new Date(log.timestamp).toLocaleString()}</div>
+                  </div>
+                  <div style={{ fontSize: 14, fontWeight: 900, color: log.amount > 0 ? 'var(--neon-lime)' : '#ff6262' }}>
+                    {log.amount > 0 ? '+' : ''}{formatNumber(log.amount)}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

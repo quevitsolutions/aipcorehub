@@ -872,15 +872,34 @@ app.post('/api/admin/init-tasks-db', checkAdmin, async (req, res) => {
 // GET Admin Overview Stats
 app.get('/api/admin/overview', checkAdmin, async (req, res) => {
   try {
-    const stats = await query(`
-      SELECT 
-        (SELECT COUNT(*) FROM users) as total_users,
-        (SELECT SUM(local_reward) FROM users) as total_reward,
-        (SELECT COUNT(*) FROM users WHERE node_tier >= 1) as active_miners,
-        (SELECT COUNT(*) FROM users WHERE created_at > NOW() - INTERVAL '24 hours') as new_users_24h
-      FROM users LIMIT 1
-    `);
-    res.json(stats.rows[0]);
+    const [stats, topHolders] = await Promise.all([
+      query(`
+        SELECT 
+          COUNT(*) as total_users,
+          SUM(local_reward) as total_reward,
+          COUNT(*) FILTER (WHERE node_tier >= 1) as active_miners,
+          COUNT(*) FILTER (WHERE node_tier = 0 AND created_at > NOW() - INTERVAL '30 days') as free_trial_users,
+          COUNT(*) FILTER (WHERE node_tier = 0 AND created_at <= NOW() - INTERVAL '30 days') as expired_users,
+          COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '24 hours') as new_users_24h,
+          COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '7 days') as new_users_7d,
+          SUM(local_reward) FILTER (WHERE node_tier >= 1) as coins_node_holders,
+          SUM(local_reward) FILTER (WHERE node_tier = 0 AND created_at > NOW() - INTERVAL '30 days') as coins_free_users,
+          AVG(local_reward) FILTER (WHERE local_reward > 0) as avg_balance,
+          MAX(local_reward) as top_balance
+        FROM users
+      `),
+      query(`
+        SELECT wallet_address, local_reward, node_tier, node_id, created_at
+        FROM users 
+        WHERE local_reward > 0 
+        ORDER BY local_reward DESC 
+        LIMIT 10
+      `)
+    ]);
+    res.json({
+      ...stats.rows[0],
+      top_holders: topHolders.rows
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch admin stats' });
