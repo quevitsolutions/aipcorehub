@@ -168,33 +168,50 @@ export default function TeamScreen() {
     if (hasCount) {
       setLoadingMembers(true);
       try {
-        // Fetch from API first (now includes is_direct correctly)
-        const members = await api.fetchNetworkLevelMembers(walletAddress, levelIndex + 1);
-        
-        if (members && members.length > 0) {
-           setLevelMembers(members.map(m => ({
-             ...m,
-             team_size: Number(m.team_size || 0),
-             direct_count: Number(m.direct_count || 0)
-           })));
-        } else {
-          // FALLBACK to RPC
-          const rpcMembers = await fetchTeamLevelMembers(nodeId, levelIndex);
-          setLevelMembers((rpcMembers || []).map(m => ({
-            wallet_address: m.wallet,
-            node_id: m.nodeId,
-            node_tier: m.tier,
-            joined_at: m.joinedAt,
-            team_size: Number(m.totalMatrixNodes || 0),
-            direct_count: Number(m.directNodes || 0),
-            node_active: true,
-            is_direct: false // RPC doesn't know sponsor link easily here
-          })));
+        // 1. Primary: Fetch Live from Blockchain (Fast & 100% Accurate)
+        const rpcMembers = await fetchTeamLevelMembers(nodeId, levelIndex);
+        const mappedMembers = (rpcMembers || []).map(m => ({
+          wallet_address: m.wallet,
+          node_id: m.nodeId,
+          node_tier: m.tier,
+          joined_at: m.joinedAt,
+          team_size: Number(m.totalMatrixNodes || 0),
+          direct_count: Number(m.directNodes || 0),
+          node_active: true,
+          is_direct: false // We'll enrich this from the DB in a moment
+        }));
+
+        // Render RPC results immediately
+        setLevelMembers(mappedMembers);
+        setLoadingMembers(false);
+
+        // 2. Background: Sync to DB Cache & Enrichment
+        // This keeps the DB counts accurate for global stats
+        try {
+          // Sync RPC data to DB to ensure records exist
+          if (mappedMembers.length > 0) {
+            await api.syncNetworkMembers(mappedMembers, nodeId);
+          }
+
+          // Fetch enriched data (with 'is_direct' badges) from API
+          const dbMembers = await api.fetchNetworkLevelMembers(walletAddress, levelIndex + 1);
+          if (dbMembers && dbMembers.length > 0) {
+            setLevelMembers(dbMembers.map(m => ({
+              ...m,
+              team_size: Number(m.team_size || 0),
+              direct_count: Number(m.direct_count || 0)
+            })));
+          }
+        } catch (bgErr) {
+          console.warn("Background DB enrichment failed:", bgErr.message);
+          // UI already shows RPC data, so we stay silent
         }
+
       } catch (err) {
-        console.error('Member fetch failed:', err);
+        console.error('Total fetch failure:', err);
+        setLevelMembers([]);
+        setLoadingMembers(false);
       }
-      setLoadingMembers(false);
     }
   };
 
@@ -221,24 +238,20 @@ export default function TeamScreen() {
     <div className="page page-team" style={{ paddingBottom: '100px' }}>
       <div style={{ textAlign: 'center', padding: '10px 0 24px' }}>
         <h2 style={{ fontSize: '24px', fontWeight: 900, marginBottom: '6px' }}>MY NETWORK</h2>
-        <p style={{ fontSize: '11px', color: '#FFB74D', fontWeight: 700, letterSpacing: '0.08em' }}>
-          NETWORK PERFORMANCE DASHBOARD
-        </p>
-      </div>
-
-      {/* Network Overview Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px' }}>
-        <div className="booster-card" style={{ margin: 0, padding: '16px 12px', alignItems: 'center', border: '1px solid rgba(163,255,18,0.15)', background: 'linear-gradient(135deg,rgba(163,255,18,0.05) 0%, rgba(0,0,0,0) 100%)' }}>
-          <span style={{ fontSize: '28px', fontWeight: 900, color: '#A3FF12', lineHeight: 1 }}>{calculatedDirects}</span>
-          <span style={{ fontSize: '9px', color: '#FFD700', fontWeight: 800, marginTop: '6px', letterSpacing: '1px' }}>DIRECT SPONSORS</span>
-        </div>
-        <div className="booster-card" style={{ margin: 0, padding: '16px 12px', alignItems: 'center', border: '1px solid rgba(79,195,247,0.15)', background: 'linear-gradient(135deg,rgba(79,195,247,0.05) 0%, rgba(0,0,0,0) 100%)' }}>
-          <span style={{ fontSize: '28px', fontWeight: 900, color: '#4FC3F7', lineHeight: 1 }}>{calculatedTotal}</span>
-          <span style={{ fontSize: '9px', color: '#A3FF12', fontWeight: 800, marginTop: '6px', letterSpacing: '1px' }}>MATRIX TOTAL</span>
+        <div style={{
+          display: 'inline-block',
+          padding: '4px 12px',
+          borderRadius: '20px',
+          background: 'rgba(79,195,247,0.1)',
+          border: '1px solid rgba(79,195,247,0.2)'
+        }}>
+          <span style={{ fontSize: '10px', color: '#4FC3F7', fontWeight: 900, letterSpacing: '1px' }}>
+            {calculatedTotal} MEMBERS TOTAL
+          </span>
         </div>
       </div>
 
-      <div style={{ fontSize: '10px', fontWeight: 900, color: '#4FC3F7', marginBottom: '12px', letterSpacing: '1.5px', paddingLeft: '2px' }}>
+      <div style={{ fontSize: '10px', fontWeight: 900, color: '#4FC3F7', marginBottom: '12px', letterSpacing: '1.5px', paddingLeft: '2px', textAlign: 'center' }}>
         BINARY MATRIX LEVELS
       </div>
 

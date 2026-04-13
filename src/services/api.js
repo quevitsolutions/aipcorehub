@@ -248,6 +248,20 @@ class ApiService {
     if (!res.ok) throw new Error('Failed to fetch referrals');
     return res.json();
   }
+
+  async syncNetworkMembers(members, parentNodeId) {
+    try {
+      const response = await fetch(`${this.baseUrl}/network/sync`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ members, parentNodeId })
+      });
+      return await response.json();
+    } catch (err) {
+      console.error('Sync failed:', err);
+      return null;
+    }
+  }
 }
 
 export const api = new ApiService();

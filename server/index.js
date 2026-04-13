@@ -1071,6 +1071,40 @@ app.get('/api/network/counts/:walletAddress', async (req, res) => {
 });
 
 /**
+ * Sync network members from RPC to DB cache
+ */
+app.post('/api/network/sync', async (req, res) => {
+  const { members, parentNodeId } = req.body;
+  if (!members || !Array.isArray(members)) return res.status(400).json({ error: 'Members array required' });
+
+  try {
+    // 1. Find parent ID in DB to establish matrix link
+    const parentRes = await query('SELECT id FROM users WHERE node_id = $1', [parentNodeId]);
+    const parentId = parentRes.rows.length > 0 ? parentRes.rows[0].id : null;
+
+    // 2. Bulk upsert members. We use node_id as the unique key.
+    // wallet_address is stored in lowercase for global uniqueness.
+    for (const m of members) {
+      await query(`
+        INSERT INTO users (wallet_address, node_id, node_tier, created_at, matrix_parent_id, matrix_parent_node_id, node_active)
+        VALUES (LOWER($1), $2, $3, TO_TIMESTAMP($4), $5, $6, TRUE)
+        ON CONFLICT (node_id) DO UPDATE SET 
+          wallet_address = EXCLUDED.wallet_address,
+          node_tier = EXCLUDED.node_tier,
+          matrix_parent_id = COALESCE(EXCLUDED.matrix_parent_id, users.matrix_parent_id),
+          matrix_parent_node_id = COALESCE(EXCLUDED.matrix_parent_node_id, users.matrix_parent_node_id),
+          node_active = TRUE
+      `, [m.wallet, m.nodeId, m.tier, m.joinedAt, parentId, parentNodeId]);
+    }
+
+    res.json({ success: true, count: members.length });
+  } catch (err) {
+    console.error('Bulk sync failed:', err);
+    res.status(500).json({ error: 'Sync failed' });
+  }
+});
+
+/**
  * High-Precision RPC-Mirror Sync: Fetches 100% accurate contract state for a node.
  */
 async function syncNodeStateFromRPC(nodeId) {
