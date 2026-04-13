@@ -181,21 +181,22 @@ export default function TeamScreen() {
     );
   }
 
-  const calculatedDirects = dualCounts.referral[0] || rpcCounts[0] || (directRefs || 0);
-  const matrixTotal = dualCounts.matrix.reduce((a,b) => a+b, 0);
-  const rpcTotal = rpcCounts.reduce ? rpcCounts.reduce((a,b) => a+b, 0) : 0;
-  const calculatedTotal = matrixTotal || rpcTotal || (teamSize || 0);
-  // Best count per level: DB matrix > DB referral > live RPC fallback
-  const levelData = new Array(18).fill(0).map((_, i) =>
-    Math.max(dualCounts.matrix[i] || 0, dualCounts.referral[i] || 0, rpcCounts[i] || 0)
-  );
+  // Direct sponsor count (from store or referral[0])
+  const calculatedDirects = directRefs || dualCounts.referral[0] || 0;
+  // Binary matrix total = sum of all rpcCounts (from getTeamSize per depth)
+  const rpcTotal = Array.isArray(rpcCounts) ? rpcCounts.reduce((a,b) => a+b, 0) : 0;
+  const calculatedTotal = rpcTotal || (teamSize || 0);
+  // ONLY binary matrix counts per level - that's what getTeamSize(nodeId, depth) returns
+  const levelData = new Array(18).fill(0).map((_, i) => rpcCounts[i] || 0);
+  // Max capacity per level in binary matrix: 2^(level)
+  const maxCapacity = (level) => Math.pow(2, level);
 
   return (
     <div className="page page-team" style={{ paddingBottom: '100px' }}>
       <div style={{ textAlign: 'center', padding: '10px 0 24px' }}>
         <h2 style={{ fontSize: '24px', fontWeight: 900, marginBottom: '6px' }}>MY NETWORK</h2>
         <p style={{ fontSize: '11px', color: '#FFB74D', fontWeight: 700, letterSpacing: '0.08em' }}>
-          LEVEL WISE TEAM BREAKDOWN
+          BINARY MATRIX TEAM BREAKDOWN
         </p>
       </div>
 
@@ -203,17 +204,16 @@ export default function TeamScreen() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px' }}>
         <div className="booster-card" style={{ margin: 0, padding: '16px 12px', alignItems: 'center', border: '1px solid rgba(163,255,18,0.15)', background: 'linear-gradient(135deg,rgba(163,255,18,0.05) 0%, rgba(0,0,0,0) 100%)' }}>
           <span style={{ fontSize: '28px', fontWeight: 900, color: '#A3FF12', lineHeight: 1 }}>{calculatedDirects}</span>
-          <span style={{ fontSize: '9px', color: '#FFD700', fontWeight: 800, marginTop: '6px', letterSpacing: '1px' }}>DIRECT COUNT</span>
+          <span style={{ fontSize: '9px', color: '#FFD700', fontWeight: 800, marginTop: '6px', letterSpacing: '1px' }}>DIRECT SPONSORS</span>
         </div>
         <div className="booster-card" style={{ margin: 0, padding: '16px 12px', alignItems: 'center', border: '1px solid rgba(79,195,247,0.15)', background: 'linear-gradient(135deg,rgba(79,195,247,0.05) 0%, rgba(0,0,0,0) 100%)' }}>
           <span style={{ fontSize: '28px', fontWeight: 900, color: '#4FC3F7', lineHeight: 1 }}>{calculatedTotal}</span>
-          <span style={{ fontSize: '9px', color: '#A3FF12', fontWeight: 800, marginTop: '6px', letterSpacing: '1px' }}>MATRIX TEAM</span>
+          <span style={{ fontSize: '9px', color: '#A3FF12', fontWeight: 800, marginTop: '6px', letterSpacing: '1px' }}>MATRIX TOTAL</span>
         </div>
       </div>
 
-      {/* Level List */}
       <div style={{ fontSize: '10px', fontWeight: 900, color: '#4FC3F7', marginBottom: '12px', letterSpacing: '1.5px', paddingLeft: '2px' }}>
-        TEAM BY LEVEL
+        BINARY MATRIX LEVELS
       </div>
 
       {loadingCounts ? (
@@ -224,24 +224,26 @@ export default function TeamScreen() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18].map((level, index) => {
             const count = levelData[index] || 0;
+            const maxSlots = maxCapacity(level); // 2, 4, 8, 16...
+            const fillPct = maxSlots > 0 ? Math.min(100, Math.round((count / maxSlots) * 100)) : 0;
             const isExpanded = expandedLevel === index;
             const canClick = count > 0 || isExpanded;
 
             return (
               <div key={level} style={{
                 borderRadius: '12px',
-                border: `1px solid ${isExpanded ? 'rgba(163,255,18,0.2)' : 'rgba(255,255,255,0.05)'}`,
+                border: `1px solid ${isExpanded ? 'rgba(163,255,18,0.25)' : count > 0 ? 'rgba(79,195,247,0.1)' : 'rgba(255,255,255,0.04)'}`,
                 background: isExpanded ? 'rgba(163,255,18,0.03)' : 'rgba(255,255,255,0.02)',
                 overflow: 'hidden',
                 transition: 'border-color 0.2s',
-                opacity: count === 0 ? 0.5 : 1
+                opacity: count === 0 ? 0.45 : 1
               }}>
                 {/* Level Header */}
                 <div
                   onClick={() => canClick && toggleLevel(index)}
                   style={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '14px 16px', cursor: canClick ? 'pointer' : 'default'
+                    padding: '12px 16px', cursor: canClick ? 'pointer' : 'default'
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -255,16 +257,20 @@ export default function TeamScreen() {
                       {level}
                     </div>
                     <div>
-                      <div style={{ fontSize: '13px', fontWeight: 800, color: '#fff' }}>Level {level}</div>
-                      <div style={{ fontSize: '9px', color: '#666', marginTop: '1px' }}>
-                        {count > 0 ? `${count} operator${count > 1 ? 's' : ''}` : 'No operators'}
+                      <div style={{ fontSize: '12px', fontWeight: 800, color: '#fff' }}>Level {level}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                        {/* Progress bar */}
+                        <div style={{ width: '60px', height: '3px', background: 'rgba(255,255,255,0.08)', borderRadius: '2px', overflow: 'hidden' }}>
+                          <div style={{ width: `${fillPct}%`, height: '100%', background: fillPct >= 100 ? '#A3FF12' : '#4FC3F7', borderRadius: '2px', transition: 'width 0.4s ease' }} />
+                        </div>
+                        <span style={{ fontSize: '8px', color: '#555', fontWeight: 700 }}>{count}/{maxSlots}</span>
                       </div>
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <span style={{
                       fontSize: '16px', fontWeight: 900,
-                      color: count > 0 ? '#A3FF12' : '#444'
+                      color: count >= maxSlots ? '#A3FF12' : count > 0 ? '#4FC3F7' : '#333'
                     }}>{count}</span>
                     {count > 0 && (
                       <div style={{
