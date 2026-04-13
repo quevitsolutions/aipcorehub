@@ -103,6 +103,8 @@ export default function TeamScreen() {
   const [rpcMatrixCounts, setRpcMatrixCounts] = useState(new Array(18).fill(0));
   const [loadingCounts, setLoadingCounts] = useState(false);
   const [activeTab, setActiveTab] = useState('matrix'); // 'matrix' or 'directs'
+  const [expandedLevel, setExpandedLevel] = useState(null);
+  const [levelMembers, setLevelMembers] = useState([]);
   const [directs, setDirects] = useState([]);
   const [loadingDirects, setLoadingDirects] = useState(false);
   const [loadingMembers, setLoadingMembers] = useState(false);
