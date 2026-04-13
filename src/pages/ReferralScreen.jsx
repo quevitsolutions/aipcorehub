@@ -4,23 +4,31 @@ import { formatNumber, shortAddr } from '../utils/format.js';
 import toast from 'react-hot-toast';
 
 export default function ReferralScreen() {
-  const { 
-    walletAddress, 
-    directRefs, 
-    localReward, 
-    leaderboard, 
-    referralList, 
-    fetchLeaderboardData, 
-    fetchReferralData,
-    sponsorWallet,
-    hasNode,
-  } = useGameStore();
+  const store = useGameStore();
+  const walletAddress = store?.walletAddress;
+  const directRefs = store?.directRefs || 0;
+  const localReward = store?.localReward || 0;
+  const leaderboard = store?.leaderboard || [];
+  const referralList = store?.referralList || [];
+  const fetchLeaderboardData = store?.fetchLeaderboardData;
+  const fetchReferralData = store?.fetchReferralData;
+  const sponsorWallet = store?.sponsorWallet;
+  const hasNode = store?.hasNode;
+  const loadingReferrals = store?.loadingReferrals || false;
+  const activatedRefs = store?.activatedRefs || 0;
 
   const [inviteTab, setInviteTab] = useState('activated');
 
+  // Smart tab defaulting: if no activated nodes but we have refs, show Free tab
   useEffect(() => {
-    fetchLeaderboardData();
-    if (walletAddress) fetchReferralData();
+    if (Array.isArray(referralList) && referralList.length > 0 && Number(activatedRefs || 0) === 0 && inviteTab === 'activated') {
+      setInviteTab('free');
+    }
+  }, [referralList, activatedRefs, inviteTab]);
+
+  useEffect(() => {
+    if (fetchLeaderboardData) fetchLeaderboardData();
+    if (walletAddress && fetchReferralData) fetchReferralData();
   }, [walletAddress, fetchLeaderboardData, fetchReferralData]);
 
   const inviteLink = walletAddress ? `${window.location.origin}/?ref=${walletAddress}` : 'Connect wallet to get link';
@@ -194,9 +202,9 @@ export default function ReferralScreen() {
           </div>
         )}
 
-        {(() => {
-          const filteredList = referralList.filter(f => {
-            const tier = Number(f.node_tier || 0);
+          const safeList = Array.isArray(referralList) ? referralList : [];
+          const filteredList = safeList.filter(f => {
+            const tier = Number(f?.node_tier || 0);
             return inviteTab === 'activated' ? tier > 0 : tier === 0;
           });
           
@@ -235,22 +243,22 @@ export default function ReferralScreen() {
       </div>
       
       <div className="booster-card" style={{ padding: '8px 16px' }}>
-        {leaderboard.slice(0, 10).map((u, i) => (
+        {(Array.isArray(leaderboard) ? leaderboard : []).slice(0, 10).map((u, i) => (
           <div key={i} style={{ 
             display: 'flex', alignItems: 'center', padding: '12px 0',
-            borderBottom: i < 9 && i < leaderboard.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none'
+            borderBottom: i < 9 && i < (leaderboard?.length || 0) - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none'
           }}>
             <span style={{ width: '24px', fontSize: '13px', fontWeight: 900, color: i === 0 ? '#FFD700' : i === 1 ? '#C0C0C0' : i === 2 ? '#CD7F32' : 'var(--text-dim)' }}>#{i + 1}</span>
             <div className="flex-column" style={{ flex: 1, marginLeft: '12px' }}>
-              <span style={{ fontSize: '13px', fontWeight: 800, color: u.wallet_address === walletAddress ? 'var(--neon-lime)' : '#fff' }}>
-                {shortAddr(u.wallet_address)} {u.wallet_address === walletAddress && '(YOU)'}
+              <span style={{ fontSize: '13px', fontWeight: 800, color: u?.wallet_address === walletAddress ? 'var(--neon-lime)' : '#fff' }}>
+                {u?.wallet_address ? shortAddr(u.wallet_address) : '...'} {u?.wallet_address === walletAddress && '(YOU)'}
               </span>
-              <span style={{ fontSize: '10px', color: '#FFFFFF' }}>{formatNumber(u.taps)} total taps</span>
+              <span style={{ fontSize: '10px', color: '#FFFFFF' }}>{formatNumber(u?.taps || 0)} total taps</span>
             </div>
-            <span style={{ fontSize: '13px', fontWeight: 900, color: 'var(--neon-lime)' }}>{(u.local_reward / 1000000).toFixed(2)}M</span>
+            <span style={{ fontSize: '13px', fontWeight: 900, color: 'var(--neon-lime)' }}>{( (u?.local_reward || 0) / 1000000).toFixed(2)}M</span>
           </div>
         ))}
-        {leaderboard.length === 0 && (
+        {(!leaderboard || leaderboard.length === 0) && (
           <div style={{ padding: '20px', textAlign: 'center', fontSize: '11px', opacity: 0.5 }}>Syncing global rankings...</div>
         )}
       </div>
