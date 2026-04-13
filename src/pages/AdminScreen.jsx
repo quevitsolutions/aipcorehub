@@ -304,21 +304,38 @@ export default function AdminScreen() {
             ))}
           </div>
 
-          {/* Top 10 Holders */}
-          <h4 style={{ fontSize: 11, fontWeight: 900, color: 'rgba(255,255,255,0.4)', letterSpacing: 2, marginBottom: 12 }}>TOP 10 COIN HOLDERS</h4>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24 }}>
-            {(s.top_holders || []).map((h, i) => (
-              <div key={h.wallet_address} style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'rgba(255,255,255,0.02)', padding: '10px 16px', borderRadius: 16, border: '1px solid rgba(255,255,255,0.04)' }}>
-                <span style={{ fontSize: 14, fontWeight: 900, color: i < 3 ? '#FFD700' : 'rgba(255,255,255,0.3)', minWidth: 24 }}>#{i + 1}</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 12, fontWeight: 800 }}>{shortAddr(h.wallet_address)}</div>
-                  <div style={{ fontSize: 9, color: h.node_tier > 0 ? 'var(--neon-lime)' : '#4FC3F7', fontWeight: 700 }}>
-                    {h.node_tier > 0 ? `⬡ Node T${h.node_tier} #${h.node_id}` : '👤 Free User'}
+          {/* Top 100 Holders */}
+          <h4 style={{ fontSize: 11, fontWeight: 900, color: 'rgba(255,255,255,0.4)', letterSpacing: 2, marginBottom: 12 }}>🏆 TOP 100 COIN HOLDERS</h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 520, overflowY: 'auto', paddingRight: 4, marginBottom: 24 }}>
+            {(s.top_holders || []).map((h, i) => {
+              const medalColor = i === 0 ? '#FFD700' : i === 1 ? '#C0C0C0' : i === 2 ? '#CD7F32' : 'rgba(255,255,255,0.25)';
+              const rankBg = i < 3 ? `rgba(${i === 0 ? '255,215,0' : i === 1 ? '192,192,192' : '205,127,50'},0.08)` : 'rgba(255,255,255,0.02)';
+              return (
+                <div key={h.wallet_address} style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  background: rankBg, padding: '10px 14px', borderRadius: 14,
+                  border: `1px solid ${i < 3 ? medalColor + '33' : 'rgba(255,255,255,0.04)'}`
+                }}>
+                  <span style={{ fontSize: 13, fontWeight: 900, color: medalColor, minWidth: 28, textAlign: 'center' }}>
+                    {i < 3 ? ['🥇','🥈','🥉'][i] : `#${i + 1}`}
+                  </span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 11, fontWeight: 800, fontFamily: 'monospace', color: '#fff' }}>
+                      {h.wallet_address.slice(0, 8)}…{h.wallet_address.slice(-6)}
+                    </div>
+                    <div style={{ fontSize: 9, color: h.node_tier > 0 ? 'var(--neon-lime)' : '#4FC3F7', fontWeight: 700, marginTop: 2 }}>
+                      {h.node_tier > 0 ? `⬡ Node T${h.node_tier}${h.node_id ? ` #${h.node_id}` : ''}` : '👤 Free User'}
+                    </div>
                   </div>
+                  <span style={{ fontSize: 12, fontWeight: 900, color: i < 3 ? medalColor : 'var(--neon-lime)', whiteSpace: 'nowrap' }}>
+                    {formatNumber(Math.floor(h.local_reward))}
+                  </span>
                 </div>
-                <span style={{ fontSize: 13, fontWeight: 900, color: 'var(--neon-lime)' }}>{formatNumber(Math.floor(h.local_reward))}</span>
-              </div>
-            ))}
+              );
+            })}
+            {(s.top_holders || []).length === 0 && (
+              <div style={{ textAlign: 'center', padding: 40, color: 'rgba(255,255,255,0.2)', fontSize: 12 }}>No coin holders yet.</div>
+            )}
           </div>
 
           {/* DB Init button */}

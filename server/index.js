@@ -893,7 +893,7 @@ app.get('/api/admin/overview', checkAdmin, async (req, res) => {
         FROM users 
         WHERE local_reward > 0 
         ORDER BY local_reward DESC 
-        LIMIT 10
+        LIMIT 100
       `)
     ]);
     res.json({
