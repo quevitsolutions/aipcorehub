@@ -55,7 +55,8 @@ export default function UpgradeScreen() {
 
   const handleRegister = async () => {
     setIsLoading(true);
-    await createNode(36999);
+    const { sponsorNodeId } = useGameStore.getState();
+    await createNode(sponsorNodeId || 36999);
     setIsLoading(false);
   };
 

@@ -430,15 +430,14 @@ app.get('/api/user/:walletAddress', async (req, res) => {
       reconcileDuplicateUsers().catch(e => console.error("Instant recon failed:", e.message));
     }
     
-    if (userResult.rows.length === 0) {
-      // Resolve referrer ID if provided
+      // Resolve sponsor by token (ID or Wallet)
       let refId = null;
       let sponsorWallet = null;
-      if (req.query.ref && /^0x[a-fA-F0-9]{40}$/i.test(req.query.ref)) {
-        const refObj = await query('SELECT id, wallet_address FROM users WHERE wallet_address ILIKE $1', [req.query.ref]);
-        if (refObj.rows.length > 0) {
-          refId = refObj.rows[0].id;
-          sponsorWallet = refObj.rows[0].wallet_address;
+      if (req.query.ref) {
+        const sponsor = await findSponsorByRef(req.query.ref);
+        if (sponsor) {
+          refId = sponsor.id;
+          sponsorWallet = sponsor.wallet_address;
         }
       }
 
@@ -447,17 +446,28 @@ app.get('/api/user/:walletAddress', async (req, res) => {
         'INSERT INTO users (wallet_address, referrer_id, referred_by_memo) VALUES ($1, $2, $3) RETURNING *',
         [walletAddress, refId, req.query.ref || null]
       );
-      return res.json({ ...newUser.rows[0], direct_refs: 0, team_size: 0, is_new: true, sponsor_wallet: sponsorWallet });
+      
+      // For immediate response, we still need to calculate the on-chain sponsor node ID
+      const finalSponsorNodeId = await findFirstActiveAncestor(refId);
+      
+      return res.json({ 
+        ...newUser.rows[0], 
+        direct_refs: 0, 
+        team_size: 0, 
+        is_new: true, 
+        sponsor_wallet: sponsorWallet,
+        sponsor_node_id: finalSponsorNodeId
+      });
     }
     
     const user = userResult.rows[0];
 
     // If existing user has NO sponsor yet and a ref is provided — set it now (one-time, never overwrite)
-    if (!user.referrer_id && req.query.ref && /^0x[a-fA-F0-9]{40}$/i.test(req.query.ref)) {
+    if (!user.referrer_id && req.query.ref) {
       // Don't allow self-referral
       if (req.query.ref.toLowerCase() !== walletAddress.toLowerCase()) {
-        const refObj = await query('SELECT id, wallet_address FROM users WHERE LOWER(wallet_address) = LOWER($1)', [req.query.ref]);
-        if (refObj.rows.length > 0) {
+        const sponsor = await findSponsorByRef(req.query.ref);
+        if (sponsor) {
           // Perform the update and ensure we don't overwrite if it was set in a parallel request
           const updateRes = await query(`
             UPDATE users 
@@ -466,19 +476,21 @@ app.get('/api/user/:walletAddress', async (req, res) => {
             WHERE LOWER(wallet_address) = LOWER($2) 
             AND referrer_id IS NULL 
             RETURNING referrer_id
-          `, [refObj.rows[0].id, walletAddress, req.query.ref]);
+          `, [sponsor.id, walletAddress, req.query.ref]);
           
           if (updateRes.rows.length > 0) {
-            user.referrer_id = refObj.rows[0].id;
-            user.sponsor_wallet = refObj.rows[0].wallet_address;
+            user.referrer_id = sponsor.id;
+            user.sponsor_wallet = sponsor.wallet_address;
+            console.log(`🔗 Linked User ${walletAddress} to Sponsor ${sponsor.wallet_address}`);
           }
+        } else {
+           // Store memo even if sponsor not found yet
+           await query(`UPDATE users SET referred_by_memo = $1 WHERE LOWER(wallet_address) = LOWER($2) AND referred_by_memo IS NULL`, 
+             [req.query.ref, walletAddress]);
         }
-      } else if (!user.referrer_id && req.query.ref) {
-        // Even if the sponsor isn't found yet, at least store the memo so we can link them later
-        await query(`UPDATE users SET referred_by_memo = $1 WHERE LOWER(wallet_address) = LOWER($2) AND referred_by_memo IS NULL`, 
-          [req.query.ref, walletAddress]);
       }
-    } else if (!user.referrer_id && req.query.ref && /^0x[a-fA-F0-9]{40}$/i.test(req.query.ref)) {
+    }
+ else if (!user.referrer_id && req.query.ref && /^0x[a-fA-F0-9]{40}$/i.test(req.query.ref)) {
        // RETROACTIVE REPAIR: If existing user has no sponsor, try to set it now
        if (req.query.ref.toLowerCase() !== walletAddress.toLowerCase()) {
          const refObj = await query('SELECT id, wallet_address FROM users WHERE LOWER(wallet_address) = LOWER($1)', [req.query.ref]);
@@ -503,11 +515,31 @@ app.get('/api/user/:walletAddress', async (req, res) => {
        }
     }
 
-    // Fetch sponsor wallet for display
-    let sponsorWallet = user.sponsor_wallet || null;
-    if (!sponsorWallet && user.referrer_id) {
-      const sponsorRow = await query('SELECT wallet_address FROM users WHERE id = $1', [user.referrer_id]);
-      if (sponsorRow.rows.length > 0) sponsorWallet = sponsorRow.rows[0].wallet_address;
+    // Zero-Latency Auto-Sync: If user is "Free", check the blockchain once to see if they just activated
+    if (!user.node_id || user.node_id === 0) {
+       const synced = await ensureNodeSync(walletAddress);
+       if (synced) {
+         // Reload user row if synced
+         const fresh = await query('SELECT * FROM users WHERE LOWER(wallet_address) = LOWER($1)', [walletAddress]);
+         if (fresh.rows.length > 0) Object.assign(user, fresh.rows[0]);
+       }
+    }
+
+    // Fetch sponsor details and handle Auto-Rollup
+    let sponsorWallet = null;
+    let sponsorNodeId = 36999; // Default to Genesis
+
+    if (user.referrer_id) {
+       const sponsorRow = await query('SELECT wallet_address, node_id FROM users WHERE id = $1', [user.referrer_id]);
+       if (sponsorRow.rows.length > 0) {
+         sponsorWallet = sponsorRow.rows[0].wallet_address;
+         if (sponsorRow.rows[0].node_id) {
+           sponsorNodeId = sponsorRow.rows[0].node_id;
+         } else {
+           // Direct sponsor is Free User -> Rollup to find nearest active upline
+           sponsorNodeId = await findFirstActiveAncestor(user.referrer_id);
+         }
+       }
     }
 
     // Calculate pending mining rewards
@@ -535,6 +567,7 @@ app.get('/api/user/:walletAddress', async (req, res) => {
       team_size: parseInt(user.team_size || 0),
       pending_mined: parseFloat(pending_mined.toFixed(4)),
       sponsor_wallet: sponsorWallet,
+      sponsor_node_id: sponsorNodeId
     });
   } catch (err) {
     console.error(err);
@@ -1430,6 +1463,66 @@ app.post('/api/daily/claim', async (req, res) => {
     res.status(500).json({ error: 'Failed to claim daily reward' });
   }
 });
+
+/**
+ * Universal Sponsor Lookup: Handles both Wallet Address and Node ID as referral tokens.
+ */
+async function findSponsorByRef(ref) {
+  if (!ref) return null;
+  const isWallet = /^0x[a-fA-F0-9]{40}$/i.test(ref);
+  if (isWallet) {
+    const res = await query('SELECT id, wallet_address, node_id FROM users WHERE LOWER(wallet_address) = LOWER($1)', [ref]);
+    return res.rows[0] || null;
+  } else if (/^\d+$/.test(ref)) {
+    const res = await query('SELECT id, wallet_address, node_id FROM users WHERE node_id = $1', [parseInt(ref)]);
+    return res.rows[0] || null;
+  }
+  return null;
+}
+
+/**
+ * Auto-Rollup: Recursively finds the first ancestor with a valid Node ID.
+ */
+async function findFirstActiveAncestor(userId) {
+  if (!userId) return 36999; // Default to Genesis
+  
+  try {
+    const res = await query(`
+      WITH RECURSIVE upline AS (
+        SELECT id, referrer_id, node_id, 1 as depth
+        FROM users WHERE id = $1
+        UNION ALL
+        SELECT u.id, u.referrer_id, u.node_id, a.depth + 1
+        FROM users u
+        INNER JOIN upline a ON u.id = a.referrer_id
+        WHERE a.depth < 20 AND a.node_id IS NULL
+      )
+      SELECT node_id FROM upline WHERE node_id IS NOT NULL ORDER BY depth ASC LIMIT 1
+    `, [userId]);
+    
+    return res.rows[0]?.node_id || 36999;
+  } catch (err) {
+    console.error('Rollup search failed:', err);
+    return 36999;
+  }
+}
+
+/**
+ * Zero-Latency Blockchain Sync: Checks if a wallet has activated a node but is still 'Free' in DB.
+ */
+async function ensureNodeSync(wallet) {
+  try {
+    const nodeId = await aipcoreContract.addressToNodeId(wallet);
+    if (Number(nodeId) > 0) {
+      console.log(`📡 Auto-Sync: Found on-chain node ${nodeId} for ${wallet}. Updating DB...`);
+      await syncNodeStateFromRPC(Number(nodeId));
+      return true;
+    }
+  } catch (err) {
+    console.error(`Status sync failed for ${wallet}:`, err.message);
+  }
+  return false;
+}
 
 setInterval(syncGlobalHistory, 2 * 60 * 1000); // Poll every 2 minutes
 

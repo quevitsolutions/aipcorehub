@@ -31,7 +31,9 @@ export default function ReferralScreen() {
     if (walletAddress && fetchReferralData) fetchReferralData();
   }, [walletAddress, fetchLeaderboardData, fetchReferralData]);
 
-  const inviteLink = walletAddress ? `${window.location.origin}/?ref=${walletAddress}` : 'Connect wallet to get link';
+  const inviteLink = walletAddress 
+    ? `${window.location.origin}/?ref=${nodeId || walletAddress}` 
+    : 'Connect wallet to get link';
   
   const copyLink = (link) => {
     navigator.clipboard.writeText(link).then(() => {

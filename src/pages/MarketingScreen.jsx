@@ -99,8 +99,8 @@ export default function MarketingScreen() {
   const handleActivate = async () => {
     if (!isConnected) { connectWallet(); return; }
     setLoading(true);
-    const sponsorId = referrerId ? parseInt(referrerId) : 36999;
-    await createNode(sponsorId);
+    const { sponsorNodeId } = useGameStore.getState();
+    await createNode(sponsorNodeId || 36999);
     setLoading(false);
   };
 

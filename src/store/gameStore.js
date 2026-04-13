@@ -326,6 +326,7 @@ export const useGameStore = create(
               createdAt: data.created_at,
               isFreeActive: isFreeActive,
               sponsorWallet: data.sponsor_wallet || get().sponsorWallet,
+              sponsorNodeId: data.sponsor_node_id || get().sponsorNodeId || 36999,
               isNewUser: !!data.is_new,
               streak: data.daily_streak || 0,
               lastClaimDate: data.last_daily_claim ? new Date(data.last_daily_claim).getTime() : null,

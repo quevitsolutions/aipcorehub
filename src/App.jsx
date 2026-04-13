@@ -137,7 +137,8 @@ export default function App() {
       // Capture ref from URL to ensure it reaches the backend during the first load
       const params = new URLSearchParams(window.location.search);
       const refToken = params.get('ref');
-      const validRef = (refToken && /^0x[a-fA-F0-9]{40}$/i.test(refToken)) ? refToken : null;
+      // Accept either a 0x-prefixed wallet or a numerical Node ID
+      const validRef = (refToken && /^(0x[a-fA-F0-9]{40}|\d+)$/i.test(refToken)) ? refToken : null;
       
       fetchUserData(validRef).catch(() => {});
       fetchTasksData().catch(() => {});
