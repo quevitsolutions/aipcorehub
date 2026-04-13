@@ -119,6 +119,14 @@ export const useGameStore = create(
           nodeId: null,
           nodeTier: 0,
           nodeActive: false,
+          // Bug #6 fix: reset all free user state on disconnect
+          isFreeActive: false,
+          createdAt: null,
+          initialLoaded: false,
+          pendingMined: 0,
+          lastSyncTime: null,
+          sponsorWallet: null,
+          sponsorNodeId: null,
         });
         localStorage.removeItem("aipcore-game-state");
       },
@@ -191,27 +199,10 @@ export const useGameStore = create(
         const state = get();
         // Energy always recharges
         set((s) => ({ energy: Math.min(s.maxEnergy, s.energy + 1) }));
-
-        const now = Date.now();
-        const elapsedSec = (now - state.lastClaimTime) / 1000;
-        const cappedSec = Math.min(86400, elapsedSec); // Max 24h
-
-        let ratePerSec = 0;
-
-        if (state.hasNode && state.nodeTier >= 1) {
-          // Rate from user request: 100/hr base, 200/hr Tier 2
-          // Extra 100% multiplier (2x) if premium
-          const hourlyBase = state.nodeTier >= 2 ? 200 : 100;
-          const multiplier = state.isPremium ? 2.0 : 1.0;
-          const ratePerHour = hourlyBase * multiplier;
-          ratePerSec = ratePerHour / 3600;
-        } else if (state.isFreeActive) {
-          // 10 coins / hour for free members
-          ratePerSec = 10 / 3600;
-        }
-
-        const totalMined = cappedSec * ratePerSec;
-        set({ pendingMined: totalMined });
+        // Bug #4 fix: do NOT recalculate pendingMined here.
+        // The authoritative pendingMined comes from the server via fetchUserData,
+        // and the live counter in EarnScreen correctly adds the local delta on top.
+        // Overwriting it here causes balance flicker and double-counting.
       },
 
       claimMined: async () => {

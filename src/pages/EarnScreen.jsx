@@ -153,16 +153,24 @@ export default function EarnScreen() {
   }, [localReward]);
 
   const hourlyBase = hasNode ? (nodeTier >= 2 ? 200 : 100) : 10;
-  const multiplier = isPremium ? 2 : 1;
+  // Bug #1 fix: isPremium multiplier only applies to node owners (not free trial users)
+  const multiplier = (hasNode && isPremium) ? 2 : 1;
   const ratePerHour = hourlyBase * multiplier;
   const displayTier = Number(nodeTier || 1);
 
-  const localMinedSinceSync = (initialLoaded && lastSyncTime) 
-    ? Math.max(0, ((Date.now() - lastSyncTime) / 3600000) * ratePerHour)
+  // Bug #3 fix: compute isExpired early so we can zero out rate for expired users
+  const daysLeftCalc = (initialLoaded && createdAt)
+    ? Math.max(0, 30 - Math.floor((Date.now() - new Date(createdAt).getTime()) / (24 * 3600000)))
+    : 30;
+  const isExpired = initialLoaded && !hasNode && daysLeftCalc <= 0;
+  const effectiveRate = isExpired ? 0 : ratePerHour;
+
+  const localMinedSinceSync = (initialLoaded && lastSyncTime && !isExpired)
+    ? Math.max(0, ((Date.now() - lastSyncTime) / 3600000) * effectiveRate)
     : 0;
 
   // The true authoritative total is what the server told us + the live delta since that sync
-  const totalMined = Math.min(24 * ratePerHour, Number(pendingMined || 0) + localMinedSinceSync);
+  const totalMined = isExpired ? 0 : Math.min(24 * effectiveRate, Number(pendingMined || 0) + localMinedSinceSync);
   const totalWealth = Number(localReward || 0) + totalMined;
 
   // Live timer — re-renders every second
@@ -174,8 +182,11 @@ export default function EarnScreen() {
 
   const now = Date.now();
   const elapsed = now - lastClaimTime;
-  const timeRemaining = Math.max(0, MAX_SESSION - elapsed);
-  const maturity = hasNode ? Math.min(1, elapsed / MAX_SESSION) : 0;
+  // Bug #3 fix: expired users should see no time remaining
+  const timeRemaining = isExpired ? 0 : Math.max(0, MAX_SESSION - elapsed);
+  // Bug #2 fix: ring fills for both node owners AND free trial users
+  const isActive = hasNode || isFreeActive;
+  const maturity = isActive && !isExpired ? Math.min(1, elapsed / MAX_SESSION) : 0;
 
   const formatTime = (ms) => {
     const h = Math.floor(ms / 3600000);
@@ -214,11 +225,8 @@ export default function EarnScreen() {
     addLocalReward(task.reward);
   };
 
-  const daysLeft = (initialLoaded && createdAt) 
-    ? Math.max(0, 30 - Math.floor((now - new Date(createdAt).getTime()) / (24 * 3600000))) 
-    : 30; // Default to 30 while loading to avoid "Expired" UI
-  
-  const isExpired = initialLoaded && !hasNode && daysLeft <= 0;
+  // daysLeft is derived from the pre-computed daysLeftCalc above (already factoring initialLoaded)
+  const daysLeft = daysLeftCalc;
 
   // We no longer use the full-screen RegistrationGate here, 
   // as the "Session Expired" overlay on the mining egg handles the activation nudge better.
@@ -317,7 +325,8 @@ export default function EarnScreen() {
             </div>
 
             {/* TRIAL LEFT - Centered and subtle */}
-            {!hasNode && isFreeActive && (
+            {/* Bug #5 fix: guard with initialLoaded to prevent stale flash */}
+            {initialLoaded && !hasNode && isFreeActive && (
               <div style={{ display: 'flex', justifyContent: 'center', marginTop: -10, marginBottom: 20 }}>
                 <div style={{ background: 'rgba(255,255,255,0.05)', padding: '6px 20px', borderRadius: 20, border: '1px solid rgba(255,255,255,0.1)' }}>
                   <span style={{ fontSize: 11, fontWeight: 900, color: 'var(--neon-lime)', letterSpacing: 0.5 }}>{daysLeft} DAYS TRIAL LEFT</span>
@@ -329,10 +338,12 @@ export default function EarnScreen() {
           <div style={{ flexShrink: 0, padding: '20px 0 10px', background: 'linear-gradient(to top, var(--bg-dark) 50%, transparent)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, padding: '0 8px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div style={{ width: 6, height: 6, borderRadius: '50%', background: ratePerHour > 0 ? 'var(--neon-lime)' : '#666', boxShadow: ratePerHour > 0 ? '0 0 10px var(--neon-lime)' : 'none' }} />
-                <span style={{ fontSize: 10, fontWeight: 900, color: 'rgba(255,255,255,0.6)', letterSpacing: 0.5 }}>RATE: <span style={{ color: 'var(--neon-lime)' }}>{ratePerHour} $AIP/HR</span></span>
+                {/* Bug #3 fix: dot is grey and rate is 0 when expired */}
+                <div style={{ width: 6, height: 6, borderRadius: '50%', background: effectiveRate > 0 ? 'var(--neon-lime)' : '#666', boxShadow: effectiveRate > 0 ? '0 0 10px var(--neon-lime)' : 'none' }} />
+                <span style={{ fontSize: 10, fontWeight: 900, color: 'rgba(255,255,255,0.6)', letterSpacing: 0.5 }}>RATE: <span style={{ color: effectiveRate > 0 ? 'var(--neon-lime)' : '#666' }}>{effectiveRate} $AIP/HR</span></span>
               </div>
-              <span style={{ fontSize: 10, fontWeight: 900, color: 'rgba(255,255,255,0.4)', letterSpacing: 1 }}>ENDS IN: <span style={{ color: '#fff' }}>{formatTime(timeRemaining)}</span></span>
+              {!isExpired && <span style={{ fontSize: 10, fontWeight: 900, color: 'rgba(255,255,255,0.4)', letterSpacing: 1 }}>ENDS IN: <span style={{ color: '#fff' }}>{formatTime(timeRemaining)}</span></span>}
+              {isExpired && <span style={{ fontSize: 10, fontWeight: 900, color: '#FF3B30', letterSpacing: 1 }}>TRIAL EXPIRED</span>}
             </div>
 
             <div style={{ display: 'flex', gap: 10, alignItems: 'stretch' }}>
@@ -359,7 +370,7 @@ export default function EarnScreen() {
               {/* COLLECT (30%) */}
               <button
                 onClick={onClaim}
-                disabled={totalMined < 1}
+                disabled={totalMined < 1 || isExpired}
                 style={{
                   flex: 0.3,
                   background: totalMined >= 1 ? '#4FC3F7' : 'rgba(255,255,255,0.04)',

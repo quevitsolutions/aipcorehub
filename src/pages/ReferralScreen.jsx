@@ -32,9 +32,14 @@ export default function ReferralScreen() {
     if (walletAddress && fetchReferralData) fetchReferralData();
   }, [walletAddress, fetchLeaderboardData, fetchReferralData]);
 
+  const isFreeActive = store?.isFreeActive || false;
+
+  // Dual referral strategy: node owners use Node ID, free users use wallet address
+  const refToken = nodeId || walletAddress;
   const inviteLink = walletAddress 
-    ? `${window.location.origin}/?ref=${nodeId || walletAddress}` 
+    ? `${window.location.origin}/?ref=${refToken}` 
     : 'Connect wallet to get link';
+  const linkType = nodeId ? 'NODE ID' : 'WALLET';
   
   const copyLink = (link) => {
     navigator.clipboard.writeText(link).then(() => {
@@ -100,6 +105,17 @@ export default function ReferralScreen() {
       {/* Referral Link Container */}
       <div className="booster-card" style={{ padding: '20px', marginBottom: '32px', border: '1px solid rgba(163, 255, 18, 0.05)' }}>
         <h4 style={{ fontSize: '11px', fontWeight: 800, color: '#A3FF12', marginBottom: '12px', letterSpacing: '1px' }}>YOUR REFERRAL LINK</h4>
+        {/* Referral link type badge */}
+        <div style={{ marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: 1.5, padding: '3px 10px', borderRadius: 20,
+            background: nodeId ? 'rgba(163,255,18,0.15)' : 'rgba(79,195,247,0.15)',
+            color: nodeId ? 'var(--neon-lime)' : '#4FC3F7',
+            border: `1px solid ${nodeId ? 'rgba(163,255,18,0.3)' : 'rgba(79,195,247,0.3)'}`
+          }}>
+            {nodeId ? `⬡ NODE ID #${nodeId}` : '👤 WALLET ADDRESS'}
+          </span>
+          {!nodeId && <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)', fontWeight: 700 }}>Activate a node to upgrade your link</span>}
+        </div>
         <div style={{ 
           display: 'flex', flexDirection: 'column', gap: 4,
           background: 'rgba(163, 255, 18, 0.05)', 
@@ -132,7 +148,9 @@ export default function ReferralScreen() {
 
             {/* WhatsApp */}
             <button onClick={() => {
-              const msg = encodeURIComponent(`🔥 I'm mining $AIP tokens on AIPCore — earn 200 coins/hr with 18-level matrix income!\n\n🔗 Join with my link: ${inviteLink}\n\n⬡ One-time activation | 70% matrix | 10% referral | 5% Global Pool`);
+              const msg = hasNode
+                ? encodeURIComponent(`🔥 I'm mining $AIP tokens on AIPCore — earn 200 coins/hr with 18-level matrix income!\n\n🔗 Join with my link: ${inviteLink}\n\n⬡ One-time activation | 70% matrix | 10% referral | 5% Global Pool`)
+                : encodeURIComponent(`🆓 Join AIPCore FREE — mine $AIP coins with no upfront cost during the 30-day free trial!\n\n🔗 Join with my link: ${inviteLink}\n\nActivate a node later to unlock 10x earnings, BNB rewards & matrix income.`);
               window.open(`https://wa.me/?text=${msg}`, '_blank');
             }} style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'rgba(37,211,102,0.1)', border: '1px solid rgba(37,211,102,0.3)', borderRadius: 14, padding: '12px 16px', cursor: 'pointer', width: '100%' }}>
               <span style={{ fontSize: 22 }}>💬</span>
@@ -145,7 +163,9 @@ export default function ReferralScreen() {
 
             {/* Telegram */}
             <button onClick={() => {
-              const msg = encodeURIComponent(`🚀 Join me on AIPCore — mine $AIP 24/7 with binary matrix rewards!\n\nEarn from 4 income streams:\n💰 10% Referral\n🔷 70% Matrix\n⬡ 15% Level Income\n🏊 5% Global Pool\n\nActivate your node 👇\n${inviteLink}`);
+              const msg = hasNode
+                ? encodeURIComponent(`🚀 Join me on AIPCore — mine $AIP 24/7 with binary matrix rewards!\n\nEarn from 4 income streams:\n💰 10% Referral\n🔷 70% Matrix\n⬡ 15% Level Income\n🏊 5% Global Pool\n\nActivate your node 👇\n${inviteLink}`)
+                : encodeURIComponent(`🆓 Try AIPCore FREE for 30 days — mine $AIP coins with no cost!\n\n🔗 Join free: ${inviteLink}\n\nEarn 10 coins/hr during trial. Activate a node later for 10x more rewards, BNB income & binary matrix.`);
               window.open(`https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${msg}`, '_blank');
             }} style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'rgba(42,171,238,0.1)', border: '1px solid rgba(42,171,238,0.3)', borderRadius: 14, padding: '12px 16px', cursor: 'pointer', width: '100%' }}>
               <span style={{ fontSize: 22 }}>✈️</span>
@@ -219,24 +239,34 @@ export default function ReferralScreen() {
             );
           }
 
-          return filteredList.slice(0, 50).map((friend, i) => (
+          return filteredList.slice(0, 50).map((friend, i) => {
+            const isActivated = Number(friend.node_tier) > 0;
+            // Show trial days remaining for free members
+            const friendDaysLeft = !isActivated && friend.joined_at
+              ? Math.max(0, 30 - Math.floor((Date.now() - new Date(friend.joined_at).getTime()) / (24 * 3600000)))
+              : null;
+            const trialExpired = friendDaysLeft !== null && friendDaysLeft === 0;
+            return (
             <div key={i} style={{ 
               display: 'flex', alignItems: 'center', padding: '12px 0',
               borderBottom: i < filteredList.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none'
             }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: Number(friend.node_tier) > 0 ? 'rgba(203,255,1,0.15)' : 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>
-                {Number(friend.node_tier) > 0 ? '⬡' : '👤'}
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: isActivated ? 'rgba(203,255,1,0.15)' : trialExpired ? 'rgba(255,59,48,0.15)' : 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>
+                {isActivated ? '⬡' : trialExpired ? '⏰' : '👤'}
               </div>
               <div className="flex-column" style={{ flex: 1, marginLeft: '12px' }}>
                 <span style={{ fontSize: '13px', fontWeight: 800 }}>{shortAddr(friend.wallet_address)}</span>
-                <span style={{ fontSize: '10px', color: Number(friend.node_tier) > 0 ? 'var(--neon-lime)' : '#4FC3F7', fontWeight: 700 }}>
-                  {Number(friend.node_tier) > 0 ? `✅ Node Active (T${friend.node_tier})` : '🔵 Free Member'}
+                <span style={{ fontSize: '10px', color: isActivated ? 'var(--neon-lime)' : trialExpired ? '#FF3B30' : '#4FC3F7', fontWeight: 700 }}>
+                  {isActivated 
+                    ? `✅ Node Active (T${friend.node_tier})` 
+                    : trialExpired 
+                      ? '⚠️ Trial Expired — needs activation'
+                      : `🔵 Free Trial — ${friendDaysLeft}d left`}
                 </span>
               </div>
-              <span style={{ fontSize: '12px', fontWeight: 900, color: Number(friend.node_tier) > 0 ? 'var(--neon-lime)' : '#FFFFFF' }}>{(friend.local_reward / 1000).toFixed(1)}K</span>
+              <span style={{ fontSize: '12px', fontWeight: 900, color: isActivated ? 'var(--neon-lime)' : '#FFFFFF' }}>{(friend.local_reward / 1000).toFixed(1)}K</span>
             </div>
-          ));
-        })()}
+          );});
       </div>
 
       {/* Top Referrers Leaderboard */}
