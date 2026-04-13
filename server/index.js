@@ -98,6 +98,11 @@ const ensureSchema = async () => {
     await query(`CREATE INDEX IF NOT EXISTS idx_income_history_wallet_address ON income_history(wallet_address)`);
     await query(`CREATE INDEX IF NOT EXISTS idx_users_node_active ON users(node_active) WHERE node_active = TRUE`);
     
+    // Hardening: Enforce case-insensitive wallet uniqueness
+    // We do this AFTER a reconciliation step in case duplicates already exist
+    await reconcileDuplicateUsers();
+    await query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_wallet_lower ON users (LOWER(wallet_address))`);
+    
     // NEW: Audit log for admin adjustments
     await query(`
       CREATE TABLE IF NOT EXISTS admin_adjustments (
@@ -129,11 +134,49 @@ const ensureSchema = async () => {
       `, [t.name, t.reward, t.type, t.icon]);
     }
 
-    console.log('✅ Schema check complete');
-  } catch (err) {
-    console.error('Schema update error:', err.message);
-  }
 };
+
+/**
+ * High-Precision Recon: Merges duplicate profiles caused by case sensitivity
+ */
+async function reconcileDuplicateUsers() {
+  try {
+    const duplicates = await query(`
+      SELECT LOWER(wallet_address) as wallet, COUNT(*), MIN(id) as keep_id, array_agg(id) as all_ids
+      FROM users 
+      GROUP BY LOWER(wallet_address) 
+      HAVING COUNT(*) > 1
+    `);
+
+    for (const row of duplicates.rows) {
+      const keepId = row.keep_id;
+      const dropIds = row.all_ids.filter(id => id !== keepId);
+      
+      console.log(`🧹 Recon: Merging duplicate wallet ${row.wallet} (${dropIds.length} profiles -> ID ${keepId})`);
+      
+      // 1. If any of the drop nodes have a node_id, try to move it to the keep node if the keep node doesn't have one
+      const nodeInfo = await query(`SELECT node_id FROM users WHERE id = ANY($1) AND node_id IS NOT NULL`, [dropIds]);
+      if (nodeInfo.rows.length > 0) {
+        await query(`UPDATE users SET node_id = $1 WHERE id = $2 AND node_id IS NULL`, [nodeInfo.rows[0].node_id, keepId]);
+      }
+
+      // 2. Move referral links
+      await query(`UPDATE users SET referrer_id = $1 WHERE referrer_id = ANY($2)`, [keepId, dropIds]);
+      
+      // 3. Move matrix links
+      await query(`UPDATE users SET matrix_parent_id = $1 WHERE matrix_parent_id = ANY($2)`, [keepId, dropIds]);
+
+      // 4. Delete duplicates
+      await query(`DELETE FROM users WHERE id = ANY($1)`, [dropIds]);
+    }
+    
+    if (duplicates.rows.length > 0) {
+      console.log(`✨ Recon: Successfully merged ${duplicates.rows.length} duplicate wallets`);
+    }
+  } catch (err) {
+    console.warn("Reconstruction failed:", err.message);
+  }
+}
 
 ensureSchema();
 
