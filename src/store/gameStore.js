@@ -227,6 +227,7 @@ export const useGameStore = create(
             set({
               localReward: Number(res.user.local_reward || 0),
               lastClaimTime: new Date(res.user.last_claim_time).getTime(),
+              lastSyncTime: Date.now(), // Refresh sync anchor to reset live counter
             });
           }
         } catch (err) {

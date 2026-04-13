@@ -19,7 +19,8 @@ const AIPCORE_ABI = [
   "event TierUnlocked(address indexed node, uint256 indexed userId, uint256 packageId)",
   "function getTeamSize(uint256 _userId, uint256 _depth) view returns (uint256)",
   "function getNodeStats(uint256 _userId) view returns (uint256 tier, uint256 directCount, uint256 matrixCount, uint256 totalRewards, uint256 totalContribution, uint256 daysActive)",
-  "function nodes(uint256 _nodeId) view returns (uint64 nodeId, address wallet, uint64 sponsor, uint64 matrixParent, uint40 joinedAt, uint8 tier, uint256 totalContribution, uint256 totalEarned, uint32 directNodes)"
+  "function nodes(uint256 _nodeId) view returns (uint64 nodeId, address wallet, uint64 sponsor, uint64 matrixParent, uint40 joinedAt, uint8 tier, uint256 totalContribution, uint256 totalEarned, uint32 directNodes)",
+  "function addressToNodeId(address _wallet) view returns (uint256)"
 ];
 
 const REWARDPOOL_ABI = [
@@ -1234,19 +1235,24 @@ async function deepRepairOrphans() {
 
 /**
  * High-Speed Tree Repair Helper: Rebuilds the referral links entirely in SQL.
+ * Optimized: Throttled to run at most once every 30 seconds to prevent DB hammering.
  */
+let lastRepairTime = 0;
+let repairInFlight = false;
 async function repairTreeLinks() {
+  const now = Date.now();
+  if (now - lastRepairTime < 30000 || repairInFlight) return;
+  
+  repairInFlight = true;
   try {
     // Single query to link orphans by their stored sponsor_node_id mapping
-    // Note: We remove "AND u.referrer_id IS NULL" because the Blockchain 
-    // is the source of truth for activated nodes. If a user joined via 
-    // link A but activated under node B, the DB must link them to B.
     await query(`
       UPDATE users u
       SET referrer_id = p.id
       FROM users p
       WHERE u.sponsor_node_id = p.node_id
       AND u.sponsor_node_id IS NOT NULL
+      AND (u.referrer_id IS NULL OR u.referrer_id != p.id)
     `);
 
     // 2. Repair Matrix Links (Binary Tree)
@@ -1255,8 +1261,10 @@ async function repairTreeLinks() {
       SET matrix_parent_id = p.id
       FROM users p
       WHERE u.matrix_parent_node_id = p.node_id
-      AND u.matrix_parent_id IS NULL AND u.matrix_parent_node_id IS NOT NULL
+      AND u.matrix_parent_node_id IS NOT NULL
+      AND (u.matrix_parent_id IS NULL OR u.matrix_parent_id != p.id)
     `);
+
     // 3. Repair Links via Memos (Recover orphans who joined before their sponsor)
     await query(`
       UPDATE users u
@@ -1265,8 +1273,13 @@ async function repairTreeLinks() {
       WHERE LOWER(u.referred_by_memo) = LOWER(p.wallet_address)
       AND u.referrer_id IS NULL AND u.referred_by_memo IS NOT NULL
     `);
+    
+    lastRepairTime = Date.now();
+    console.log('🏗️  Tree Repair: Hierarchy self-healed and synced.');
   } catch (err) {
     console.error("SQL Tree repair failed:", err.message);
+  } finally {
+    repairInFlight = false;
   }
 }
 
