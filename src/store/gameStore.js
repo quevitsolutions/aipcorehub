@@ -285,9 +285,11 @@ export const useGameStore = create(
         }
       },
 
-      fetchUserData: async () => {
+      fetchUserData: async (forcedReferrer = null) => {
         const { walletAddress, referrerId, isSyncing, lastBackendSync } = get();
         if (!walletAddress || isSyncing) return;
+        
+        const finalReferrer = forcedReferrer || referrerId;
 
         // Skip sync if we did it in the last 60 seconds (unless initialLoaded is false)
         const now = Date.now();
@@ -300,7 +302,7 @@ export const useGameStore = create(
         if (showPortal) set({ isSyncing: true });
         
         try {
-          const data = await api.fetchUser(walletAddress, referrerId);
+          const data = await api.fetchUser(walletAddress, finalReferrer);
           if (data) {
             const currentTier = get().nodeTier || 0;
             const backendTier = Number(data.node_tier || 0);

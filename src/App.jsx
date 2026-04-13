@@ -134,7 +134,12 @@ export default function App() {
     setupListeners();
     const { fetchUserData, fetchTasksData, walletAddress } = useGameStore.getState();
     if (walletAddress) {
-      fetchUserData().catch(() => {});
+      // Capture ref from URL to ensure it reaches the backend during the first load
+      const params = new URLSearchParams(window.location.search);
+      const refToken = params.get('ref');
+      const validRef = (refToken && /^0x[a-fA-F0-9]{40}$/i.test(refToken)) ? refToken : null;
+      
+      fetchUserData(validRef).catch(() => {});
       fetchTasksData().catch(() => {});
     }
     return () => removeListeners();
