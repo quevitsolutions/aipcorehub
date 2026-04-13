@@ -153,23 +153,20 @@ export default function TeamScreen() {
     if (hasCount) {
       setLoadingMembers(true);
       try {
-        // Try DB first, fall back to live RPC
-        let members = await api.fetchNetworkLevelMembers(walletAddress, levelIndex);
-        if (!members || members.length === 0) {
-          // Fall back to direct blockchain members
-          const rpcMembers = await fetchTeamLevelMembers(nodeId, levelIndex);
-          members = (rpcMembers || []).map(m => ({
-            wallet_address: m.wallet,
-            node_id: m.nodeId,
-            node_tier: m.tier,
-            joined_at: m.joinedAt,
-            team_size: 0,
-            direct_count: Number(m.directNodes || 0)
-          }));
-        }
+        // PRIMARY: Direct blockchain via getMatrixUsers (always accurate)
+        const rpcMembers = await fetchTeamLevelMembers(nodeId, levelIndex);
+        const members = (rpcMembers || []).map(m => ({
+          wallet_address: m.wallet,
+          node_id: m.nodeId,
+          node_tier: m.tier,
+          joined_at: m.joinedAt,
+          team_size: Number(m.totalMatrixNodes || 0),
+          direct_count: Number(m.directNodes || 0),
+          node_active: true
+        }));
         setLevelMembers(members);
       } catch (err) {
-        console.error('Member fetch failed:', err);
+        console.error('RPC member fetch failed:', err);
       }
       setLoadingMembers(false);
     }

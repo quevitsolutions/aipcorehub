@@ -230,6 +230,18 @@ class ApiService {
     });
     return res.json();
   }
+
+  async fetchNetworkCounts(walletAddress) {
+    const res = await fetch(`${this.baseUrl}/network/counts/${walletAddress}`);
+    if (!res.ok) throw new Error('Failed to fetch network counts');
+    return res.json();
+  }
+
+  async fetchNetworkLevelMembers(walletAddress, level) {
+    const res = await fetch(`${this.baseUrl}/network/level/${walletAddress}/${level}`);
+    if (!res.ok) throw new Error('Failed to fetch level members');
+    return res.json();
+  }
 }
 
 export const api = new ApiService();
