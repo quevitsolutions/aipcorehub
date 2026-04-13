@@ -17,6 +17,7 @@ export default function TeamScreen() {
   const [levelMembers, setLevelMembers] = useState([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
 
+  useEffect(() => {
     const loadStats = async () => {
       if (!walletAddress) return;
       setLoadingCounts(true);
@@ -37,6 +38,7 @@ export default function TeamScreen() {
     }
   }, [isConnected, walletAddress]);
 
+  const toggleLevel = async (levelIndex) => {
     if (expandedLevel === levelIndex) {
       setExpandedLevel(null);
       return;
