@@ -1,16 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useGameStore } from '../store/gameStore.js';
-import { useContract } from '../hooks/useContract.js';
 import { shortAddr } from '../utils/format.js';
-import { api } from '../services/api.js'; // Keep for other features or cleanup later
+import { api } from '../services/api.js';
 
 export default function TeamScreen() {
-  const { isConnected, nodeId, directRefs, teamSize, walletAddress } = useGameStore();
-  const { fetchTeamLevelMembers } = useContract(); // Keep for quick expansions if needed
+  const { isConnected, directRefs, teamSize, walletAddress } = useGameStore();
 
-  const [dualCounts, setDualCounts] = useState({ 
-    referral: new Array(18).fill(0), 
-    matrix: new Array(18).fill(0) 
+  const [dualCounts, setDualCounts] = useState({
+    referral: new Array(18).fill(0),
+    matrix: new Array(18).fill(0)
   });
   const [loadingCounts, setLoadingCounts] = useState(false);
   const [expandedLevel, setExpandedLevel] = useState(null);
@@ -28,7 +26,7 @@ export default function TeamScreen() {
           matrix: data.matrixCounts || new Array(18).fill(0)
         });
       } catch (err) {
-        console.error("Failed to load network stats from API Bridge:", err);
+        console.error('Failed to load network stats from API Bridge:', err);
       }
       setLoadingCounts(false);
     };
@@ -46,14 +44,14 @@ export default function TeamScreen() {
 
     setExpandedLevel(levelIndex);
     setLevelMembers([]);
-    
+
     if (dualCounts.referral[levelIndex] > 0) {
       setLoadingMembers(true);
       try {
         const members = await api.fetchNetworkLevelMembers(walletAddress, levelIndex);
         setLevelMembers(members);
       } catch (err) {
-        console.error("API member fetch failed:", err);
+        console.error('API member fetch failed:', err);
       }
       setLoadingMembers(false);
     }
@@ -74,13 +72,9 @@ export default function TeamScreen() {
     );
   }
 
-  // Calculate totals locally from the level data we fetched to ensure 100% accuracy
-  // Calculate totals locally from the level data we fetched to ensure 100% accuracy
-  // Calculate totals from specific tree data (Referral vs Matrix)
   const calculatedDirects = dualCounts.referral[0] || (directRefs || 0);
   const calculatedTotal = dualCounts.matrix.reduce((acc, curr) => acc + curr, 0) || (teamSize || 0);
-  const levelData = dualCounts.referral; // Breakdown list shows Referral Tree by default
-
+  const levelData = dualCounts.referral;
 
   return (
     <div className="page page-team" style={{ paddingBottom: '100px' }}>
@@ -105,39 +99,37 @@ export default function TeamScreen() {
 
       {/* Level List */}
       <h3 style={{ fontSize: '13px', fontWeight: 900, color: '#4FC3F7', marginBottom: '16px', paddingLeft: '4px' }}>TEAM BY LEVEL</h3>
-      
+
       {loadingCounts ? (
         <div style={{ textAlign: 'center', padding: '40px', color: '#FF5252', fontSize: '12px', fontWeight: 700 }}>
           LOADING NETWORK DATA...
         </div>
       ) : (
-        <div className="levels-container" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18].map((level, index) => {
             const count = levelData[index];
             const isExpanded = expandedLevel === index;
-            
-            // Allow clicking if count > 0 OR if it's currently expanded (to close it)
             const canClick = count > 0 || isExpanded;
 
             return (
-              <div 
-                key={level} 
+              <div
+                key={level}
                 className="booster-card"
-                style={{ 
-                  margin: 0, 
-                  padding: '0', 
+                style={{
+                  margin: 0,
+                  padding: '0',
                   flexDirection: 'column',
                   cursor: canClick ? 'pointer' : 'default',
                   opacity: count === 0 ? 0.6 : 1
                 }}
               >
                 {/* Level Header Row */}
-                <div 
+                <div
                   onClick={() => canClick && toggleLevel(index)}
-                  style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center', 
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
                     padding: '16px',
                     width: '100%'
                   }}
@@ -157,8 +149,8 @@ export default function TeamScreen() {
 
                 {/* Expanded Member Details */}
                 {isExpanded && (
-                  <div style={{ 
-                    borderTop: '1px solid rgba(255,255,255,0.05)', 
+                  <div style={{
+                    borderTop: '1px solid rgba(255,255,255,0.05)',
                     padding: '0px 16px',
                     background: 'rgba(0,0,0,0.2)'
                   }}>
@@ -168,20 +160,20 @@ export default function TeamScreen() {
                       </div>
                     ) : (
                       <div style={{ padding: '12px 0' }}>
-                      <div style={{ padding: '12px 0' }}>
                         {/* Member Header */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#FFD700', fontWeight: 800, paddingBottom: '8px', borderBottom: '1px solid rgba(255,255,255,0.05)', marginBottom: '8px' }}>
                           <span style={{ flex: 1.5 }}>NODE ID / WALLET</span>
                           <span style={{ width: '60px', textAlign: 'center' }}>TEAM</span>
                           <span style={{ width: '80px', textAlign: 'right' }}>JOINED</span>
                         </div>
-                        
+
                         {levelMembers.length === 0 ? (
                           <div style={{ padding: '10px 0', textAlign: 'center', fontSize: '12px', color: '#A3FF12' }}>No members found.</div>
                         ) : (
                           levelMembers.map((m, i) => (
-                            <div key={i} style={{ 
-                              display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: i < levelMembers.length - 1 ? '1px rgba(255,255,255,0.03) solid' : 'none'
+                            <div key={i} style={{
+                              display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0',
+                              borderBottom: i < levelMembers.length - 1 ? '1px rgba(255,255,255,0.03) solid' : 'none'
                             }}>
                               <div style={{ flex: 1.5, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                 <span style={{ fontSize: '12px', fontWeight: 800, color: '#FFFFFF' }}>
@@ -210,6 +202,7 @@ export default function TeamScreen() {
                             </div>
                           ))
                         )}
+
                         {levelMembers.length === 50 && (
                           <div style={{ padding: '8px 0', textAlign: 'center', fontSize: '10px', color: '#FF5252', fontStyle: 'italic' }}>
                             Showing latest 50 members
