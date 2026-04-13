@@ -123,6 +123,25 @@ class ApiService {
     return res.json();
   }
 
+  async claimFreeMilestone(walletAddress, milestoneThreshold) {
+    const res = await fetch(`${this.baseUrl}/milestones/claim-free`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ walletAddress, milestoneThreshold })
+    });
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.error || 'Free milestone claim failed');
+    }
+    return res.json();
+  }
+
+  async fetchReferralStats(walletAddress) {
+    const res = await fetch(`${this.baseUrl}/referrals/stats/${walletAddress}`);
+    if (!res.ok) throw new Error('Failed to fetch referral stats');
+    return res.json();
+  }
+
   // Admin Endpoints
   async fetchAdminOverview(adminWallet) {
     const res = await fetch(`${this.baseUrl}/admin/overview`, {

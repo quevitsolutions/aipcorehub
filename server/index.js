@@ -670,7 +670,8 @@ app.post('/api/tasks/claim', async (req, res) => {
     }
 
     if (task.type === 'referral_count' || task.type === 'referral') {
-      const refs = await query('SELECT COUNT(*) FROM users WHERE referrer_id = $1 AND node_tier > 0', [user.id]);
+      // Count ALL direct referrals (free trial + activated) so free users can progress on referral tasks
+      const refs = await query('SELECT COUNT(*) FROM users WHERE referrer_id = $1', [user.id]);
       const directCount = parseInt(refs.rows[0].count);
       
       // Extract target number from name (e.g., "Refer 3 Peers" -> 3)
@@ -750,7 +751,52 @@ app.post('/api/milestones/claim', async (req, res) => {
   }
 });
 
-// POST Create Task (Admin)
+// POST Claim Free-User Milestone (based on total referrals, not just activated)
+app.post('/api/milestones/claim-free', async (req, res) => {
+  const { walletAddress, milestoneThreshold } = req.body;
+  if (!walletAddress || !milestoneThreshold) return res.status(400).json({ error: 'Threshold required' });
+
+  // Free milestone rewards — based on total direct referrals (free + activated)
+  const FREE_MILESTONES = {
+    5:   { reward: 1000,   label: '5 Friends Invited' },
+    10:  { reward: 5000,   label: '10 Friends Invited' },
+    25:  { reward: 15000,  label: '25 Friends Invited' },
+    50:  { reward: 50000,  label: '50 Friends Invited' },
+    100: { reward: 200000, label: '100 Friends Invited' },
+  };
+
+  const milestone = FREE_MILESTONES[Number(milestoneThreshold)];
+  if (!milestone) return res.status(400).json({ error: 'Invalid free milestone threshold' });
+
+  try {
+    const user = await query('SELECT id, claimed_milestones FROM users WHERE LOWER(wallet_address) = LOWER($1)', [walletAddress]);
+    if (user.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+
+    // Use a separate key space "free_X" so they don't conflict with activated milestones
+    const claimed = JSON.parse(user.rows[0].claimed_milestones || '[]');
+    const freeKey = `free_${milestoneThreshold}`;
+    if (claimed.includes(freeKey)) return res.status(400).json({ error: 'Milestone already claimed' });
+
+    // Count ALL direct referrals
+    const refCount = await query('SELECT COUNT(*) FROM users WHERE referrer_id = $1', [user.rows[0].id]);
+    const count = parseInt(refCount.rows[0].count);
+    if (count < Number(milestoneThreshold)) {
+      return res.status(400).json({ error: `Requires ${milestoneThreshold} friends (You have ${count})` });
+    }
+
+    claimed.push(freeKey);
+    await query(
+      'UPDATE users SET local_reward = local_reward + $1, claimed_milestones = $2 WHERE id = $3',
+      [milestone.reward, JSON.stringify(claimed), user.rows[0].id]
+    );
+
+    res.json({ success: true, reward: milestone.reward, label: milestone.label, claimed_milestones: claimed });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to claim free milestone' });
+  }
+});
+
 app.post('/api/admin/tasks', checkAdmin, async (req, res) => {
   const { name, reward, icon, url, type } = req.body;
   if (!name || !reward) return res.status(400).json({ error: 'Name and reward required' });
@@ -1333,7 +1379,9 @@ app.get('/api/referrals/:walletAddress', async (req, res) => {
     const result = await query(
       `SELECT wallet_address, 
               local_reward, 
-              COALESCE(created_at, NOW()) as joined_at, 
+              COALESCE(created_at, NOW()) as joined_at,
+              -- Pre-calculate trial_days_left server-side for accuracy
+              GREATEST(0, EXTRACT(DAY FROM (COALESCE(created_at, NOW()) + INTERVAL '30 days') - NOW())::int) as trial_days_left,
               COALESCE(node_tier, 0) as node_tier, 
               COALESCE(node_id, 0) as node_id,
               (SELECT COUNT(*) FROM users WHERE referrer_id = u.id) as direct_count,
@@ -1348,6 +1396,40 @@ app.get('/api/referrals/:walletAddress', async (req, res) => {
   } catch (err) {
     console.error('Referral fetching error:', err);
     res.status(500).json({ error: 'Failed to fetch referrals' });
+  }
+});
+
+// GET Free Referral Stats (total count, trial breakdown, conversion rate)
+app.get('/api/referrals/stats/:walletAddress', async (req, res) => {
+  const { walletAddress } = req.params;
+  try {
+    const parentsResult = await query('SELECT id FROM users WHERE LOWER(wallet_address) = LOWER($1)', [walletAddress]);
+    if (parentsResult.rows.length === 0) return res.json({ total: 0, free: 0, activated: 0, expired: 0, conversionRate: 0 });
+    const parentId = parentsResult.rows[0].id;
+
+    const stats = await query(`
+      SELECT
+        COUNT(*) as total,
+        COUNT(*) FILTER (WHERE node_tier > 0) as activated,
+        COUNT(*) FILTER (WHERE node_tier = 0 AND created_at > NOW() - INTERVAL '30 days') as in_trial,
+        COUNT(*) FILTER (WHERE node_tier = 0 AND created_at <= NOW() - INTERVAL '30 days') as expired
+      FROM users
+      WHERE referrer_id = $1
+    `, [parentId]);
+
+    const s = stats.rows[0];
+    const total = parseInt(s.total);
+    const activated = parseInt(s.activated);
+    res.json({
+      total,
+      activated,
+      in_trial: parseInt(s.in_trial),
+      expired: parseInt(s.expired),
+      conversionRate: total > 0 ? ((activated / total) * 100).toFixed(1) : '0.0'
+    });
+  } catch (err) {
+    console.error('Stats error:', err);
+    res.status(500).json({ error: 'Failed to fetch referral stats' });
   }
 });
 
@@ -1499,13 +1581,30 @@ async function findFirstActiveAncestor(userId) {
 
 /**
  * Zero-Latency Blockchain Sync: Checks if a wallet has activated a node but is still 'Free' in DB.
+ * On successful sync, proactively increments the referrer's activated_refs counter.
  */
 async function ensureNodeSync(wallet) {
   try {
+    // Check if the wallet was previously a free user (no node_id)
+    const prevState = await query('SELECT node_id, referrer_id FROM users WHERE LOWER(wallet_address) = LOWER($1)', [wallet]);
+    const wasFreeBefore = prevState.rows.length > 0 && !prevState.rows[0].node_id;
+    const referrerId = prevState.rows.length > 0 ? prevState.rows[0].referrer_id : null;
+
     const nodeId = await aipcoreContract.addressToNodeId(wallet);
     if (Number(nodeId) > 0) {
       console.log(`📡 Auto-Sync: Found on-chain node ${nodeId} for ${wallet}. Updating DB...`);
       await syncNodeStateFromRPC(Number(nodeId));
+
+      // 🔥 Conversion Event: If this user just converted from Free to Node Owner,
+      // proactively update the referrer's activated_refs so their milestone/task progress is instant.
+      if (wasFreeBefore && referrerId) {
+        await query(
+          `UPDATE users SET activated_refs = COALESCE(activated_refs, 0) + 1 WHERE id = $1`,
+          [referrerId]
+        );
+        console.log(`🎉 Conversion: Incremented activated_refs for referrer ID ${referrerId} (wallet: ${wallet} activated node ${nodeId})`);
+      }
+
       return true;
     }
   } catch (err) {

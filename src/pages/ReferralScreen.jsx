@@ -241,10 +241,8 @@ export default function ReferralScreen() {
 
           return filteredList.slice(0, 50).map((friend, i) => {
             const isActivated = Number(friend.node_tier) > 0;
-            // Show trial days remaining for free members
-            const friendDaysLeft = !isActivated && friend.joined_at
-              ? Math.max(0, 30 - Math.floor((Date.now() - new Date(friend.joined_at).getTime()) / (24 * 3600000)))
-              : null;
+            // Bug fix: parse trial_days_left from backend API (default to 0 if missing)
+            const friendDaysLeft = !isActivated ? (friend.trial_days_left || 0) : null;
             const trialExpired = friendDaysLeft !== null && friendDaysLeft === 0;
             return (
             <div key={i} style={{ 
@@ -268,6 +266,86 @@ export default function ReferralScreen() {
             </div>
           );});
         })()}
+      </div>
+
+      {/* --- FREE MEMBERS MILESTONES --- */}
+      <h3 style={{ fontSize: '12px', fontWeight: 900, color: '#4FC3F7', margin: '32px 0 16px', letterSpacing: '1px' }}>FREE REFERRAL MILESTONES</h3>
+      <div className="flex-column" style={{ gap: 12, marginBottom: 40 }}>
+        {[
+          { threshold: 5,   reward: 1000,    label: '5 Free Friends' },
+          { threshold: 10,  reward: 5000,    label: '10 Free Friends' },
+          { threshold: 25,  reward: 15000,   label: '25 Free Friends' },
+          { threshold: 50,  reward: 50000,   label: '50 Free Friends' },
+          { threshold: 100, reward: 200000,  label: '100 Free Friends' },
+        ].map((m) => {
+          const { claimedMilestones, claimFreeMilestoneAction } = useGameStore.getState();
+          const isClaimed = (claimedMilestones || []).includes(`free_${m.threshold}`);
+          const canClaim = directRefs >= m.threshold && !isClaimed;
+          const progress = Math.min((directRefs / m.threshold) * 100, 100);
+
+          return (
+            <div key={`free-${m.threshold}`} className="partner-card" style={{ 
+              padding: '16px', border: canClaim ? '1px solid #4FC3F7' : '1px solid rgba(255,255,255,0.05)',
+              background: isClaimed ? 'rgba(79,195,247,0.05)' : 'var(--bg-card)'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ 
+                    width: 40, height: 40, borderRadius: 10, background: 'rgba(79,195,247,0.1)', 
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 
+                  }}>
+                    👋
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 800 }}>{m.label}</div>
+                    <div style={{ fontSize: 11, color: '#4FC3F7', fontWeight: 700 }}>+{formatNumber(m.reward)} $AIP</div>
+                  </div>
+                </div>
+
+                {isClaimed ? (
+                  <span style={{ color: '#4FC3F7', fontWeight: 900, fontSize: 12 }}>CLAIMED ✓</span>
+                ) : (
+                  <button
+                    onClick={async () => {
+                      if (!canClaim) {
+                        toast.error(`You need ${m.threshold} friends to claim this!`);
+                        return;
+                      }
+                      const tid = toast.loading('Claiming milestone...');
+                      try {
+                        await claimFreeMilestoneAction(m.threshold);
+                        toast.success(`Milestone Claimed! +${formatNumber(m.reward)} AIP`, { id: tid });
+                      } catch (err) {
+                        toast.error(err.message, { id: tid });
+                      }
+                    }}
+                    style={{
+                      background: canClaim ? '#4FC3F7' : 'rgba(255,255,255,0.05)',
+                      color: canClaim ? '#000' : 'rgba(255,255,255,0.3)',
+                      border: 'none', padding: '6px 14px', borderRadius: 20, fontSize: 11, fontWeight: 900,
+                      cursor: canClaim ? 'pointer' : 'not-allowed'
+                    }}
+                  >
+                    {canClaim ? 'CLAIM' : 'LOCKED'}
+                  </button>
+                )}
+              </div>
+
+              {/* Progress Bar */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>
+                <span>{directRefs} / {m.threshold} Trial Friends</span>
+                <span>{Math.floor(progress)}%</span>
+              </div>
+              <div style={{ height: 4, background: 'rgba(255,255,255,0.05)', borderRadius: 2, overflow: 'hidden' }}>
+                <div style={{ 
+                  height: '100%', width: `${progress}%`, 
+                  background: isClaimed ? '#4FC3F7' : 'linear-gradient(90deg, rgba(79,195,247,0.5), #4FC3F7)',
+                  transition: 'width 0.5s ease-out'
+                }} />
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Top Referrers Leaderboard */}

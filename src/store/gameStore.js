@@ -398,8 +398,22 @@ export const useGameStore = create(
         const res = await api.claimMilestone(walletAddress, threshold);
         if (res?.success) {
           set({
-            localReward: Number(get().local_reward) + Number(res.reward),
+            localReward: Number(get().localReward) + Number(res.reward),
             claimedMilestones: res.claimed_milestones || [...claimedMilestones, threshold],
+          });
+          return res;
+        }
+      },
+
+      claimFreeMilestoneAction: async (threshold) => {
+        const { walletAddress, claimedMilestones } = get();
+        if (!walletAddress) throw new Error("Not connected");
+
+        const res = await api.claimFreeMilestone(walletAddress, threshold);
+        if (res?.success) {
+          set({
+            localReward: Number(get().localReward) + Number(res.reward),
+            claimedMilestones: res.claimed_milestones || [...claimedMilestones, `free_${threshold}`],
           });
           return res;
         }
