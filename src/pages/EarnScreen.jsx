@@ -141,6 +141,7 @@ export default function EarnScreen() {
   const [view, setView] = useState('mining'); // 'mining' | 'history'
   const [historyMode, setHistoryMode] = useState('personal'); // 'personal' | 'global'
   const [isExploding, setIsExploding] = useState(false);
+  const [isClaiming, setIsClaiming] = useState(false); // Prevents double-click
   const [displayReward, setDisplayReward] = useState(localReward);
   const [claimedTasks, setClaimedTasks] = useState(() => {
     try { return JSON.parse(localStorage.getItem('aip-tasks') || '[]'); } catch { return []; }
@@ -196,23 +197,32 @@ export default function EarnScreen() {
   };
 
   const onClaim = async () => {
-    if (totalMined <= 0) return;
+    // Guard: already in-flight OR nothing accrued OR trial expired
+    if (isClaiming || totalMined <= 0 || isExpired) return;
+    setIsClaiming(true);
     setIsExploding(true);
 
-    // Tell store to request an authoritative claim from postgres
-    await claimMined();
-
-    toast.success(`🥚 Hatch claim completed via authoritative ledger!`, { duration: 3000 });
-    setTimeout(() => setIsExploding(false), 800);
-
-    if (!hasNode) {
-      setTimeout(() => {
-        toast('Activate an AIPCore Node to earn real BNB, 10x more coins, and massive pool rewards!', {
-          icon: '💎',
-          duration: 6000,
-          style: { border: '1px solid var(--neon-lime)' }
-        });
-      }, 800);
+    try {
+      const ok = await claimMined();
+      if (ok) {
+        toast.success(`🥚 +${Math.floor(totalMined).toLocaleString()} $AIP claimed!`, { duration: 3000 });
+        if (!hasNode) {
+          setTimeout(() => {
+            toast('Activate an AIPCore Node to earn real BNB, 10x more coins, and massive pool rewards!', {
+              icon: '💎',
+              duration: 6000,
+              style: { border: '1px solid var(--neon-lime)' }
+            });
+          }, 800);
+        }
+      } else {
+        toast.error('Claim failed — please try again.', { duration: 4000 });
+      }
+    } catch (err) {
+      toast.error(err?.message || 'Claim failed.', { duration: 4000 });
+    } finally {
+      setIsClaiming(false);
+      setTimeout(() => setIsExploding(false), 800);
     }
   };
 
@@ -370,20 +380,24 @@ export default function EarnScreen() {
               {/* COLLECT (30%) */}
               <button
                 onClick={onClaim}
-                disabled={totalMined <= 0 || isExpired}
+                disabled={isClaiming || totalMined <= 0 || isExpired}
                 style={{
                   flex: 0.3,
-                  background: totalMined > 0 ? '#4FC3F7' : 'rgba(255,255,255,0.04)',
-                  border: 'none', borderRadius: 16, padding: '16px 5px', cursor: totalMined > 0 ? 'pointer' : 'default',
-                  transition: 'all 0.3s'
+                  background: (!isClaiming && totalMined > 0) ? '#4FC3F7' : 'rgba(255,255,255,0.04)',
+                  border: 'none', borderRadius: 16, padding: '16px 5px',
+                  cursor: (!isClaiming && totalMined > 0) ? 'pointer' : 'default',
+                  transition: 'all 0.3s',
+                  opacity: isClaiming ? 0.6 : 1
                 }}
               >
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                  <span style={{ fontSize: 13, fontWeight: 950, color: totalMined > 0 ? '#000' : 'rgba(255,255,255,0.2)' }}>{maturity >= 1 ? '🥚' : 'CLAIM'}</span>
+                  <span style={{ fontSize: 13, fontWeight: 950, color: (!isClaiming && totalMined > 0) ? '#000' : 'rgba(255,255,255,0.2)' }}>
+                    {isClaiming ? '⏳' : maturity >= 1 ? '🥚' : 'CLAIM'}
+                  </span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                     <span style={{ fontSize: 9, fontWeight: 900, color: totalMined > 0 ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.1)' }}>$AIP</span>
                     <span style={{ fontSize: 11, fontWeight: 950, color: totalMined > 0 ? '#000' : 'rgba(255,255,255,0.2)' }}>
-                      {Math.floor(totalMined)}
+                      {isClaiming ? '...' : Math.floor(totalMined)}
                     </span>
                   </div>
                 </div>

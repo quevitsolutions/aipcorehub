@@ -206,11 +206,11 @@ export const useGameStore = create(
       },
 
       claimMined: async () => {
-        const { walletAddress } = get();
-        if (!walletAddress) return;
+        const { walletAddress, pendingMined: previousPending } = get();
+        if (!walletAddress) return false;
 
-        // Optionally show immediate UI burst if desired, but we enforce server math
-        set({ pendingMined: 0 }); // visually reset while awaiting network
+        // Optimistically clear the display — but remember the old value to restore on failure
+        set({ pendingMined: 0 });
 
         try {
           const res = await api.claimMining(walletAddress);
@@ -219,10 +219,18 @@ export const useGameStore = create(
               localReward: Number(res.user.local_reward || 0),
               lastClaimTime: new Date(res.user.last_claim_time).getTime(),
               lastSyncTime: Date.now(), // Refresh sync anchor to reset live counter
+              pendingMined: 0,         // Confirmed: keep at 0
             });
+            return true; // Signal success
           }
+          // API returned but success=false — restore pending
+          set({ pendingMined: previousPending });
+          return false;
         } catch (err) {
+          // Network/server error — restore pending so user doesn't lose their display
+          set({ pendingMined: previousPending });
           console.warn("Claim API failed:", err.message);
+          return false;
         }
       },
 
