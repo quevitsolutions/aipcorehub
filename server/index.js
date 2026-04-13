@@ -392,17 +392,19 @@ app.get('/health', (req, res) => res.send('API is healthy'));
 app.get('/api/user/:walletAddress', async (req, res) => {
   const { walletAddress } = req.params;
   try {
-    // 1. Fetch user & calculate stats
+    // 1. Fetch user & calculate stats across ALL potential duplicate IDs
     const userResult = await query(
-      `SELECT u.*, 
-        (SELECT COUNT(*) FROM users WHERE referrer_id = u.id) as direct_refs,
-        (SELECT COUNT(*) FROM users WHERE referrer_id = u.id AND node_tier > 0) as activated_refs,
-       -- Recursive CTE for team size (18 levels deep)
+      `WITH parent_ids AS (
+         SELECT id FROM users WHERE LOWER(wallet_address) = LOWER($1)
+       )
+       SELECT u.*, 
+        (SELECT COUNT(*) FROM users WHERE referrer_id IN (SELECT id FROM parent_ids)) as direct_refs,
+        (SELECT COUNT(*) FROM users WHERE referrer_id IN (SELECT id FROM parent_ids) AND node_tier > 0) as activated_refs,
         (
           WITH RECURSIVE team AS (
             SELECT id, referrer_id, 1 as depth
             FROM users
-            WHERE referrer_id = u.id
+            WHERE referrer_id IN (SELECT id FROM parent_ids)
             UNION ALL
             SELECT child.id, child.referrer_id, parent.depth + 1
             FROM users child
@@ -412,9 +414,16 @@ app.get('/api/user/:walletAddress', async (req, res) => {
           SELECT COUNT(*) FROM team
         ) as team_size
        FROM users u 
-       WHERE LOWER(u.wallet_address) = LOWER($1)`,
+       WHERE LOWER(u.wallet_address) = LOWER($1)
+       ORDER BY id ASC`,
       [walletAddress]
     );
+
+    // If duplicates exist, trigger an instant reconciliation in the background
+    if (userResult.rows.length > 1) {
+      console.log(`🚀 Instant Recon: Duplicates detected for ${walletAddress}. Merging...`);
+      reconcileDuplicateUsers().catch(e => console.error("Instant recon failed:", e.message));
+    }
     
     if (userResult.rows.length === 0) {
       // Resolve referrer ID if provided
@@ -1223,8 +1232,10 @@ app.get('/api/leaderboard', async (req, res) => {
 app.get('/api/referrals/:walletAddress', async (req, res) => {
   const { walletAddress } = req.params;
   try {
-    const parent = await query('SELECT id FROM users WHERE LOWER(wallet_address) = LOWER($1)', [walletAddress]);
-    if (parent.rows.length === 0) return res.json([]);
+    // Find all IDs associated with this wallet (case-insensitive) to handle duplicates
+    const parentsResult = await query('SELECT id FROM users WHERE LOWER(wallet_address) = LOWER($1)', [walletAddress]);
+    if (parentsResult.rows.length === 0) return res.json([]);
+    const parentIds = parentsResult.rows.map(r => r.id);
 
     const result = await query(
       `SELECT wallet_address, 
@@ -1235,10 +1246,10 @@ app.get('/api/referrals/:walletAddress', async (req, res) => {
               (SELECT COUNT(*) FROM users WHERE referrer_id = u.id) as direct_count,
               (SELECT COUNT(*) FROM users WHERE matrix_parent_id = u.id) as team_size
        FROM users u
-       WHERE referrer_id = $1
+       WHERE referrer_id = ANY($1::int[])
        ORDER BY u.created_at DESC
        LIMIT 100`,
-      [parent.rows[0].id]
+      [parentIds]
     );
     res.json(result.rows);
   } catch (err) {
