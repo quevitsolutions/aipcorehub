@@ -14,11 +14,12 @@ const BSC_RPC = process.env.VITE_RPC_URL || 'https://bsc-dataseed.binance.org/';
 const DEPLOY_BLOCK = 43232822; // Block around contract deployment for optimization
 
 const AIPCORE_ABI = [
-  "event RewardDistributed(address indexed wallet, uint indexed nodeId, uint fromId, uint layer, uint amount, uint time, bool isMissed, uint rewardType, uint tier)",
-  "event NodeCreated(address indexed node, uint indexed userId, uint indexed referrerId, uint uplineId)",
-  "event TierUnlocked(address indexed node, uint indexed userId, uint packageId)",
-  "function getTeamSize(uint _nodeId, uint _depth) external view returns (uint)",
-  "function nodes(uint _nodeId) external view returns (uint64 nodeId, address wallet, uint64 sponsor, uint64 matrixParent, uint40 joinedAt, uint8 tier, uint256 totalContribution, uint256 totalEarned, uint32 directNodes)"
+  "event RewardDistributed(address indexed wallet, uint256 indexed nodeId, uint256 fromId, uint256 layer, uint256 amount, uint256 time, bool isMissed, uint256 rewardType, uint256 tier)",
+  "event NodeCreated(address indexed node, uint256 indexed userId, uint256 indexed referrerId, uint256 uplineId)",
+  "event TierUnlocked(address indexed node, uint256 indexed userId, uint256 packageId)",
+  "function getTeamSize(uint256 _userId, uint256 _depth) view returns (uint256)",
+  "function getNodeStats(uint256 _userId) view returns (uint256 tier, uint256 directCount, uint256 matrixCount, uint256 totalRewards, uint256 totalContribution, uint256 daysActive)",
+  "function nodes(uint256 _nodeId) view returns (uint64 nodeId, address wallet, uint64 sponsor, uint64 matrixParent, uint40 joinedAt, uint8 tier, uint256 totalContribution, uint256 totalEarned, uint32 directNodes)"
 ];
 
 const REWARDPOOL_ABI = [
@@ -135,6 +136,34 @@ const ensureSchema = async () => {
 };
 
 ensureSchema();
+
+/**
+ * Startup RPC Sync: Called once on boot to populate matrix_counts for all existing nodes.
+ * This ensures the team page shows correct data immediately without waiting for new events.
+ */
+async function startupNodeSync() {
+  try {
+    // Wait for schema to finish
+    await new Promise(r => setTimeout(r, 3000));
+    console.log('🚀 Starting RPC node sync for all existing nodes...');
+
+    const nodes = await query('SELECT node_id FROM users WHERE node_id IS NOT NULL ORDER BY node_id ASC');
+    console.log(`📊 Found ${nodes.rows.length} nodes to sync`);
+
+    // Stagger requests to avoid RPC rate limits (1 per 500ms)
+    for (const row of nodes.rows) {
+      await syncNodeStateFromRPC(Number(row.node_id));
+      await new Promise(r => setTimeout(r, 500)); 
+    }
+
+    console.log('✅ Startup node sync complete!');
+  } catch (err) {
+    console.error('Startup node sync error:', err.message);
+  }
+}
+
+// Run startup sync after server is ready (non-blocking)
+setTimeout(startupNodeSync, 5000);
 
 /**
  * Background worker to sync on-chain events for a user

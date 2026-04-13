@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useGameStore } from '../store/gameStore.js';
+import { useContract } from '../hooks/useContract.js';
 import { shortAddr } from '../utils/format.js';
 import { api } from '../services/api.js';
 
@@ -92,12 +93,14 @@ function MemberCard({ m, index, total }) {
 }
 
 export default function TeamScreen() {
-  const { isConnected, directRefs, teamSize, walletAddress } = useGameStore();
+  const { isConnected, nodeId, directRefs, teamSize, walletAddress } = useGameStore();
+  const { fetchTeamCounts, fetchTeamLevelMembers } = useContract();
 
   const [dualCounts, setDualCounts] = useState({
     referral: new Array(18).fill(0),
     matrix: new Array(18).fill(0)
   });
+  const [rpcCounts, setRpcCounts] = useState([]);
   const [loadingCounts, setLoadingCounts] = useState(false);
   const [expandedLevel, setExpandedLevel] = useState(null);
   const [levelMembers, setLevelMembers] = useState([]);
@@ -108,13 +111,27 @@ export default function TeamScreen() {
       if (!walletAddress) return;
       setLoadingCounts(true);
       try {
+        // 1. Try DB API first (fast, cached RPC data)
         const data = await api.fetchNetworkCounts(walletAddress);
-        setDualCounts({
+        const dc = {
           referral: data.referralCounts || new Array(18).fill(0),
           matrix: data.matrixCounts || new Array(18).fill(0)
-        });
+        };
+        setDualCounts(dc);
+
+        // 2. If API returns all zeros (DB not yet synced), fall back to live RPC
+        const apiTotal = (dc.matrix || []).reduce((a,b) => a+b, 0) + (dc.referral || []).reduce((a,b) => a+b, 0);
+        if (apiTotal === 0 && nodeId && Number(nodeId) > 0) {
+          console.log('⚡ DB empty, falling back to live RPC...');
+          const liveCounts = await fetchTeamCounts(nodeId);
+          setRpcCounts(liveCounts || []);
+        }
       } catch (err) {
-        console.error('Failed to load network stats from API Bridge:', err);
+        // Full fallback to RPC on API error
+        if (nodeId && Number(nodeId) > 0) {
+          const liveCounts = await fetchTeamCounts(nodeId).catch(() => []);
+          setRpcCounts(liveCounts || []);
+        }
       }
       setLoadingCounts(false);
     };
@@ -122,7 +139,7 @@ export default function TeamScreen() {
     if (isConnected && walletAddress) {
       loadStats();
     }
-  }, [isConnected, walletAddress]);
+  }, [isConnected, walletAddress, nodeId]);
 
   const toggleLevel = async (levelIndex) => {
     if (expandedLevel === levelIndex) {
@@ -132,13 +149,27 @@ export default function TeamScreen() {
     setExpandedLevel(levelIndex);
     setLevelMembers([]);
 
-    if (dualCounts.matrix[levelIndex] > 0 || dualCounts.referral[levelIndex] > 0) {
+    const hasCount = (dualCounts.matrix[levelIndex] > 0 || dualCounts.referral[levelIndex] > 0 || (rpcCounts[levelIndex] || 0) > 0);
+    if (hasCount) {
       setLoadingMembers(true);
       try {
-        const members = await api.fetchNetworkLevelMembers(walletAddress, levelIndex);
+        // Try DB first, fall back to live RPC
+        let members = await api.fetchNetworkLevelMembers(walletAddress, levelIndex);
+        if (!members || members.length === 0) {
+          // Fall back to direct blockchain members
+          const rpcMembers = await fetchTeamLevelMembers(nodeId, levelIndex);
+          members = (rpcMembers || []).map(m => ({
+            wallet_address: m.wallet,
+            node_id: m.nodeId,
+            node_tier: m.tier,
+            joined_at: m.joinedAt,
+            team_size: 0,
+            direct_count: Number(m.directNodes || 0)
+          }));
+        }
         setLevelMembers(members);
       } catch (err) {
-        console.error('API member fetch failed:', err);
+        console.error('Member fetch failed:', err);
       }
       setLoadingMembers(false);
     }
@@ -153,10 +184,14 @@ export default function TeamScreen() {
     );
   }
 
-  const calculatedDirects = dualCounts.referral[0] || (directRefs || 0);
-  const calculatedTotal = dualCounts.matrix.reduce((a, b) => a + b, 0) || (teamSize || 0);
-  // Use matrix counts for level display (more accurate from RPC sync)
-  const levelData = dualCounts.matrix.map((mc, i) => Math.max(mc, dualCounts.referral[i] || 0));
+  const calculatedDirects = dualCounts.referral[0] || rpcCounts[0] || (directRefs || 0);
+  const matrixTotal = dualCounts.matrix.reduce((a,b) => a+b, 0);
+  const rpcTotal = rpcCounts.reduce ? rpcCounts.reduce((a,b) => a+b, 0) : 0;
+  const calculatedTotal = matrixTotal || rpcTotal || (teamSize || 0);
+  // Best count per level: DB matrix > DB referral > live RPC fallback
+  const levelData = new Array(18).fill(0).map((_, i) =>
+    Math.max(dualCounts.matrix[i] || 0, dualCounts.referral[i] || 0, rpcCounts[i] || 0)
+  );
 
   return (
     <div className="page page-team" style={{ paddingBottom: '100px' }}>
