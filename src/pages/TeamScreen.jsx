@@ -66,6 +66,21 @@ function MemberCard({ m, index, total }) {
       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
         <TierBadge tier={m.node_tier || m.tier} />
         <NodeBadge nodeId={m.node_id || m.nodeId} />
+        {m.is_direct && (
+          <span style={{ 
+            background: 'rgba(255, 215, 0, 0.15)', 
+            color: '#FFD700', 
+            border: '1px solid rgba(255, 215, 0, 0.4)', 
+            fontSize: '8px', 
+            fontWeight: 900, 
+            padding: '2px 8px', 
+            borderRadius: '4px',
+            letterSpacing: '0.5px',
+            boxShadow: '0 0 10px rgba(255, 215, 0, 0.1)'
+          }}>
+            DIRECT
+          </span>
+        )}
         {isActive && (
           <span style={{ background: 'rgba(163,255,18,0.1)', color: '#A3FF12', border: '1px solid rgba(163,255,18,0.2)', fontSize: '8px', fontWeight: 800, padding: '2px 6px', borderRadius: '4px' }}>
             ACTIVE
@@ -102,11 +117,8 @@ export default function TeamScreen() {
   });
   const [rpcMatrixCounts, setRpcMatrixCounts] = useState(new Array(18).fill(0));
   const [loadingCounts, setLoadingCounts] = useState(false);
-  const [activeTab, setActiveTab] = useState('matrix'); // 'matrix' or 'directs'
   const [expandedLevel, setExpandedLevel] = useState(null);
   const [levelMembers, setLevelMembers] = useState([]);
-  const [directs, setDirects] = useState([]);
-  const [loadingDirects, setLoadingDirects] = useState(false);
   const [loadingMembers, setLoadingMembers] = useState(false);
 
   useEffect(() => {
@@ -144,24 +156,6 @@ export default function TeamScreen() {
     }
   }, [isConnected, walletAddress, nodeId]);
 
-  useEffect(() => {
-    const loadDirects = async () => {
-      if (!walletAddress || activeTab !== 'directs') return;
-      setLoadingDirects(true);
-      try {
-        const data = await api.fetchReferrals(walletAddress);
-        setDirects(data || []);
-      } catch (err) {
-        console.error('Failed to load directs:', err);
-      }
-      setLoadingDirects(false);
-    };
-
-    if (activeTab === 'directs') {
-      loadDirects();
-    }
-  }, [activeTab, walletAddress]);
-
   const toggleLevel = async (levelIndex) => {
     if (expandedLevel === levelIndex) {
       setExpandedLevel(null);
@@ -174,21 +168,31 @@ export default function TeamScreen() {
     if (hasCount) {
       setLoadingMembers(true);
       try {
-        // PRIMARY: Direct blockchain via getMatrixUsers (always accurate, gasless view)
-        // Contract layers are 0-indexed (Layer 0 = Level 1)
-        const rpcMembers = await fetchTeamLevelMembers(nodeId, levelIndex);
-        const members = (rpcMembers || []).map(m => ({
-          wallet_address: m.wallet,
-          node_id: m.nodeId,
-          node_tier: m.tier,
-          joined_at: m.joinedAt,
-          team_size: Number(m.totalMatrixNodes || 0),
-          direct_count: Number(m.directNodes || 0),
-          node_active: true
-        }));
-        setLevelMembers(members);
+        // Fetch from API first (now includes is_direct correctly)
+        const members = await api.fetchNetworkLevelMembers(walletAddress, levelIndex + 1);
+        
+        if (members && members.length > 0) {
+           setLevelMembers(members.map(m => ({
+             ...m,
+             team_size: Number(m.team_size || 0),
+             direct_count: Number(m.direct_count || 0)
+           })));
+        } else {
+          // FALLBACK to RPC
+          const rpcMembers = await fetchTeamLevelMembers(nodeId, levelIndex);
+          setLevelMembers((rpcMembers || []).map(m => ({
+            wallet_address: m.wallet,
+            node_id: m.nodeId,
+            node_tier: m.tier,
+            joined_at: m.joinedAt,
+            team_size: Number(m.totalMatrixNodes || 0),
+            direct_count: Number(m.directNodes || 0),
+            node_active: true,
+            is_direct: false // RPC doesn't know sponsor link easily here
+          })));
+        }
       } catch (err) {
-        console.error('RPC member fetch failed:', err);
+        console.error('Member fetch failed:', err);
       }
       setLoadingMembers(false);
     }
@@ -223,81 +227,28 @@ export default function TeamScreen() {
       </div>
 
       {/* Network Overview Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
-        <div 
-          onClick={() => setActiveTab('directs')}
-          className="booster-card" 
-          style={{ 
-            margin: 0, padding: '16px 12px', alignItems: 'center', 
-            border: `1px solid ${activeTab === 'directs' ? '#A3FF12' : 'rgba(163,255,18,0.15)'}`,
-            background: activeTab === 'directs' ? 'rgba(163,255,18,0.1)' : 'linear-gradient(135deg,rgba(163,255,18,0.05) 0%, rgba(0,0,0,0) 100%)',
-            cursor: 'pointer',
-            transition: 'all 0.2s'
-          }}
-        >
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px' }}>
+        <div className="booster-card" style={{ margin: 0, padding: '16px 12px', alignItems: 'center', border: '1px solid rgba(163,255,18,0.15)', background: 'linear-gradient(135deg,rgba(163,255,18,0.05) 0%, rgba(0,0,0,0) 100%)' }}>
           <span style={{ fontSize: '28px', fontWeight: 900, color: '#A3FF12', lineHeight: 1 }}>{calculatedDirects}</span>
           <span style={{ fontSize: '9px', color: '#FFD700', fontWeight: 800, marginTop: '6px', letterSpacing: '1px' }}>DIRECT SPONSORS</span>
         </div>
-        <div 
-          onClick={() => setActiveTab('matrix')}
-          className="booster-card" 
-          style={{ 
-            margin: 0, padding: '16px 12px', alignItems: 'center', 
-            border: `1px solid ${activeTab === 'matrix' ? '#4FC3F7' : 'rgba(79,195,247,0.15)'}`,
-            background: activeTab === 'matrix' ? 'rgba(79,195,247,0.1)' : 'linear-gradient(135deg,rgba(79,195,247,0.05) 0%, rgba(0,0,0,0) 100%)',
-            cursor: 'pointer',
-            transition: 'all 0.2s'
-          }}
-        >
+        <div className="booster-card" style={{ margin: 0, padding: '16px 12px', alignItems: 'center', border: '1px solid rgba(79,195,247,0.15)', background: 'linear-gradient(135deg,rgba(79,195,247,0.05) 0%, rgba(0,0,0,0) 100%)' }}>
           <span style={{ fontSize: '28px', fontWeight: 900, color: '#4FC3F7', lineHeight: 1 }}>{calculatedTotal}</span>
           <span style={{ fontSize: '9px', color: '#A3FF12', fontWeight: 800, marginTop: '6px', letterSpacing: '1px' }}>MATRIX TOTAL</span>
         </div>
       </div>
 
-      {/* Tab Selector */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', padding: '0 4px' }}>
-        <button 
-          onClick={() => setActiveTab('matrix')}
-          style={{
-            flex: 1, padding: '10px', borderRadius: '10px', border: 'none',
-            background: activeTab === 'matrix' ? 'rgba(79,195,247,0.15)' : 'rgba(255,255,255,0.03)',
-            color: activeTab === 'matrix' ? '#4FC3F7' : '#666',
-            fontSize: '10px', fontWeight: 900, letterSpacing: '1px', cursor: 'pointer',
-            border: `1px solid ${activeTab === 'matrix' ? 'rgba(79,195,247,0.3)' : 'transparent'}`,
-            transition: 'all 0.3s'
-          }}
-        >
-          MATRIX LEVELS
-        </button>
-        <button 
-          onClick={() => setActiveTab('directs')}
-          style={{
-            flex: 1, padding: '10px', borderRadius: '10px', border: 'none',
-            background: activeTab === 'directs' ? 'rgba(163,255,18,0.15)' : 'rgba(255,255,255,0.03)',
-            color: activeTab === 'directs' ? '#A3FF12' : '#666',
-            fontSize: '10px', fontWeight: 900, letterSpacing: '1px', cursor: 'pointer',
-            border: `1px solid ${activeTab === 'directs' ? 'rgba(163,255,18,0.3)' : 'transparent'}`,
-            transition: 'all 0.3s'
-          }}
-        >
-          MY DIRECTS
-        </button>
+      <div style={{ fontSize: '10px', fontWeight: 900, color: '#4FC3F7', marginBottom: '12px', letterSpacing: '1.5px', paddingLeft: '2px' }}>
+        BINARY MATRIX LEVELS
       </div>
 
-      {activeTab === 'matrix' ? (
-        <>
-          <div style={{ fontSize: '10px', fontWeight: 900, color: '#4FC3F7', marginBottom: '12px', letterSpacing: '1.5px', paddingLeft: '2px' }}>
-            BINARY MATRIX LEVELS
-          </div>
-
-          {loadingCounts ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#FFB74D', fontSize: '11px', fontWeight: 700 }}>
-              LOADING NETWORK DATA...
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {/* Level iteration code remains same... */}
-              {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18].map((level, index) => {
+      {loadingCounts ? (
+        <div style={{ textAlign: 'center', padding: '40px', color: '#FFB74D', fontSize: '11px', fontWeight: 700 }}>
+          LOADING NETWORK DATA...
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18].map((level, index) => {
             const count = levelData[index] || 0;
             const maxSlots = maxCapacity(level); // 2, 4, 8, 16...
             const fillPct = maxSlots > 0 ? Math.min(100, Math.round((count / maxSlots) * 100)) : 0;
@@ -405,58 +356,6 @@ export default function TeamScreen() {
               </div>
             );
           })}
-            </div>
-          )}
-        </>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '0 4px' }}>
-          <div style={{ fontSize: '10px', fontWeight: 900, color: '#A3FF12', marginBottom: '8px', letterSpacing: '1.5px' }}>
-            MY DIRECT SPONSORS ({directs.length})
-          </div>
-          
-          {loadingDirects ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#A3FF12', fontSize: '11px', fontWeight: 700 }}>
-              LOADING DIRECTS...
-            </div>
-          ) : directs.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '48px 24px', background: 'rgba(255,255,255,0.02)', borderRadius: '16px', border: '1px dashed rgba(255,255,255,0.05)' }}>
-              <div style={{ fontSize: '24px', marginBottom: '12px' }}>🤝</div>
-              <div style={{ fontSize: '12px', fontWeight: 800, color: '#fff' }}>No direct referrals yet</div>
-              <div style={{ fontSize: '10px', color: '#666', marginTop: '4px' }}>Share your link to build your team!</div>
-            </div>
-          ) : (
-            <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)', padding: '0 16px' }}>
-              {/* Column Headers */}
-              <div style={{
-                display: 'flex', justifyContent: 'space-between',
-                padding: '12px 0 8px',
-                borderBottom: '1px solid rgba(255,255,255,0.05)',
-                marginBottom: '4px'
-              }}>
-                <span style={{ fontSize: '8px', color: '#FFD700', fontWeight: 900, letterSpacing: '1px' }}>OPERATOR</span>
-                <div style={{ display: 'flex', gap: '16px' }}>
-                  <span style={{ fontSize: '8px', color: '#FFD700', fontWeight: 900, width: '45px', textAlign: 'center' }}>DIRECT</span>
-                  <span style={{ fontSize: '8px', color: '#4FC3F7', fontWeight: 900, width: '45px', textAlign: 'center' }}>TEAM</span>
-                </div>
-              </div>
-
-              {directs.map((m, i) => (
-                <MemberCard key={i} m={m} index={i} total={directs.length} />
-              ))}
-            </div>
-          )}
-          
-          <div style={{ 
-            marginTop: '20px', padding: '16px', borderRadius: '16px', 
-            background: 'linear-gradient(to right, rgba(163,255,18,0.05), transparent)',
-            border: '1px solid rgba(163,255,18,0.1)'
-          }}>
-            <div style={{ fontSize: '10px', fontWeight: 900, color: '#A3FF12', marginBottom: '4px' }}>PRO TIP</div>
-            <div style={{ fontSize: '9px', color: '#888', lineHeight: 1.4 }}>
-              Direct Sponsors determine your **Referral Bonus** depth, while the Matrix structure 
-              manages your **Binary Cycle** rewards. Keep recruiting to maximize both!
-            </div>
-          </div>
         </div>
       )}
     </div>
