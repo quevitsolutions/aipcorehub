@@ -1226,19 +1226,20 @@ app.get('/api/referrals/:walletAddress', async (req, res) => {
     const result = await query(
       `SELECT wallet_address, 
               local_reward, 
-              created_at as joined_at, 
+              COALESCE(created_at, NOW()) as joined_at, 
               COALESCE(node_tier, 0) as node_tier, 
               COALESCE(node_id, 0) as node_id,
               (SELECT COUNT(*) FROM users WHERE referrer_id = u.id) as direct_count,
               (SELECT COUNT(*) FROM users WHERE matrix_parent_id = u.id) as team_size
        FROM users u
        WHERE referrer_id = $1
-       ORDER BY u.created_at DESC`,
+       ORDER BY u.created_at DESC
+       LIMIT 100`,
       [parent.rows[0].id]
     );
     res.json(result.rows);
   } catch (err) {
-    console.error('Referral list fetch failed:', err);
+    console.error('Referral fetching error:', err);
     res.status(500).json({ error: 'Failed to fetch referrals' });
   }
 });

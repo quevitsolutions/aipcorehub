@@ -34,6 +34,7 @@ export const useGameStore = create(
       processingLabel: "",
       initialLoaded: false,
       lastBackendSync: null,
+      loadingReferrals: false,
 
       // Node
       hasNode: false,
@@ -354,11 +355,14 @@ export const useGameStore = create(
       fetchReferralData: async () => {
         const { walletAddress } = get();
         if (!walletAddress) return;
+        set({ loadingReferrals: true });
         try {
           const data = await api.fetchReferralList(walletAddress);
-          set({ referralList: data });
+          set({ referralList: Array.isArray(data) ? data : [] });
         } catch (err) {
           console.warn("Referral List Fetch Failed:", err.message);
+        } finally {
+          set({ loadingReferrals: false });
         }
       },
 

@@ -166,10 +166,14 @@ export default function ReferralScreen() {
         <h3 style={{ fontSize: '12px', fontWeight: 900, color: '#4FC3F7', margin: 0, letterSpacing: '1px' }}>MY RECENT INVITES</h3>
         <button 
           onClick={fetchReferralData}
-          style={{ background: 'none', border: 'none', color: '#4FC3F7', cursor: 'pointer', fontSize: '14px', padding: '4px' }}
+          disabled={loadingReferrals}
+          style={{ 
+            background: 'none', border: 'none', color: '#4FC3F7', cursor: 'pointer', 
+            fontSize: '14px', padding: '4px', opacity: loadingReferrals ? 0.3 : 1 
+          }}
           title="Refresh List"
         >
-          🔄
+          {loadingReferrals ? '⌛' : '🔄'}
         </button>
       </div>
       
@@ -183,14 +187,20 @@ export default function ReferralScreen() {
         </button>
       </div>
 
-      <div className="booster-card" style={{ padding: '8px 16px', marginBottom: '32px' }}>
+      <div className="booster-card" style={{ padding: '8px 16px', marginBottom: '32px', minHeight: '100px', position: 'relative' }}>
+        {loadingReferrals && (
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '16px', zIndex: 5, backdropFilter: 'blur(2px)' }}>
+            <span style={{ fontSize: '10px', fontWeight: 900, color: '#A3FF12', letterSpacing: '2px' }}>SYNCING...</span>
+          </div>
+        )}
+
         {(() => {
           const filteredList = referralList.filter(f => {
             const tier = Number(f.node_tier || 0);
             return inviteTab === 'activated' ? tier > 0 : tier === 0;
           });
           
-          if (filteredList.length === 0) {
+          if (filteredList.length === 0 && !loadingReferrals) {
             return (
               <div style={{ padding: '30px 20px', textAlign: 'center', fontSize: '11px', color: 'rgba(255,255,255,0.3)', fontWeight: 600 }}>
                 No {inviteTab === 'activated' ? 'activated nodes' : 'free members'} found.
@@ -198,7 +208,7 @@ export default function ReferralScreen() {
             );
           }
 
-          return filteredList.slice(0, 10).map((friend, i) => (
+          return filteredList.slice(0, 50).map((friend, i) => (
             <div key={i} style={{ 
               display: 'flex', alignItems: 'center', padding: '12px 0',
               borderBottom: i < filteredList.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none'
