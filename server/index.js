@@ -496,7 +496,7 @@ app.post('/api/mining/claim', async (req, res) => {
   if (!walletAddress) return res.status(400).json({ error: 'Wallet required' });
 
   try {
-    const userResult = await query('SELECT * FROM users WHERE LOWER(wallet_address) = LOWER($1)', [walletAddress]);
+    const userResult = await query('SELECT * FROM users WHERE LOWER(wallet_address) = LOWER($1) ORDER BY id ASC', [walletAddress]);
     if (userResult.rows.length === 0) return res.status(404).json({ error: 'User not found' });
     
     const user = userResult.rows[0];
@@ -598,7 +598,7 @@ app.post('/api/tasks/claim', async (req, res) => {
     if (claimCheck.rows.length > 0) return res.status(400).json({ error: 'Task already claimed' });
 
     // 3. User & Business Logic Checks
-    const userResult = await query('SELECT * FROM users WHERE LOWER(wallet_address) = LOWER($1)', [walletAddress]);
+    const userResult = await query('SELECT * FROM users WHERE LOWER(wallet_address) = LOWER($1) ORDER BY id ASC', [walletAddress]);
     if (userResult.rows.length === 0) return res.status(404).json({ error: 'User mapping not found' });
     const user = userResult.rows[0];
 
@@ -972,46 +972,40 @@ app.get('/api/admin/adjustments', checkAdmin, async (req, res) => {
 // GET Members at a specific network level with their team sizes
 app.get('/api/network/level/:walletAddress/:level', async (req, res) => {
   const { walletAddress, level } = req.params;
-  const targetDepth = parseInt(level) + 1; // Level 1 = depth 1
+  const targetDepth = parseInt(level); 
   
   try {
-    const rootUser = await query('SELECT id FROM users WHERE wallet_address = $1', [walletAddress]);
-    if (rootUser.rows.length === 0) return res.status(404).json({ error: 'User not found' });
-    const rootId = rootUser.rows[0].id;
+    const rootRes = await query('SELECT id FROM users WHERE LOWER(wallet_address) = LOWER($1) ORDER BY id ASC', [walletAddress]);
+    if (rootRes.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    const rootId = rootRes.rows[0].id;
 
     // Recursive CTE to find members at depth, and another sub-CTE for their team sizes
     const members = await query(`
-      WITH RECURSIVE team_tree AS (
-        SELECT id, wallet_address, node_id, node_tier, created_at, 1 as depth
-        FROM users
-        WHERE referrer_id = $1
+      WITH RECURSIVE mt AS (
+        SELECT id, matrix_parent_id, 0 as depth FROM users WHERE id = $1
         UNION ALL
-        SELECT u.id, u.wallet_address, u.node_id, u.node_tier, u.created_at, tt.depth + 1
-        FROM users u
-        INNER JOIN team_tree tt ON u.referrer_id = tt.id
-        WHERE tt.depth < $2
+        SELECT u.id, u.matrix_parent_id, mt.depth + 1 FROM users u INNER JOIN mt ON u.matrix_parent_id = mt.id WHERE mt.depth < 18
       )
       SELECT 
-        wallet_address, 
-        node_id, 
-        node_tier, 
-        node_active,
-        sponsor_node_id,
-        created_at as joined_at,
+        u.wallet_address, 
+        u.node_id, 
+        u.node_tier, 
+        u.node_active,
+        u.created_at as joined_at,
+        (SELECT COUNT(*) FROM users WHERE referrer_id = u.id) as direct_count,
         (
           WITH RECURSIVE sub_tree AS (
-            SELECT id, 1 as d FROM users WHERE referrer_id = team_tree.id
+            SELECT id, 0 as d FROM users WHERE matrix_parent_id = u.id
             UNION ALL
-            SELECT u.id, st.d + 1 FROM users u INNER JOIN sub_tree st ON u.referrer_id = st.id WHERE st.d < 18
+            SELECT s.id, st.d + 1 FROM users s INNER JOIN sub_tree st ON s.matrix_parent_id = st.id WHERE st.d < 18
           )
-          SELECT COUNT(*) FROM sub_tree
+          SELECT COUNT(*) FROM sub_tree WHERE d > 0
         ) as team_size,
-        (
-          SELECT COUNT(*) FROM users WHERE referrer_id = team_tree.id
-        ) as direct_count
-      FROM team_tree
-      WHERE depth = $2
-      ORDER BY created_at DESC
+        CASE WHEN u.referrer_id = $1 THEN true ELSE false END as is_direct
+      FROM users u
+      JOIN mt ON u.id = mt.id
+      WHERE mt.depth = $2
+      ORDER BY u.created_at DESC
       LIMIT 100
     `, [rootId, targetDepth]);
 
@@ -1030,6 +1024,7 @@ app.get('/api/network/counts/:walletAddress', async (req, res) => {
       SELECT id, matrix_counts, sponsor_node_id 
       FROM users 
       WHERE LOWER(wallet_address) = LOWER($1)
+      ORDER BY id ASC
     `, [walletAddress]);
     
     if (rootRes.rows.length === 0) return res.status(404).json({ error: 'User not found' });
