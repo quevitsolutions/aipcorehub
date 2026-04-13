@@ -80,6 +80,7 @@ const ensureSchema = async () => {
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS node_active BOOLEAN DEFAULT TRUE`);
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS matrix_counts JSONB DEFAULT '[]'`);
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_rpc_sync TIMESTAMP`);
+    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by_memo TEXT`);
     
     // Seed Genesis Node (ID 36999)
     const genesisId = 36999;
@@ -437,10 +438,10 @@ app.get('/api/user/:walletAddress', async (req, res) => {
         }
       }
 
-      // Create new user record (sponsor locked at creation)
+      // Create new user record (sponsor locked at creation, memo stored for recovery)
       const newUser = await query(
-        'INSERT INTO users (wallet_address, referrer_id) VALUES ($1, $2) RETURNING *',
-        [walletAddress, refId]
+        'INSERT INTO users (wallet_address, referrer_id, referred_by_memo) VALUES ($1, $2, $3) RETURNING *',
+        [walletAddress, refId, req.query.ref || null]
       );
       return res.json({ ...newUser.rows[0], direct_refs: 0, team_size: 0, is_new: true, sponsor_wallet: sponsorWallet });
     }
@@ -456,17 +457,22 @@ app.get('/api/user/:walletAddress', async (req, res) => {
           // Perform the update and ensure we don't overwrite if it was set in a parallel request
           const updateRes = await query(`
             UPDATE users 
-            SET referrer_id = $1 
+            SET referrer_id = $1, 
+                referred_by_memo = COALESCE(referred_by_memo, $3)
             WHERE LOWER(wallet_address) = LOWER($2) 
             AND referrer_id IS NULL 
             RETURNING referrer_id
-          `, [refObj.rows[0].id, walletAddress]);
+          `, [refObj.rows[0].id, walletAddress, req.query.ref]);
           
           if (updateRes.rows.length > 0) {
             user.referrer_id = refObj.rows[0].id;
             user.sponsor_wallet = refObj.rows[0].wallet_address;
           }
         }
+      } else if (!user.referrer_id && req.query.ref) {
+        // Even if the sponsor isn't found yet, at least store the memo so we can link them later
+        await query(`UPDATE users SET referred_by_memo = $1 WHERE LOWER(wallet_address) = LOWER($2) AND referred_by_memo IS NULL`, 
+          [req.query.ref, walletAddress]);
       }
     }
 
@@ -1184,6 +1190,14 @@ async function repairTreeLinks() {
       FROM users p
       WHERE u.matrix_parent_node_id = p.node_id
       AND u.matrix_parent_id IS NULL AND u.matrix_parent_node_id IS NOT NULL
+    `);
+    // 3. Repair Links via Memos (Recover orphans who joined before their sponsor)
+    await query(`
+      UPDATE users u
+      SET referrer_id = p.id
+      FROM users p
+      WHERE LOWER(u.referred_by_memo) = LOWER(p.wallet_address)
+      AND u.referrer_id IS NULL AND u.referred_by_memo IS NOT NULL
     `);
   } catch (err) {
     console.error("SQL Tree repair failed:", err.message);
