@@ -920,6 +920,8 @@ app.get('/api/network/level/:walletAddress/:level', async (req, res) => {
         wallet_address, 
         node_id, 
         node_tier, 
+        node_active,
+        sponsor_node_id,
         created_at as joined_at,
         (
           WITH RECURSIVE sub_tree AS (
@@ -928,7 +930,10 @@ app.get('/api/network/level/:walletAddress/:level', async (req, res) => {
             SELECT u.id, st.d + 1 FROM users u INNER JOIN sub_tree st ON u.referrer_id = st.id WHERE st.d < 18
           )
           SELECT COUNT(*) FROM sub_tree
-        ) as team_size
+        ) as team_size,
+        (
+          SELECT COUNT(*) FROM users WHERE referrer_id = team_tree.id
+        ) as direct_count
       FROM team_tree
       WHERE depth = $2
       ORDER BY created_at DESC
