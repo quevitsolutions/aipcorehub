@@ -1,43 +1,36 @@
 import { useState, useEffect } from 'react';
 import { useGameStore } from '../store/gameStore.js';
+import { useContract } from '../hooks/useContract.js';
 import { shortAddr } from '../utils/format.js';
-import { api } from '../services/api.js';
+import { api } from '../services/api.js'; // Keep for other features or cleanup later
 
 export default function TeamScreen() {
   const { isConnected, nodeId, directRefs, teamSize, walletAddress } = useGameStore();
+  const { fetchTeamCounts, fetchTeamLevelMembers } = useContract();
 
-  const [dualCounts, setDualCounts] = useState({ 
-    referral: new Array(18).fill(0), 
-    matrix: new Array(18).fill(0) 
-  });
+  const [levelCounts, setLevelCounts] = useState(new Array(18).fill(0));
   const [loadingCounts, setLoadingCounts] = useState(false);
   const [expandedLevel, setExpandedLevel] = useState(null);
   const [levelMembers, setLevelMembers] = useState([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
 
-  useEffect(() => {
     const loadStats = async () => {
-      if (!walletAddress) return;
+      if (!nodeId || Number(nodeId) === 0) return;
       setLoadingCounts(true);
       try {
-        const data = await api.fetchNetworkCounts(walletAddress);
-        // API now returns { referralCounts, matrixCounts }
-        setDualCounts({
-          referral: data.referralCounts || new Array(18).fill(0),
-          matrix: data.matrixCounts || new Array(18).fill(0)
-        });
+        const counts = await fetchTeamCounts(nodeId);
+        setLevelCounts(counts);
       } catch (err) {
-        console.error("Failed to load network stats from API:", err);
+        console.error("Failed to load network stats from Blockchain:", err);
       }
       setLoadingCounts(false);
     };
 
-    if (isConnected && walletAddress) {
+    if (isConnected && nodeId) {
       loadStats();
     }
-  }, [isConnected, walletAddress]);
+  }, [isConnected, nodeId]);
 
-  const toggleLevel = async (levelIndex) => {
     if (expandedLevel === levelIndex) {
       setExpandedLevel(null);
       return;
@@ -46,13 +39,13 @@ export default function TeamScreen() {
     setExpandedLevel(levelIndex);
     setLevelMembers([]);
     
-    if (dualCounts.referral[levelIndex] > 0) {
+    if (levelCounts[levelIndex] > 0) {
       setLoadingMembers(true);
       try {
-        const members = await api.fetchNetworkLevelMembers(walletAddress, levelIndex);
+        const members = await fetchTeamLevelMembers(nodeId, levelIndex);
         setLevelMembers(members);
       } catch (err) {
-        console.error("API member fetch failed:", err);
+        console.error("Blockchain member fetch failed:", err);
       }
       setLoadingMembers(false);
     }
@@ -74,10 +67,13 @@ export default function TeamScreen() {
   }
 
   // Calculate totals locally from the level data we fetched to ensure 100% accuracy
-  // Calculate totals from specific tree data
-  const calculatedDirects = dualCounts.referral[0] || (directRefs || 0);
-  const calculatedTotal = dualCounts.matrix.reduce((acc, curr) => acc + curr, 0) || (teamSize || 0);
-  const levelData = dualCounts.referral; // Use referral tree for the breakdown list
+  // Calculate totals locally from the level data we fetched to ensure 100% accuracy
+  const calculatedDirects = levelCounts.length > 0 ? levelCounts[0] : (directRefs || 0);
+  const calculatedTotal = levelCounts.length > 0 
+    ? levelCounts.reduce((acc, curr) => acc + curr, 0) 
+    : (teamSize || 0);
+  const levelData = levelCounts; 
+
 
   return (
     <div className="page page-team" style={{ paddingBottom: '100px' }}>
@@ -163,12 +159,8 @@ export default function TeamScreen() {
                       <div style={{ padding: '20px 0', textAlign: 'center', fontSize: '11px', color: '#FFB74D', fontWeight: 700 }}>
                         FETCHING MEMBERS...
                       </div>
-                    ) : levelMembers.length === 0 && levelData[index] > 0 ? (
-                      <div style={{ padding: '20px 10px', textAlign: 'center' }}>
-                         <div style={{ fontSize: '12px', color: '#FFD54F', fontWeight: 800, marginBottom: '4px' }}>REFRESHING DATABASE...</div>
-                         <div style={{ fontSize: '9px', color: '#999', textTransform: 'uppercase', letterSpacing: '1px' }}>Establishing on-chain connections</div>
-                      </div>
                     ) : (
+                      <div style={{ padding: '12px 0' }}>
                       <div style={{ padding: '12px 0' }}>
                         {/* Member Header */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#FFD700', fontWeight: 800, paddingBottom: '8px', borderBottom: '1px solid rgba(255,255,255,0.05)', marginBottom: '8px' }}>

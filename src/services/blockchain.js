@@ -5,6 +5,11 @@ import {
   AIPVIEW_ABI,
   REWARDPOOL_ABI,
 } from "../../contracts/abi.js";
+
+const MULTICALL_ABI = [
+  "function aggregate(tuple(address target, bytes callData)[] calls) view returns (uint256 blockNumber, bytes[] returnData)"
+];
+const MULTICALL_ADDRESS = "0xcA11bde05977b3631167028862bE2a173976CA11";
 import { config } from "../config/wagmi.js";
 import { getEthersProvider, getEthersSigner } from "../utils/ethers-adapter.js";
 
@@ -33,6 +38,11 @@ class BlockchainService {
       CONTRACTS.REWARDPOOL,
       REWARDPOOL_ABI,
       this.staticProvider,
+    );
+    this.multicall = new ethers.Contract(
+      MULTICALL_ADDRESS,
+      MULTICALL_ABI,
+      this.staticProvider
     );
   }
 
@@ -266,13 +276,31 @@ class BlockchainService {
   }
 
   // ── REPORTING ─────────────────────────────────────────────────────────────
-
   async getMatrixCounts(nodeId) {
-    const promises = Array.from({ length: 18 }, (_, i) =>
-      this.core.getMatrixUsers(nodeId, i, 0, Math.pow(2, i + 1)),
-    );
-    const results = await Promise.allSettled(promises);
-    return results.map((r) => (r.status === "fulfilled" ? r.value.length : 0));
+    try {
+      const calls = Array.from({ length: 18 }, (_, i) => ({
+        target: CONTRACTS.AIPCORE,
+        callData: this.core.interface.encodeFunctionData("getTeamSize", [nodeId, i])
+      }));
+
+      const [, returnData] = await this.multicall.aggregate(calls);
+      
+      return returnData.map(data => {
+        try {
+          return Number(this.core.interface.decodeFunctionResult("getTeamSize", data)[0]);
+        } catch {
+          return 0;
+        }
+      });
+    } catch (err) {
+      console.error("Multicall failed, falling back to sequential:", err);
+      const counts = [];
+      for(let i=0; i<18; i++) {
+        const c = await this.core.getTeamSize(nodeId, i).catch(() => 0n);
+        counts.push(Number(c));
+      }
+      return counts;
+    }
   }
 
   async getMatrixMembers(nodeId, layer, num = 50) {
