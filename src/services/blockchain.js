@@ -276,7 +276,8 @@ class BlockchainService {
   }
 
   // ── REPORTING ─────────────────────────────────────────────────────────────
-  async getMatrixCounts(nodeId) {
+  // ── REPORTING ─────────────────────────────────────────────────────────────
+  async getReferralCounts(nodeId) {
     try {
       const calls = Array.from({ length: 18 }, (_, i) => ({
         target: CONTRACTS.AIPCORE,

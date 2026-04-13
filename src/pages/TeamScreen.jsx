@@ -111,27 +111,13 @@ export default function TeamScreen() {
       if (!walletAddress) return;
       setLoadingCounts(true);
       try {
-        // 1. Try DB API first (fast, cached RPC data)
         const data = await api.fetchNetworkCounts(walletAddress);
-        const dc = {
+        setDualCounts({
           referral: data.referralCounts || new Array(18).fill(0),
           matrix: data.matrixCounts || new Array(18).fill(0)
-        };
-        setDualCounts(dc);
-
-        // 2. If API returns all zeros (DB not yet synced), fall back to live RPC
-        const apiTotal = (dc.matrix || []).reduce((a,b) => a+b, 0) + (dc.referral || []).reduce((a,b) => a+b, 0);
-        if (apiTotal === 0 && nodeId && Number(nodeId) > 0) {
-          console.log('⚡ DB empty, falling back to live RPC...');
-          const liveCounts = await fetchTeamCounts(nodeId);
-          setRpcCounts(liveCounts || []);
-        }
+        });
       } catch (err) {
-        // Full fallback to RPC on API error
-        if (nodeId && Number(nodeId) > 0) {
-          const liveCounts = await fetchTeamCounts(nodeId).catch(() => []);
-          setRpcCounts(liveCounts || []);
-        }
+        console.error('Failed to load network counts', err);
       }
       setLoadingCounts(false);
     };
@@ -183,11 +169,11 @@ export default function TeamScreen() {
 
   // Direct sponsor count (from store or referral[0])
   const calculatedDirects = directRefs || dualCounts.referral[0] || 0;
-  // Binary matrix total = sum of all rpcCounts (from getTeamSize per depth)
-  const rpcTotal = Array.isArray(rpcCounts) ? rpcCounts.reduce((a,b) => a+b, 0) : 0;
-  const calculatedTotal = rpcTotal || (teamSize || 0);
-  // ONLY binary matrix counts per level - that's what getTeamSize(nodeId, depth) returns
-  const levelData = new Array(18).fill(0).map((_, i) => rpcCounts[i] || 0);
+  const matrixTotal = dualCounts.matrix.reduce((a,b) => a+b, 0);
+  const calculatedTotal = matrixTotal || (teamSize || 0);
+
+  // LEVEL DATA: Strictly binary matrix from DB (or 2^n capacity capped)
+  const levelData = new Array(18).fill(0).map((_, i) => dualCounts.matrix[i] || 0);
   // Max capacity per level in binary matrix: 2^(level)
   const maxCapacity = (level) => Math.pow(2, level);
 

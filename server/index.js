@@ -990,21 +990,24 @@ app.get('/api/network/counts/:walletAddress', async (req, res) => {
     const user = rootRes.rows[0];
     const rootId = user.id;
 
-    // 1. Get RPC-synced Matrix counts if available
-    let matrixCounts = user.matrix_counts;
-    if (!matrixCounts || matrixCounts.length === 0) {
-       // Fallback to CTE if sync hasn't run yet
-       const matrixRes = await query(`
-         WITH RECURSIVE matrix_tree AS (
-           SELECT id, 0 as level FROM users WHERE id = $1
-           UNION ALL
-           SELECT u.id, mt.level + 1 FROM users u INNER JOIN matrix_tree mt ON u.matrix_parent_id = mt.id WHERE mt.level < 18
-         )
-         SELECT level, COUNT(*) as count FROM matrix_tree WHERE level > 0 GROUP BY level
-       `, [rootId]);
-       matrixCounts = new Array(18).fill(0);
-       matrixRes.rows.forEach(r => matrixCounts[r.level - 1] = parseInt(r.count));
-    }
+    // 1. Matrix counts MUST be calculated from the DB's matrix_parent_id links
+    // to ensure they are strictly binary (2, 4, 8...). 
+    // We do NOT use matrix_counts from RPC sync because getTeamSize is referral tree.
+    const matrixRes = await query(`
+      WITH RECURSIVE matrix_tree AS (
+        SELECT id, 0 as level FROM users WHERE id = $1
+        UNION ALL
+        SELECT u.id, mt.level + 1 FROM users u INNER JOIN matrix_tree mt ON u.matrix_parent_id = mt.id WHERE mt.level < 18
+      )
+      SELECT level, COUNT(*) as count FROM matrix_tree WHERE level > 0 GROUP BY level
+    `, [rootId]);
+    matrixCounts = new Array(18).fill(0);
+    matrixRes.rows.forEach(r => {
+      const level = parseInt(r.level);
+      const count = parseInt(r.count);
+      const maxSlots = Math.pow(2, level);
+      matrixCounts[level - 1] = Math.min(count, maxSlots); // Enforce binary limit
+    });
 
     // 2. Always calculate Referral counts (Directs) via CTE as it's dynamic
     const referralRes = await query(`
@@ -1035,31 +1038,20 @@ async function syncNodeStateFromRPC(nodeId) {
     // 1. Fetch Node Struct (Tier, Sponsor, etc.)
     const nodeInfo = await aipcoreContract.nodes(nodeId);
     
-    // 2. Fetch Network Counts (18 levels) via Multicall
-    const calls = Array.from({ length: 18 }, (_, i) => ({
-      target: AIPCORE_ADDRESS,
-      callData: aipcoreContract.interface.encodeFunctionData("getTeamSize", [nodeId, i])
-    }));
-    
-    const [, returnData] = await multicallContract.aggregate(calls);
-    const counts = returnData.map(data => {
-      try {
-        return Number(aipcoreContract.interface.decodeFunctionResult("getTeamSize", data)[0]);
-      } catch { return 0; }
-    });
-
-    // 3. Update DB with live contract state
+    // 2. Update DB with live contract state (links and metadata only)
     await query(`
       UPDATE users 
       SET node_tier = $1,
           sponsor_node_id = $2,
           matrix_parent_node_id = $3,
-          matrix_counts = $4,
           last_rpc_sync = CURRENT_TIMESTAMP
-      WHERE node_id = $5
-    `, [Number(nodeInfo.tier), Number(nodeInfo.sponsor), Number(nodeInfo.matrixParent), JSON.stringify(counts), nodeId]);
+      WHERE node_id = $4
+    `, [Number(nodeInfo.tier), Number(nodeInfo.sponsor), Number(nodeInfo.matrixParent), nodeId]);
 
-    console.log(`✨ RPC Mirror: Synced Node ${nodeId} | Tier: ${nodeInfo.tier} | Matrix: ${counts.reduce((a,b)=>a+b, 0)}`);
+    // 3. Critically repair links to enable CTE matrix calculation
+    await repairTreeLinks();
+
+    console.log(`✨ RPC Mirror: Synced Node ${nodeId} metadata and repaired links`);
 
     // Chain Reaction: If this is a new link, trigger an upline scan periodically
     // (Note: To avoid recursion, we only climb 3 levels per event)
