@@ -617,7 +617,7 @@ app.post('/api/tasks/claim', async (req, res) => {
     }
 
     if (task.type === 'referral_count' || task.type === 'referral') {
-      const refs = await query('SELECT COUNT(*) FROM users WHERE referrer_id = $1', [user.id]);
+      const refs = await query('SELECT COUNT(*) FROM users WHERE referrer_id = $1 AND node_tier > 0', [user.id]);
       const directCount = parseInt(refs.rows[0].count);
       
       // Extract target number from name (e.g., "Refer 3 Peers" -> 3)
@@ -1157,12 +1157,15 @@ async function syncNodeStateFromRPC(nodeId) {
 async function repairTreeLinks() {
   try {
     // Single query to link orphans by their stored sponsor_node_id mapping
+    // Note: We remove "AND u.referrer_id IS NULL" because the Blockchain 
+    // is the source of truth for activated nodes. If a user joined via 
+    // link A but activated under node B, the DB must link them to B.
     await query(`
       UPDATE users u
       SET referrer_id = p.id
       FROM users p
       WHERE u.sponsor_node_id = p.node_id
-      AND u.referrer_id IS NULL AND u.sponsor_node_id IS NOT NULL
+      AND u.sponsor_node_id IS NOT NULL
     `);
 
     // 2. Repair Matrix Links (Binary Tree)
