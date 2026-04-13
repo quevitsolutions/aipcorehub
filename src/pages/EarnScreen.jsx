@@ -135,7 +135,7 @@ export default function EarnScreen() {
     hasNode, lastClaimTime, teamHistory, isHistoryLoading,
     claimMined, setActiveTab, addLocalReward, fetchTeamHistory,
     isFreeActive, createdAt, globalHistory, fetchGlobalHistory,
-    initialLoaded, pendingMined
+    initialLoaded, pendingMined, lastSyncTime, localReward
   } = useGameStore();
 
   const [view, setView] = useState('mining'); // 'mining' | 'history'
@@ -157,8 +157,13 @@ export default function EarnScreen() {
   const ratePerHour = hourlyBase * multiplier;
   const displayTier = Number(nodeTier || 1);
 
-  const localMined = useLocalMining(lastClaimTime, ratePerHour, hasNode || isFreeActive);
-  const totalMined = Number(pendingMined || 0) + localMined;
+  const localMinedSinceSync = (initialLoaded && lastSyncTime) 
+    ? Math.max(0, ((Date.now() - lastSyncTime) / 3600000) * ratePerHour)
+    : 0;
+
+  // The true authoritative total is what the server told us + the live delta since that sync
+  const totalMined = Math.min(24 * ratePerHour, Number(pendingMined || 0) + localMinedSinceSync);
+  const totalWealth = Number(localReward || 0) + totalMined;
 
   // Live timer — re-renders every second
   const [, setTick] = useState(0);
@@ -257,7 +262,7 @@ export default function EarnScreen() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontSize: '20px', fontWeight: 900, color: '#FFD700', letterSpacing: '2px' }}>$AIP</span>
               <span className="balance-value" style={{ fontSize: 48, fontWeight: 900, color: '#fff', textShadow: '0 0 20px rgba(255,255,255,0.1)' }}>
-                {Math.floor(displayReward).toLocaleString('en-US')}
+                {Math.floor(totalWealth).toLocaleString('en-US')}
               </span>
             </div>
           </div>

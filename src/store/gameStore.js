@@ -335,6 +335,7 @@ export const useGameStore = create(
               activatedRefs: Number(data.activated_refs || 0),
               claimedMilestones: JSON.parse(data.claimed_milestones || '[]'),
               lastBackendSync: Date.now(),
+              lastSyncTime: Date.now(), // Precise anchor for live ticking
               initialLoaded: true,
             });
 
