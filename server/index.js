@@ -1139,10 +1139,12 @@ app.get('/api/referrals/:walletAddress', async (req, res) => {
     if (parent.rows.length === 0) return res.json([]);
 
     const result = await query(
-      `SELECT wallet_address, local_reward, created_at, node_tier
-       FROM users 
+      `SELECT wallet_address, local_reward, created_at as joined_at, node_tier, node_id,
+              (SELECT COUNT(*) FROM users WHERE referrer_id = u.id) as direct_count,
+              (SELECT COUNT(*) FROM users WHERE matrix_parent_id = u.id) as team_size
+       FROM users u
        WHERE referrer_id = $1
-       ORDER BY created_at DESC`,
+       ORDER BY u.created_at DESC`,
       [parent.rows[0].id]
     );
     res.json(result.rows);

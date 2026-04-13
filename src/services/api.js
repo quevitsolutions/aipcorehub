@@ -242,6 +242,12 @@ class ApiService {
     if (!res.ok) throw new Error('Failed to fetch level members');
     return res.json();
   }
+
+  async fetchReferrals(walletAddress) {
+    const res = await fetch(`${this.baseUrl}/referrals/${walletAddress}`);
+    if (!res.ok) throw new Error('Failed to fetch referrals');
+    return res.json();
+  }
 }
 
 export const api = new ApiService();
