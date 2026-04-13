@@ -304,6 +304,35 @@ class BlockchainService {
     }
   }
 
+  async getMatrixLevelCounts(nodeId) {
+    try {
+      // Fetch matrix counts by checking getMatrixUsers for each level
+      // We only fetch first 10 levels via multicall for speed/limit reasons
+      const layers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+      const calls = layers.map(layer => ({
+        target: CONTRACTS.AIPCORE,
+        // Safe limit to ensure the gasless view call doesn't timeout or exceed block limits
+        callData: this.core.interface.encodeFunctionData("getMatrixUsers", [nodeId, layer, 0, 100])
+      }));
+
+      const [, returnData] = await this.multicall.aggregate(calls);
+      
+      const matrixCounts = new Array(18).fill(0);
+      returnData.forEach((data, i) => {
+        try {
+          const members = this.core.interface.decodeFunctionResult("getMatrixUsers", data)[0];
+          matrixCounts[i] = members.length;
+        } catch {
+          matrixCounts[i] = 0;
+        }
+      });
+      return matrixCounts;
+    } catch (err) {
+      console.error("Matrix count multicall failed:", err);
+      return new Array(18).fill(0);
+    }
+  }
+
   async getMatrixMembers(nodeId, layer, num = 50) {
     const members = await this.core.getMatrixUsers(nodeId, layer, 0, num);
     return members.map((m) => ({

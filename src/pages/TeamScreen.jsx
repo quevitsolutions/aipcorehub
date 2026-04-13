@@ -90,17 +90,15 @@ function MemberCard({ m, index, total }) {
       </div>
     </div>
   );
-}
-
 export default function TeamScreen() {
   const { isConnected, nodeId, directRefs, teamSize, walletAddress } = useGameStore();
-  const { fetchTeamCounts, fetchTeamLevelMembers } = useContract();
+  const { fetchTeamCounts, fetchMatrixCounts, fetchTeamLevelMembers } = useContract();
 
   const [dualCounts, setDualCounts] = useState({
     referral: new Array(18).fill(0),
     matrix: new Array(18).fill(0)
   });
-  const [rpcCounts, setRpcCounts] = useState([]);
+  const [rpcMatrixCounts, setRpcMatrixCounts] = useState(new Array(18).fill(0));
   const [loadingCounts, setLoadingCounts] = useState(false);
   const [expandedLevel, setExpandedLevel] = useState(null);
   const [levelMembers, setLevelMembers] = useState([]);
@@ -112,12 +110,26 @@ export default function TeamScreen() {
       setLoadingCounts(true);
       try {
         const data = await api.fetchNetworkCounts(walletAddress);
-        setDualCounts({
+        const dc = {
           referral: data.referralCounts || new Array(18).fill(0),
           matrix: data.matrixCounts || new Array(18).fill(0)
-        });
+        };
+        setDualCounts(dc);
+
+        // FALLBACK: If DB matrix counts are all 0, fetch directly from contract
+        const dbMatrixTotal = (dc.matrix || []).reduce((a,b) => a+b, 0);
+        if (dbMatrixTotal === 0 && nodeId && Number(nodeId) > 0) {
+          console.log("⚡ DB matrix empty, fetching live from RPC...");
+          const liveMatrix = await fetchMatrixCounts(nodeId);
+          setRpcMatrixCounts(liveMatrix);
+        }
       } catch (err) {
         console.error('Failed to load network counts', err);
+        // On API error, try full RPC fallback
+        if (nodeId) {
+          const liveMatrix = await fetchMatrixCounts(nodeId).catch(() => new Array(18).fill(0));
+          setRpcMatrixCounts(liveMatrix);
+        }
       }
       setLoadingCounts(false);
     };
@@ -135,12 +147,13 @@ export default function TeamScreen() {
     setExpandedLevel(levelIndex);
     setLevelMembers([]);
 
-    const hasCount = (dualCounts.matrix[levelIndex] > 0 || dualCounts.referral[levelIndex] > 0 || (rpcCounts[levelIndex] || 0) > 0);
+    const hasCount = (dualCounts.matrix[levelIndex] > 0 || dualCounts.referral[levelIndex] > 0 || (rpcMatrixCounts[levelIndex] || 0) > 0);
     if (hasCount) {
       setLoadingMembers(true);
       try {
-        // PRIMARY: Direct blockchain via getMatrixUsers (always accurate)
-        const rpcMembers = await fetchTeamLevelMembers(nodeId, levelIndex);
+        // PRIMARY: Direct blockchain via getMatrixUsers (always accurate, gasless view)
+        // CRITICAL FIX: Layers are 1-indexed in the contract
+        const rpcMembers = await fetchTeamLevelMembers(nodeId, levelIndex + 1);
         const members = (rpcMembers || []).map(m => ({
           wallet_address: m.wallet,
           node_id: m.nodeId,
@@ -172,8 +185,8 @@ export default function TeamScreen() {
   const matrixTotal = dualCounts.matrix.reduce((a,b) => a+b, 0);
   const calculatedTotal = matrixTotal || (teamSize || 0);
 
-  // LEVEL DATA: Strictly binary matrix from DB (or 2^n capacity capped)
-  const levelData = new Array(18).fill(0).map((_, i) => dualCounts.matrix[i] || 0);
+  // LEVEL DATA: Matrix-only. Priority: DB matrix > Live RPC fallback
+  const levelData = new Array(18).fill(0).map((_, i) => dualCounts.matrix[i] || rpcMatrixCounts[i] || 0);
   // Max capacity per level in binary matrix: 2^(level)
   const maxCapacity = (level) => Math.pow(2, level);
 
