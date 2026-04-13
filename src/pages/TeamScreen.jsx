@@ -90,6 +90,8 @@ function MemberCard({ m, index, total }) {
       </div>
     </div>
   );
+}
+
 export default function TeamScreen() {
   const { isConnected, nodeId, directRefs, teamSize, walletAddress } = useGameStore();
   const { fetchTeamCounts, fetchMatrixCounts, fetchTeamLevelMembers } = useContract();
