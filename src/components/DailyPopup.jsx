@@ -97,7 +97,7 @@ export default function DailyPopup() {
 
           <button 
             className={isClaimable ? "giant-btn shimmer-btn" : "giant-btn"} 
-            onClick={isClaimable ? handleClaim : undefined}
+            onClick={isClaimable ? handleClaim : () => setShowDailyPopup(false)}
             style={{ 
               background: isClaimable ? 'var(--neon-lime)' : 'rgba(255,255,255,0.05)', 
               color: isClaimable ? '#000' : 'rgba(255,255,255,0.4)', 
@@ -107,11 +107,11 @@ export default function DailyPopup() {
               padding: '18px',
               width: '100%',
               boxShadow: isClaimable ? '0 0 20px rgba(163, 255, 18, 0.3)' : 'none',
-              cursor: isClaimable ? 'pointer' : 'not-allowed',
+              cursor: isClaimable ? 'pointer' : 'pointer',
               border: isClaimable ? 'none' : '1px solid rgba(255,255,255,0.1)'
             }}
           >
-            {isClaimable ? 'CLAIM REWARD' : 'COME BACK IN 24H'}
+            {isClaimable ? 'CLAIM REWARD' : 'COME BACK IN 24H (CLOSE)'}
           </button>
 
           <button 
