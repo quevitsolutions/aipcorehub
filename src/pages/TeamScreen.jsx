@@ -6,30 +6,36 @@ import { api } from '../services/api.js'; // Keep for other features or cleanup 
 
 export default function TeamScreen() {
   const { isConnected, nodeId, directRefs, teamSize, walletAddress } = useGameStore();
-  const { fetchTeamCounts, fetchTeamLevelMembers } = useContract();
+  const { fetchTeamLevelMembers } = useContract(); // Keep for quick expansions if needed
 
-  const [levelCounts, setLevelCounts] = useState(new Array(18).fill(0));
+  const [dualCounts, setDualCounts] = useState({ 
+    referral: new Array(18).fill(0), 
+    matrix: new Array(18).fill(0) 
+  });
   const [loadingCounts, setLoadingCounts] = useState(false);
   const [expandedLevel, setExpandedLevel] = useState(null);
   const [levelMembers, setLevelMembers] = useState([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
 
     const loadStats = async () => {
-      if (!nodeId || Number(nodeId) === 0) return;
+      if (!walletAddress) return;
       setLoadingCounts(true);
       try {
-        const counts = await fetchTeamCounts(nodeId);
-        setLevelCounts(counts);
+        const data = await api.fetchNetworkCounts(walletAddress);
+        setDualCounts({
+          referral: data.referralCounts || new Array(18).fill(0),
+          matrix: data.matrixCounts || new Array(18).fill(0)
+        });
       } catch (err) {
-        console.error("Failed to load network stats from Blockchain:", err);
+        console.error("Failed to load network stats from API Bridge:", err);
       }
       setLoadingCounts(false);
     };
 
-    if (isConnected && nodeId) {
+    if (isConnected && walletAddress) {
       loadStats();
     }
-  }, [isConnected, nodeId]);
+  }, [isConnected, walletAddress]);
 
     if (expandedLevel === levelIndex) {
       setExpandedLevel(null);
@@ -39,13 +45,13 @@ export default function TeamScreen() {
     setExpandedLevel(levelIndex);
     setLevelMembers([]);
     
-    if (levelCounts[levelIndex] > 0) {
+    if (dualCounts.referral[levelIndex] > 0) {
       setLoadingMembers(true);
       try {
-        const members = await fetchTeamLevelMembers(nodeId, levelIndex);
+        const members = await api.fetchNetworkLevelMembers(walletAddress, levelIndex);
         setLevelMembers(members);
       } catch (err) {
-        console.error("Blockchain member fetch failed:", err);
+        console.error("API member fetch failed:", err);
       }
       setLoadingMembers(false);
     }
@@ -68,11 +74,10 @@ export default function TeamScreen() {
 
   // Calculate totals locally from the level data we fetched to ensure 100% accuracy
   // Calculate totals locally from the level data we fetched to ensure 100% accuracy
-  const calculatedDirects = levelCounts.length > 0 ? levelCounts[0] : (directRefs || 0);
-  const calculatedTotal = levelCounts.length > 0 
-    ? levelCounts.reduce((acc, curr) => acc + curr, 0) 
-    : (teamSize || 0);
-  const levelData = levelCounts; 
+  // Calculate totals from specific tree data (Referral vs Matrix)
+  const calculatedDirects = dualCounts.referral[0] || (directRefs || 0);
+  const calculatedTotal = dualCounts.matrix.reduce((acc, curr) => acc + curr, 0) || (teamSize || 0);
+  const levelData = dualCounts.referral; // Breakdown list shows Referral Tree by default
 
 
   return (

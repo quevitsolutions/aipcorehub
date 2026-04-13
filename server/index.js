@@ -16,16 +16,24 @@ const DEPLOY_BLOCK = 43232822; // Block around contract deployment for optimizat
 const AIPCORE_ABI = [
   "event RewardDistributed(address indexed wallet, uint indexed nodeId, uint fromId, uint layer, uint amount, uint time, bool isMissed, uint rewardType, uint tier)",
   "event NodeCreated(address indexed node, uint indexed userId, uint indexed referrerId, uint uplineId)",
-  "event TierUnlocked(address indexed node, uint indexed userId, uint packageId)"
+  "event TierUnlocked(address indexed node, uint indexed userId, uint packageId)",
+  "function getTeamSize(uint _nodeId, uint _depth) external view returns (uint)",
+  "function nodes(uint _nodeId) external view returns (uint64 nodeId, address wallet, uint64 sponsor, uint64 matrixParent, uint40 joinedAt, uint8 tier, uint256 totalContribution, uint256 totalEarned, uint32 directNodes)"
 ];
 
 const REWARDPOOL_ABI = [
   "event RewardClaimed(uint nodeId, address wallet, uint amount)"
 ];
 
+const MULTICALL_ABI = [
+  "function aggregate(tuple(address target, bytes callData)[] calls) view returns (uint256 blockNumber, bytes[] returnData)"
+];
+const MULTICALL_ADDRESS = "0xcA11bde05977b3631167028862bE2a173976CA11";
+
 const provider = new ethers.JsonRpcProvider(BSC_RPC);
 const aipcoreContract = new ethers.Contract(AIPCORE_ADDRESS, AIPCORE_ABI, provider);
 const rewardPoolContract = new ethers.Contract(REWARDPOOL_ADDRESS, REWARDPOOL_ABI, provider);
+const multicallContract = new ethers.Contract(MULTICALL_ADDRESS, MULTICALL_ABI, provider);
 
 // State for BNB Price Cache
 let bnbPrice = 600; // Default fallback
@@ -69,6 +77,8 @@ const ensureSchema = async () => {
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS matrix_parent_node_id INTEGER`);
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS matrix_parent_id INTEGER`);
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS node_active BOOLEAN DEFAULT TRUE`);
+    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS matrix_counts JSONB DEFAULT '[]'`);
+    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_rpc_sync TIMESTAMP`);
     
     // Seed Genesis Node (ID 36999)
     const genesisId = 36999;
@@ -209,6 +219,9 @@ const syncUserHistory = async (wallet) => {
       
       // Upsert the node. We map referrerId AND matrixParentId from contract
       try {
+        const nodeIdNum = Number(userId);
+        const referrerIdNum = Number(referrerId);
+        
         await query(
           `INSERT INTO users (wallet_address, node_id, sponsor_node_id, matrix_parent_node_id, node_active, created_at)
            VALUES ($1, $2, $3, $4, TRUE, $5)
@@ -216,10 +229,14 @@ const syncUserHistory = async (wallet) => {
            SET wallet_address = EXCLUDED.wallet_address,
                sponsor_node_id = EXCLUDED.sponsor_node_id,
                matrix_parent_node_id = EXCLUDED.matrix_parent_node_id,
-               node_active = TRUE,
-               updated_at = CURRENT_TIMESTAMP`,
-          [node.toLowerCase(), Number(userId), Number(referrerId), Number(log.args[3] || 0), joinedAt]
+               node_active = TRUE`,
+          [node.toLowerCase(), nodeIdNum, referrerIdNum, Number(log.args[3] || 0), joinedAt]
         );
+
+        // TRIGGER RPC SYNC: Full accuracy refresh for both user and sponsor
+        await syncNodeStateFromRPC(nodeIdNum);
+        if (referrerIdNum > 0) syncNodeStateFromRPC(referrerIdNum);
+
       } catch (e) { console.error("Node Sync Err:", e.message); }
     }
 
@@ -231,7 +248,10 @@ const syncUserHistory = async (wallet) => {
     const logsTiers = await aipcoreContract.queryFilter(filterTiers, startBlock, latestBlock);
     for (const log of logsTiers) {
       const { userId, tierId } = log.args;
-      await query('UPDATE users SET node_tier = $1 WHERE node_id = $2', [Number(tierId), Number(userId)]);
+      const tid = Number(userId);
+      await query('UPDATE users SET node_tier = $1 WHERE node_id = $2', [Number(tierId), tid]);
+      // TRIGGER RPC SYNC: Refresh node data on tier upgrade
+      await syncNodeStateFromRPC(tid);
     }
 
     // Update last synced block
@@ -926,11 +946,33 @@ app.get('/api/network/level/:walletAddress/:level', async (req, res) => {
 app.get('/api/network/counts/:walletAddress', async (req, res) => {
   const { walletAddress } = req.params;
   try {
-    const rootUser = await query('SELECT id FROM users WHERE wallet_address = $1', [walletAddress]);
-    if (rootUser.rows.length === 0) return res.status(404).json({ error: 'User not found' });
-    const rootId = rootUser.rows[0].id;
+    const rootRes = await query(`
+      SELECT id, matrix_counts, sponsor_node_id 
+      FROM users 
+      WHERE wallet_address = $1
+    `, [walletAddress]);
+    
+    if (rootRes.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    const user = rootRes.rows[0];
+    const rootId = user.id;
 
-    // Recursive CTE for REFERRAL TREE (Direct Referrals)
+    // 1. Get RPC-synced Matrix counts if available
+    let matrixCounts = user.matrix_counts;
+    if (!matrixCounts || matrixCounts.length === 0) {
+       // Fallback to CTE if sync hasn't run yet
+       const matrixRes = await query(`
+         WITH RECURSIVE matrix_tree AS (
+           SELECT id, 0 as level FROM users WHERE id = $1
+           UNION ALL
+           SELECT u.id, mt.level + 1 FROM users u INNER JOIN matrix_tree mt ON u.matrix_parent_id = mt.id WHERE mt.level < 18
+         )
+         SELECT level, COUNT(*) as count FROM matrix_tree WHERE level > 0 GROUP BY level
+       `, [rootId]);
+       matrixCounts = new Array(18).fill(0);
+       matrixRes.rows.forEach(r => matrixCounts[r.level - 1] = parseInt(r.count));
+    }
+
+    // 2. Always calculate Referral counts (Directs) via CTE as it's dynamic
     const referralRes = await query(`
       WITH RECURSIVE referral_tree AS (
         SELECT id, 0 as level FROM users WHERE id = $1
@@ -940,21 +982,8 @@ app.get('/api/network/counts/:walletAddress', async (req, res) => {
       SELECT level, COUNT(*) as count FROM referral_tree WHERE level > 0 GROUP BY level
     `, [rootId]);
 
-    // Recursive CTE for MATRIX TREE (Binary Placement)
-    const matrixRes = await query(`
-      WITH RECURSIVE matrix_tree AS (
-        SELECT id, 0 as level FROM users WHERE id = $1
-        UNION ALL
-        SELECT u.id, mt.level + 1 FROM users u INNER JOIN matrix_tree mt ON u.matrix_parent_id = mt.id WHERE mt.level < 18
-      )
-      SELECT level, COUNT(*) as count FROM matrix_tree WHERE level > 0 GROUP BY level
-    `, [rootId]);
-
     const referralCounts = new Array(18).fill(0);
     referralRes.rows.forEach(r => referralCounts[r.level - 1] = parseInt(r.count));
-
-    const matrixCounts = new Array(18).fill(0);
-    matrixRes.rows.forEach(r => matrixCounts[r.level - 1] = parseInt(r.count));
 
     res.json({ referralCounts, matrixCounts });
   } catch (err) {
@@ -964,12 +993,59 @@ app.get('/api/network/counts/:walletAddress', async (req, res) => {
 });
 
 /**
+ * High-Precision RPC-Mirror Sync: Fetches 100% accurate contract state for a node.
+ */
+async function syncNodeStateFromRPC(nodeId) {
+  if (!nodeId || nodeId === 0) return;
+  try {
+    // 1. Fetch Node Struct (Tier, Sponsor, etc.)
+    const nodeInfo = await aipcoreContract.nodes(nodeId);
+    
+    // 2. Fetch Network Counts (18 levels) via Multicall
+    const calls = Array.from({ length: 18 }, (_, i) => ({
+      target: AIPCORE_ADDRESS,
+      callData: aipcoreContract.interface.encodeFunctionData("getTeamSize", [nodeId, i])
+    }));
+    
+    const [, returnData] = await multicallContract.aggregate(calls);
+    const counts = returnData.map(data => {
+      try {
+        return Number(aipcoreContract.interface.decodeFunctionResult("getTeamSize", data)[0]);
+      } catch { return 0; }
+    });
+
+    // 3. Update DB with live contract state
+    await query(`
+      UPDATE users 
+      SET node_tier = $1,
+          sponsor_node_id = $2,
+          matrix_parent_node_id = $3,
+          matrix_counts = $4,
+          last_rpc_sync = CURRENT_TIMESTAMP
+      WHERE node_id = $5
+    `, [Number(nodeInfo.tier), Number(nodeInfo.sponsor), Number(nodeInfo.matrixParent), JSON.stringify(counts), nodeId]);
+
+    console.log(`✨ RPC Mirror: Synced Node ${nodeId} | Tier: ${nodeInfo.tier} | Matrix: ${counts.reduce((a,b)=>a+b, 0)}`);
+
+    // Chain Reaction: If this is a new link, trigger an upline scan periodically
+    // (Note: To avoid recursion, we only climb 3 levels per event)
+    let parent = Number(nodeInfo.sponsor);
+    if (parent > 0) {
+       // We set a small timeout to avoid hammering the RPC node too hard in one event block
+       setTimeout(() => syncNodeStateFromRPC(parent), 2000);
+    }
+
+  } catch (err) {
+    console.error(`Failed to RPC sync Node ${nodeId}:`, err.message);
+  }
+}
+
+/**
  * High-Speed Tree Repair Helper: Rebuilds the referral links entirely in SQL.
- * No RPC calls involved, allowing 100% database-native tree restoration.
  */
 async function repairTreeLinks() {
   try {
-    // 1. Repair Referral Links (Referrer Tree)
+    // Single query to link orphans by their stored sponsor_node_id mapping
     await query(`
       UPDATE users u
       SET referrer_id = p.id
@@ -979,18 +1055,13 @@ async function repairTreeLinks() {
     `);
 
     // 2. Repair Matrix Links (Binary Tree)
-    const res = await query(`
+    await query(`
       UPDATE users u
       SET matrix_parent_id = p.id
       FROM users p
       WHERE u.matrix_parent_node_id = p.node_id
       AND u.matrix_parent_id IS NULL AND u.matrix_parent_node_id IS NOT NULL
-      RETURNING u.id
     `);
-    
-    if (res.rowCount > 0) {
-      console.log(`✅ Dual-Tree Repair: Updated ${res.rowCount} binary links`);
-    }
   } catch (err) {
     console.error("SQL Tree repair failed:", err.message);
   }
