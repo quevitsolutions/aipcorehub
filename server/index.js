@@ -99,6 +99,10 @@ const ensureSchema = async () => {
     await query(`CREATE INDEX IF NOT EXISTS idx_income_history_wallet_address ON income_history(wallet_address)`);
     await query(`CREATE INDEX IF NOT EXISTS idx_users_node_active ON users(node_active) WHERE node_active = TRUE`);
     
+    // One-time startup repair: Link orphans using RPC truth
+    console.log('🏗️  Starting Deep Orphan Scan...');
+    setTimeout(deepRepairOrphans, 10000); // 10s after startup to allow pools/rpc to warm up
+
     // Hardening: Enforce case-insensitive wallet uniqueness
     // We do this AFTER a reconciliation step in case duplicates already exist
     await reconcileDuplicateUsers();
@@ -474,6 +478,29 @@ app.get('/api/user/:walletAddress', async (req, res) => {
         await query(`UPDATE users SET referred_by_memo = $1 WHERE LOWER(wallet_address) = LOWER($2) AND referred_by_memo IS NULL`, 
           [req.query.ref, walletAddress]);
       }
+    } else if (!user.referrer_id && req.query.ref && /^0x[a-fA-F0-9]{40}$/i.test(req.query.ref)) {
+       // RETROACTIVE REPAIR: If existing user has no sponsor, try to set it now
+       if (req.query.ref.toLowerCase() !== walletAddress.toLowerCase()) {
+         const refObj = await query('SELECT id, wallet_address FROM users WHERE LOWER(wallet_address) = LOWER($1)', [req.query.ref]);
+         if (refObj.rows.length > 0) {
+           const updateRes = await query(`
+             UPDATE users 
+             SET referrer_id = $1, referred_by_memo = COALESCE(referred_by_memo, $3)
+             WHERE LOWER(wallet_address) = LOWER($2) AND referrer_id IS NULL
+             RETURNING referrer_id
+           `, [refObj.rows[0].id, walletAddress, req.query.ref]);
+           
+           if (updateRes.rows.length > 0) {
+             user.referrer_id = refObj.rows[0].id;
+             user.sponsor_wallet = refObj.rows[0].wallet_address;
+             console.log(`🔗 Retro-Link: User ${walletAddress} linked to sponsor ${req.query.ref}`);
+           }
+         } else {
+           // Store memo even for existing users if no sponsor found yet
+           await query(`UPDATE users SET referred_by_memo = $1 WHERE LOWER(wallet_address) = LOWER($2) AND referred_by_memo IS NULL`, 
+             [req.query.ref, walletAddress]);
+         }
+       }
     }
 
     // Fetch sponsor wallet for display
@@ -1163,6 +1190,35 @@ async function syncNodeStateFromRPC(nodeId) {
 
   } catch (err) {
     console.error(`Failed to RPC sync Node ${nodeId}:`, err.message);
+  }
+}
+
+/**
+ * Universal Orphan Rescue: Scans for active nodes without sponsors and repairs via RPC.
+ */
+async function deepRepairOrphans() {
+  try {
+    const orphans = await query(`
+      SELECT node_id FROM users 
+      WHERE node_id IS NOT NULL 
+      AND referrer_id IS NULL 
+      LIMIT 100
+    `);
+    
+    if (orphans.rows.length === 0) {
+      console.log('✅ No orphaned nodes found.');
+      return;
+    }
+
+    console.log(`🧹 Deep Repair: Found ${orphans.rows.length} orphans. Syncing from blockchain...`);
+    
+    for (const row of orphans.rows) {
+      await syncNodeStateFromRPC(row.node_id);
+      // Small pause to avoid RPC rate limits
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+  } catch (err) {
+    console.error('Deep Repair failed:', err.message);
   }
 }
 
