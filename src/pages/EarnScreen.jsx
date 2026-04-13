@@ -134,7 +134,8 @@ export default function EarnScreen() {
     walletAddress, localReward, nodeTier, isPremium,
     hasNode, lastClaimTime, teamHistory, isHistoryLoading,
     claimMined, setActiveTab, addLocalReward, fetchTeamHistory,
-    isFreeActive, createdAt, globalHistory, fetchGlobalHistory
+    isFreeActive, createdAt, globalHistory, fetchGlobalHistory,
+    initialLoaded
   } = useGameStore();
 
   const [view, setView] = useState('mining'); // 'mining' | 'history'
@@ -207,8 +208,11 @@ export default function EarnScreen() {
     addLocalReward(task.reward);
   };
 
-  const daysLeft = createdAt ? Math.max(0, 30 - Math.floor((now - new Date(createdAt).getTime()) / (24 * 3600000))) : 0;
-  const isExpired = !hasNode && daysLeft <= 0;
+  const daysLeft = (initialLoaded && createdAt) 
+    ? Math.max(0, 30 - Math.floor((now - new Date(createdAt).getTime()) / (24 * 3600000))) 
+    : 30; // Default to 30 while loading to avoid "Expired" UI
+  
+  const isExpired = initialLoaded && !hasNode && daysLeft <= 0;
 
   // Render the gate ONLY if we have no node AND we aren't a free active member
   if (!hasNode && !isFreeActive && !isExpired) {
