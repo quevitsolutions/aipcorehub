@@ -308,10 +308,10 @@ export const useGameStore = create(
             const backendTier = Number(data.node_tier || 0);
 
             const now = Date.now();
-            const creationTime = new Date(data.created_at).getTime();
+            const creationTime = data.created_at ? new Date(data.created_at).getTime() : now;
             const isFreeActive =
               backendTier === 0 &&
-              now - creationTime < 30 * 24 * 60 * 60 * 1000;
+              (now - creationTime < 30 * 24 * 60 * 60 * 1000);
 
             set({
               taps: data.taps || 0,

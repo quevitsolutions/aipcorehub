@@ -214,8 +214,8 @@ export default function EarnScreen() {
   
   const isExpired = initialLoaded && !hasNode && daysLeft <= 0;
 
-  // Render the gate ONLY if we have no node AND we aren't a free active member
-  if (!hasNode && !isFreeActive && !isExpired) {
+  // Render the gate ONLY if data is loaded, user has no node, isn't on free trial, and isn't expired
+  if (initialLoaded && !hasNode && !isFreeActive && !isExpired) {
     return <RegistrationGate setActiveTab={setActiveTab} />;
   }
 
