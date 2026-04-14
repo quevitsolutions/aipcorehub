@@ -3,7 +3,8 @@ import { useGameStore } from '../store/gameStore.js';
 import { formatNumber } from '../utils/format.js';
 import toast from 'react-hot-toast';
 
-const STREAK_REWARDS = [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000];
+// Matches the backend DAILY_REWARDS table exactly
+const STREAK_REWARDS = [100, 200, 300, 400, 500, 600, 700, 1000, 2000, 5000];
 
 export default function DailyPopup() {
   const { streak, setShowDailyPopup, hasNode, claimDailyReward, lastClaimDate } = useGameStore();
@@ -16,8 +17,9 @@ export default function DailyPopup() {
     
     try {
       const res = await claimDailyReward();
-      const claimedDay = res.daily_streak === 0 ? 10 : res.daily_streak;
-      toast.success(`CLAIMED ${res.reward} COINS FOR DAY ${claimedDay} REWARD! 🔥`);
+      // BUG FIX: Use claimed_day from backend (which day was just claimed, 1-10)
+      const claimedDay = res.claimed_day || (res.daily_streak === 0 ? 10 : res.daily_streak);
+      toast.success(`🔥 DAY ${claimedDay} STREAK! +${res.reward} $AIP COINS CLAIMED!`, { duration: 4000 });
       setShowDailyPopup(false);
       
       if (!hasNode) {
@@ -33,6 +35,9 @@ export default function DailyPopup() {
       toast.error(err.message || 'Failed to claim daily reward');
     }
   };
+
+  // Calculate hours left from lastClaimDate
+  const hoursLeft = lastClaimDate ? Math.max(0, Math.ceil(24 - (Date.now() - lastClaimDate) / (1000 * 60 * 60))) : 0;
 
   return (
     <AnimatePresence>
@@ -72,24 +77,31 @@ export default function DailyPopup() {
           <div className="streak-grid-aipcore" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px', marginBottom: '24px' }}>
             {STREAK_REWARDS.map((reward, i) => {
               const day = i + 1;
+              // streak is stored as 0-9 in DB. Display as 1-10.
+              // isPast: this day has already been claimed in the current cycle
               const isPast = day <= streak;
-              // If already claimed today, no box should be labeled as "isToday" / active for clicking next
-              // If not claimed today, the next box (streak + 1) is today's claimable box
+              // isToday: the next claimable day
               const isToday = isClaimable && day === streak + 1;
+              // Special: if streak=0 and claimable, Day 1 is today (start of new/reset cycle)
               
               return (
                 <div key={day} className={`day-box ${isToday ? 'active' : ''}`} style={{
                   background: isPast ? 'rgba(79, 195, 247, 0.1)' : isToday ? 'rgba(163, 255, 18, 0.1)' : 'rgba(255,255,255,0.02)',
                   borderColor: isPast ? '#4FC3F7' : isToday ? 'var(--neon-lime)' : 'rgba(255,255,255,0.05)',
+                  border: `1px solid ${isPast ? '#4FC3F7' : isToday ? 'var(--neon-lime)' : 'rgba(255,255,255,0.05)'}`,
                   padding: '12px 6px',
                   opacity: (isPast || isToday) ? 1 : 0.5,
                   textAlign: 'center',
-                  borderRadius: '12px'
+                  borderRadius: '12px',
+                  position: 'relative'
                 }}>
+                  {day === 10 && <div style={{ position: 'absolute', top: -6, right: -4, fontSize: 10 }}>🏆</div>}
                   <span className="d-num" style={{ fontSize: '9px', display: 'block', color: isPast ? '#4FC3F7' : isToday ? 'var(--neon-lime)' : 'rgba(255,255,255,0.5)', marginBottom: '4px', fontWeight: 800 }}>
-                    {isPast ? 'CLAIMED' : `DAY ${day}`}
+                    {isPast ? '✓' : `DAY ${day}`}
                   </span>
-                  <span className="d-val" style={{ fontSize: '13px', fontWeight: 900, color: '#FFF' }}>{reward}</span>
+                  <span className="d-val" style={{ fontSize: day === 10 ? '11px' : '13px', fontWeight: 900, color: day === 10 ? '#FFD700' : '#FFF' }}>
+                    {reward >= 1000 ? `${reward/1000}K` : reward}
+                  </span>
                 </div>
               );
             })}
@@ -107,11 +119,13 @@ export default function DailyPopup() {
               padding: '18px',
               width: '100%',
               boxShadow: isClaimable ? '0 0 20px rgba(163, 255, 18, 0.3)' : 'none',
-              cursor: isClaimable ? 'pointer' : 'pointer',
+              cursor: 'pointer',
               border: isClaimable ? 'none' : '1px solid rgba(255,255,255,0.1)'
             }}
           >
-            {isClaimable ? 'CLAIM REWARD' : 'COME BACK IN 24H (CLOSE)'}
+            {isClaimable 
+              ? `CLAIM DAY ${streak + 1} REWARD 🔥` 
+              : `COME BACK IN ${hoursLeft}H ⏳`}
           </button>
 
           <button 

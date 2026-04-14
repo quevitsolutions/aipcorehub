@@ -1723,15 +1723,21 @@ app.post('/api/sync', async (req, res) => {
   }
 });
 
-// POST Claim Daily Login Reward
+// POST Claim Daily Login Reward — Root-Cause-Fixed
 app.post('/api/daily/claim', async (req, res) => {
   const { walletAddress } = req.body;
   if (!walletAddress) return res.status(400).json({ error: 'Wallet missing' });
 
   try {
     await query('BEGIN');
-    const user = await query('SELECT daily_streak, last_daily_claim, local_reward FROM users WHERE wallet_address = $1 FOR UPDATE', [walletAddress]);
-    
+
+    // BUG FIX: Use LOWER() for case-insensitive wallet match (was exact match before)
+    const user = await query(
+      `SELECT id, daily_streak, last_daily_claim, COALESCE(local_reward, 0) AS local_reward
+       FROM users WHERE LOWER(wallet_address) = LOWER($1) FOR UPDATE`,
+      [walletAddress]
+    );
+
     if (user.rows.length === 0) {
       await query('ROLLBACK');
       return res.status(404).json({ error: 'User not found' });
@@ -1739,58 +1745,70 @@ app.post('/api/daily/claim', async (req, res) => {
 
     const { daily_streak, last_daily_claim } = user.rows[0];
     const now = new Date();
-    
-    let currentStreak = daily_streak || 0;
-    
+
+    let currentStreak = parseInt(daily_streak) || 0;
+
     if (last_daily_claim) {
-      const dbDate = new Date(last_daily_claim);
-      const diffMs = now - dbDate;
+      const lastClaim = new Date(last_daily_claim);
+      const diffMs  = now - lastClaim;
       const diffHrs = diffMs / (1000 * 60 * 60);
 
-      // Rule: Can only claim once per rolling 24 hours
+      // Can only claim once per rolling 24 hours
       if (diffHrs < 24) {
         await query('ROLLBACK');
-        return res.status(400).json({ error: 'Reward already claimed for today. Come back tomorrow!' });
+        const hoursLeft = Math.ceil(24 - diffHrs);
+        return res.status(400).json({ 
+          error: `Already claimed today! Come back in ${hoursLeft}h.`,
+          hours_left: hoursLeft
+        });
       }
 
-      // Rule: If more than 48 hours passed, streak is broken
+      // Streak broken if more than 48 hours passed
       if (diffHrs >= 48) {
         currentStreak = 0;
       }
     }
 
-    // Determine reward: day 1 is 100, day 2 is 200, ... max 10 days
-    const rewardBase = ((currentStreak % 10) + 1) * 100;
+    // Reward table: Day 1=100, 2=200, ... 7=700, 8=1000, 9=2000, 10=5000 (premium ending bonus)
+    const DAILY_REWARDS = [100, 200, 300, 400, 500, 600, 700, 1000, 2000, 5000];
+    const rewardAmount = DAILY_REWARDS[currentStreak % 10];
 
-    // Advance streak
+    // Next streak: store 0-9, display as 1-10
     const nextStreak = (currentStreak + 1) % 10;
 
-    // Update user
+    // BUG FIX: Use COALESCE so NULL balance doesn't break reward addition
     const update = await query(
       `UPDATE users 
-       SET daily_streak = $1, 
+       SET daily_streak     = $1, 
            last_daily_claim = CURRENT_TIMESTAMP, 
-           local_reward = local_reward + $2 
-       WHERE wallet_address = $3 
-       RETURNING *`,
-      [nextStreak, rewardBase, walletAddress]
+           local_reward     = COALESCE(local_reward, 0) + $2,
+           updated_at       = CURRENT_TIMESTAMP
+       WHERE LOWER(wallet_address) = LOWER($3)
+       RETURNING daily_streak, last_daily_claim, COALESCE(local_reward, 0) AS local_reward`,
+      [nextStreak, rewardAmount, walletAddress]
     );
 
     await query('COMMIT');
-    
+
+    const claimedDayNumber = currentStreak + 1; // 1-10 (the day that was just claimed)
+
+    console.log(`🔥 Daily: ${walletAddress} claimed Day ${claimedDayNumber} reward (${rewardAmount} $AIP). Streak: ${nextStreak}/10`);
+
     res.json({
-      success: true,
-      reward: rewardBase,
-      daily_streak: nextStreak,
+      success:          true,
+      reward:           rewardAmount,
+      claimed_day:      claimedDayNumber,       // Which day was just claimed (1-10)
+      daily_streak:     nextStreak,             // New streak position in DB (0-9)
       last_daily_claim: update.rows[0].last_daily_claim,
-      local_reward: update.rows[0].local_reward
+      local_reward:     parseFloat(update.rows[0].local_reward)
     });
   } catch (err) {
-    await query('ROLLBACK');
-    console.error(err);
+    await query('ROLLBACK').catch(() => {});
+    console.error(`Daily Claim Error [${walletAddress}]:`, err.message);
     res.status(500).json({ error: 'Failed to claim daily reward' });
   }
 });
+
 
 /**
  * Universal Sponsor Lookup: Handles both Wallet Address and Node ID as referral tokens.

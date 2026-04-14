@@ -458,12 +458,15 @@ export const useGameStore = create(
         const res = await api.claimDailyReward(walletAddress);
         if (res?.success) {
           set({
-            localReward: Number(res.local_reward || 0),
-            streak: Number(res.daily_streak || 0),
-            lastClaimDate: new Date(res.last_daily_claim).getTime(),
+            // BUG FIX: parseFloat because Postgres NUMERIC returns a string
+            localReward:   parseFloat(res.local_reward || 0),
+            streak:        Number(res.daily_streak || 0),
+            // Store as millisecond timestamp for accurate 24h comparison
+            lastClaimDate: res.last_daily_claim ? new Date(res.last_daily_claim).getTime() : Date.now(),
           });
           return res;
         }
+        throw new Error('Daily reward claim failed');
       },
 
       // Admin Actions
