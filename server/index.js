@@ -645,22 +645,27 @@ app.post('/api/mining/claim', async (req, res) => {
 
 // POST Upgrade Mining Tier (Simulated for Tier 2)
 app.post('/api/mining/upgrade', async (req, res) => {
-  const { walletAddress, tier, isPremium } = req.body;
+  const { walletAddress, tier, isPremium, nodeId } = req.body;
   if (!walletAddress) return res.status(400).json({ error: 'Wallet required' });
 
   try {
     const update = await query(
       `UPDATE users 
-       SET node_tier = COALESCE($2, node_tier),
+       SET node_tier  = COALESCE($2, node_tier),
            is_premium = COALESCE($3, is_premium),
+           node_id    = COALESCE($4, node_id),
            updated_at = CURRENT_TIMESTAMP
        WHERE LOWER(wallet_address) = LOWER($1)
        RETURNING *`,
-      [walletAddress, tier, isPremium]
+      [walletAddress, tier || null, isPremium ?? null, nodeId || null]
     );
+
+    if (update.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+
+    console.log(`✅ Node upgraded: ${walletAddress} → tier=${tier}, nodeId=${nodeId}`);
     res.json(update.rows[0]);
   } catch (err) {
-    console.error(err);
+    console.error('Upgrade error:', err.message);
     res.status(500).json({ error: 'Upgrade failed' });
   }
 });

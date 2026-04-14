@@ -66,43 +66,54 @@ export const useContract = () => {
     connectWallet: () => openConnectModal?.(),
     disconnectWallet: () => disconnect(),
     createNode: async (sponsorId = 1) => {
-      const tid = toast.loading("Estimating activation cost...");
+      const tid = toast.loading("Activating Node...");
       setProcessing(true, "Activating Node...");
       try {
-        // Pre-flight: check user has enough BNB for gas + cost
-        const bal = await blockchain.getBnbBalance(
-          (await import('wagmi/actions')).getAccount(await import('../config/wagmi.js').then(m => m.config)).address
-        );
         const nid = await blockchain.createNode(sponsorId);
+
+        // ✅ SUCCESS: Immediately sync DB so user doesn't wait 30s
+        const walletAddress = useGameStore.getState().walletAddress;
+        if (walletAddress && nid > 0) {
+          // Write new tier to DB right now (don't wait for ensureNodeSync)
+          await fetch(`${import.meta.env.VITE_API_URL || ''}/api/mining/upgrade`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ walletAddress, tier: 1, nodeId: nid })
+          }).catch(() => {});
+
+          // Force-reload all user state immediately (bypass 30s throttle)
+          useGameStore.setState({ lastBackendSync: null });
+          setTimeout(() => {
+            Promise.all([
+              useGameStore.getState().fetchUserData(),
+              loadNodeData(walletAddress),
+              fetchBnbBalance(walletAddress),  // Balance changed — update it
+            ]).catch(() => {});
+          }, 2000); // Wait 2s for chain to propagate before re-reading
+        }
+
         toast.success("🚀 Node Activated! Welcome to the Protocol.", { id: tid, duration: 5000 });
         setProcessing(false);
         return nid;
       } catch (e) {
-        // Friendly insufficient funds error
         if (
           e?.message?.includes('insufficient funds') ||
           e?.message?.includes('INSUFFICIENT_FUNDS') ||
           e?.code === -32000
         ) {
-          toast.error(
-            '⚠️ Not enough BNB — Fund your wallet to activate.',
-            { id: tid, duration: 8000 }
-          );
+          toast.error('⚠️ Not enough BNB — Fund your wallet to activate.', { id: tid, duration: 8000 });
         } else if (e?.code === 4001 || e?.message?.includes('rejected')) {
           toast.error('Transaction cancelled.', { id: tid });
         } else {
           let errMsg = e?.shortMessage || e?.message || 'Activation failed.';
-        if (errMsg.toLowerCase().includes('insufficient funds')) {
-          errMsg = 'Insufficient BNB balance for transaction & gas.';
-        } else if (errMsg.includes('user rejected')) {
-          errMsg = 'Transaction rejected by user.';
-        } else {
-          errMsg = errMsg.slice(0, 80);
-        }
-        toast.error(errMsg, { id: tid });
+          if (errMsg.toLowerCase().includes('insufficient funds')) errMsg = 'Insufficient BNB balance for transaction & gas.';
+          else if (errMsg.includes('user rejected')) errMsg = 'Transaction rejected by user.';
+          else errMsg = errMsg.slice(0, 80);
+          toast.error(errMsg, { id: tid });
         }
         setProcessing(false);
         return false;
+
       }
     },
     claimRewards: async () => {
