@@ -17,7 +17,7 @@ export const useContract = () => {
   const { openConnectModal } = useConnectModal();
   const { disconnect } = useDisconnect();
 
-  const loadNodeData = async (address, retries = 3) => {
+  const loadNodeData = async (address, retries = 2) => {
     if (!address) return;
     try {
       const data = await blockchain.getFullDashboardData(address);
@@ -35,14 +35,16 @@ export const useContract = () => {
           missingTier:    data.missingTier    || 0,
           missingTeam:    data.missingTeam    || 0,
         });
-        return data.nodeId; // Return nodeId for downstream chaining
+        return data.nodeId;
       } else {
         setNodeData({ nodeId: 0, tier: 0, active: false });
         return 0;
       }
     } catch (err) {
+      // PERF FIX: Reduced retry delay 2000 -> 1000ms and retries 3 -> 2
+      // Avoids a 6-second hang when RPC is slow
       if (retries > 0) {
-        await new Promise(r => setTimeout(r, 2000));
+        await new Promise(r => setTimeout(r, 1000));
         return loadNodeData(address, retries - 1);
       }
     }
@@ -140,28 +142,23 @@ export const useWalletLifecycle = () => {
 
   useEffect(() => {
     if (isConnected && address) {
-      // 1. Critical Actions (Immediate)
+      // 1. Instant: set wallet and fire DB fetch immediately (no delay)
       setWallet(address);
-      fetchBnbBalance(address);
-      
-      // Load critical node data (Dashboard stats)
-      loadNodeData(address).then((nId) => {
-        // Only fetch team history if we have a nodeId, and do it after a small delay
-        if (nId > 0) {
-          setTimeout(() => fetchTeamHistory(), 1500);
-        }
-      }).catch(() => {
-        setTimeout(() => fetchTeamHistory(), 2000);
-      });
 
-      // 2. Secondary Actions (Parallelized and faster)
-      setTimeout(() => {
-        Promise.all([
-          fetchUserData(),
-          fetchAdminStatus(),
-          fetchUserConversions()
-        ]).catch(() => {});
-      }, 500);
+      // 2. Parallel: fire all non-blocking data fetches at once
+      Promise.all([
+        fetchUserData(),
+        fetchAdminStatus(),
+        fetchUserConversions(),
+        fetchBnbBalance(address),
+      ]).catch(() => {});
+
+      // 3. Background: blockchain RPC data (slower, non-critical for initial render)
+      loadNodeData(address).then((nId) => {
+        if (nId > 0) {
+          setTimeout(() => fetchTeamHistory(), 1000);
+        }
+      }).catch(() => {});
 
     } else if (status === 'disconnected') {
       disconnectWallet();

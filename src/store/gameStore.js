@@ -13,7 +13,8 @@ const RESET_STATE = {
   lastSyncTime: null, sponsorWallet: null, sponsorNodeId: null, localReward: 0,
   taps: 0, demoTaps: 0, teamSize: 0, directRefs: 0, totalEarned: 0, streak: 0,
   lastClaimDate: null, teamHistory: [], leaderboard: [], isAdmin: false,
-  adminStats: null, claimedMilestones: [], activatedRefs: 0
+  adminStats: null, claimedMilestones: [], activatedRefs: 0,
+  isFetchingUser: false, isSyncing: false, lastBackendSync: null
 };
 
 export const useGameStore = create(
@@ -286,76 +287,79 @@ export const useGameStore = create(
       },
 
       fetchUserData: async (forcedReferrer = null) => {
-        const { walletAddress, referrerId, isSyncing, lastBackendSync } = get();
-        if (!walletAddress || isSyncing) return;
-        
+        const { walletAddress, referrerId, lastBackendSync } = get();
+        if (!walletAddress) return;
+
+        // BUG FIX: Use a SEPARATE flag so referral fetches aren't blocked by user fetch
+        if (get().isFetchingUser) return;
+
         const finalReferrer = forcedReferrer || referrerId;
 
-        // Skip sync if we did it in the last 30 seconds (unless initialLoaded is false)
+        // Skip if synced in the last 30 seconds
         const now = Date.now();
-        if (get().initialLoaded && lastBackendSync && (now - lastBackendSync < 30000)) {
-            return;
-        }
+        if (get().initialLoaded && lastBackendSync && (now - lastBackendSync < 30000)) return;
 
-        // Show syncing portal only for initial load or if explicitly forced
-        const showPortal = !get().initialLoaded;
-        if (showPortal) set({ isSyncing: true });
-        
+        set({ isFetchingUser: true, isSyncing: !get().initialLoaded });
+
         try {
           const data = await api.fetchUser(walletAddress, finalReferrer);
-          if (data) {
-            const currentTier = get().nodeTier || 0;
-            const backendTier = Number(data.node_tier || 0);
+          if (!data) return;
 
-            const now = Date.now();
-            const creationTime = data.created_at ? new Date(data.created_at).getTime() : now;
-            const isFreeActive =
-              backendTier === 0 &&
-              (now - creationTime < 30 * 24 * 60 * 60 * 1000);
+          const currentTier  = get().nodeTier || 0;
+          const backendTier  = Number(data.node_tier || 0);
+          const creationTime = data.created_at ? new Date(data.created_at).getTime() : now;
+          const isFreeActive = backendTier === 0 && (now - creationTime < 30 * 24 * 60 * 60 * 1000);
 
-            set({
-              taps: data.taps || 0,
-              localReward: Number(data.local_reward || 0),
-              energy: data.energy || 0,
-              directRefs: data.direct_refs || 0,
-              teamSize: data.team_size || 0,
-              hasNode: backendTier > 0 || (data.node_id && data.node_id > 0),
-              nodeId: data.node_id || null,
-              nodeTier: backendTier > currentTier ? backendTier : currentTier,
-              isPremium: data.is_premium || false,
-              pendingMined: Number(data.pending_mined || 0),
-              lastClaimTime: new Date(data.last_claim_time).getTime(),
-              createdAt: data.created_at,
-              isFreeActive: isFreeActive,
-              sponsorWallet: data.sponsor_wallet || get().sponsorWallet,
-              sponsorNodeId: data.sponsor_node_id || get().sponsorNodeId || 36999,
-              isNewUser: !!data.is_new,
-              streak: data.daily_streak || 0,
-              lastClaimDate: data.last_daily_claim ? new Date(data.last_daily_claim).getTime() : null,
-              activatedRefs: Number(data.activated_refs || 0),
-              claimedMilestones: JSON.parse(data.claimed_milestones || '[]'),
-              lastBackendSync: Date.now(),
-              lastSyncTime: Date.now(), // Precise anchor for live ticking
-              initialLoaded: true,
-            });
+          // BUG FIX: safe JSON parse for claimed_milestones
+          let claimedMilestones = [];
+          try { claimedMilestones = JSON.parse(data.claimed_milestones || '[]'); }
+          catch (e) { claimedMilestones = []; }
+          if (!Array.isArray(claimedMilestones)) claimedMilestones = [];
 
-            // Automatically refresh the referral list to stay synced with counters
-            get().fetchReferralData();
+          set({
+            taps:          data.taps || 0,
+            // BUG FIX: parseFloat for NUMERIC(36,18) — Number() loses precision on large values
+            localReward:   parseFloat(data.local_reward || 0),
+            energy:        data.energy || 0,
+            directRefs:    parseInt(data.direct_refs || 0),
+            teamSize:      parseInt(data.team_size   || 0),
+            activatedRefs: parseInt(data.activated_refs || 0),
+            hasNode:       backendTier > 0 || !!(data.node_id && data.node_id > 0),
+            nodeId:        data.node_id || null,
+            nodeTier:      backendTier > currentTier ? backendTier : currentTier,
+            isPremium:     data.is_premium || false,
+            pendingMined:  parseFloat(data.pending_mined || 0),
+            // BUG FIX: Guard null last_claim_time — new Date(null) = epoch 1970
+            lastClaimTime: data.last_claim_time ? new Date(data.last_claim_time).getTime() : now,
+            createdAt:     data.created_at || null,
+            isFreeActive,
+            sponsorWallet:  data.sponsor_wallet || get().sponsorWallet,
+            sponsorNodeId:  data.sponsor_node_id || get().sponsorNodeId || 36999,
+            isNewUser:      !!data.is_new,
+            streak:         parseInt(data.daily_streak || 0),
+            // BUG FIX: Guard null last_daily_claim
+            lastClaimDate:  data.last_daily_claim ? new Date(data.last_daily_claim).getTime() : null,
+            claimedMilestones,
+            lastBackendSync: Date.now(),
+            lastSyncTime:    Date.now(),
+            initialLoaded:   true,
+          });
 
-            // 🔗 Belt-and-suspenders: if this is a new user who came via referral link,
-            // explicitly call /api/referrals/track to guarantee the DB link is stored.
-            if (data.is_new && finalReferrer) {
-              api.trackReferral(walletAddress, finalReferrer).then(result => {
-                if (result?.linked) {
-                  console.log(`✅ Referral confirmed: ${walletAddress} → ${result.sponsor_wallet}`);
-                }
-              }).catch(() => {});
-            }
+          // PERF FIX: Removed fetchReferralData() from here — it was firing every 30s
+          // causing double API calls. Referral list is now fetched on-demand (tab switch).
+
+          // Belt-and-suspenders: guarantee DB referral link for new users
+          if (data.is_new && finalReferrer) {
+            api.trackReferral(walletAddress, finalReferrer).then(result => {
+              if (result?.linked) {
+                console.log(`✅ Referral confirmed: ${walletAddress} → ${result.sponsor_wallet}`);
+              }
+            }).catch(() => {});
           }
         } catch (err) {
-          console.warn("API Fetch Failed:", err.message);
+          console.warn('fetchUserData failed:', err.message);
         } finally {
-          set({ isSyncing: false, initialLoaded: true });
+          set({ isFetchingUser: false, isSyncing: false, initialLoaded: true });
         }
       },
 
