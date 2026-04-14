@@ -758,7 +758,7 @@ const checkAdmin = (req, res, next) => {
   next();
 };
 
-// POST Claim Milestone
+// POST Claim Milestone (Activated Nodes)
 app.post('/api/milestones/claim', async (req, res) => {
   const { walletAddress, milestoneThreshold } = req.body;
   if (!walletAddress || !milestoneThreshold) return res.status(400).json({ error: 'Threshold required' });
@@ -776,10 +776,17 @@ app.post('/api/milestones/claim', async (req, res) => {
   if (!reward) return res.status(400).json({ error: 'Invalid milestone' });
 
   try {
-    const user = await query('SELECT id, claimed_milestones FROM users WHERE wallet_address = $1', [walletAddress]);
+    // BUG FIX: Use LOWER() for case-insensitive wallet match (was using exact match before)
+    const user = await query(
+      'SELECT id, COALESCE(claimed_milestones, \'[]\') AS claimed_milestones FROM users WHERE LOWER(wallet_address) = LOWER($1) ORDER BY id ASC LIMIT 1',
+      [walletAddress]
+    );
     if (user.rows.length === 0) return res.status(404).json({ error: 'User not found' });
 
-    const claimed = JSON.parse(user.rows[0].claimed_milestones || '[]');
+    let claimed = [];
+    try { claimed = JSON.parse(user.rows[0].claimed_milestones); if (!Array.isArray(claimed)) claimed = []; }
+    catch (e) { claimed = []; }
+
     if (claimed.includes(Number(milestoneThreshold))) return res.status(400).json({ error: 'Milestone already claimed' });
 
     const activatedRefs = await query('SELECT COUNT(*) FROM users WHERE referrer_id = $1 AND node_tier > 0', [user.rows[0].id]);
@@ -788,22 +795,23 @@ app.post('/api/milestones/claim', async (req, res) => {
     if (count < milestoneThreshold) return res.status(400).json({ error: `You need ${milestoneThreshold} activated nodes to claim this` });
 
     claimed.push(Number(milestoneThreshold));
-    await query('UPDATE users SET local_reward = local_reward + $1, claimed_milestones = $2 WHERE id = $3', 
-      [reward, JSON.stringify(claimed), user.rows[0].id]);
+    await query(
+      'UPDATE users SET local_reward = COALESCE(local_reward, 0) + $1, claimed_milestones = $2 WHERE LOWER(wallet_address) = LOWER($3)',
+      [reward, JSON.stringify(claimed), walletAddress]
+    );
 
     res.json({ success: true, reward, claimed_milestones: claimed });
   } catch (err) {
-    console.error(err);
+    console.error('Milestone claim error:', err.message);
     res.status(500).json({ error: 'Failed to claim milestone' });
   }
 });
 
-// POST Claim Free-User Milestone (based on total referrals, not just activated)
+// POST Claim Free-User Milestone — Root-Cause-Fixed
 app.post('/api/milestones/claim-free', async (req, res) => {
   const { walletAddress, milestoneThreshold } = req.body;
   if (!walletAddress || !milestoneThreshold) return res.status(400).json({ error: 'Threshold required' });
 
-  // Free milestone rewards — based on total direct referrals (free + activated)
   const FREE_MILESTONES = {
     5:   { reward: 1000,   label: '5 Friends Invited' },
     10:  { reward: 5000,   label: '10 Friends Invited' },
@@ -816,16 +824,28 @@ app.post('/api/milestones/claim-free', async (req, res) => {
   if (!milestone) return res.status(400).json({ error: 'Invalid free milestone threshold' });
 
   try {
-    const user = await query('SELECT id, claimed_milestones FROM users WHERE LOWER(wallet_address) = LOWER($1)', [walletAddress]);
-    if (user.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    // BUG FIX: Fetch ALL IDs for this wallet (handles duplicate accounts)
+    const parentsResult = await query(
+      'SELECT id, COALESCE(claimed_milestones, \'[]\') AS claimed_milestones FROM users WHERE LOWER(wallet_address) = LOWER($1) ORDER BY id ASC',
+      [walletAddress]
+    );
+    if (parentsResult.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    
+    const row = parentsResult.rows[0]; // Use lowest ID as authority
+    const parentIds = parentsResult.rows.map(r => r.id);
 
-    // Use a separate key space "free_X" so they don't conflict with activated milestones
-    const claimed = JSON.parse(user.rows[0].claimed_milestones || '[]');
+    let claimed = [];
+    try { claimed = JSON.parse(row.claimed_milestones); if (!Array.isArray(claimed)) claimed = []; }
+    catch (e) { claimed = []; }
+
     const freeKey = `free_${milestoneThreshold}`;
     if (claimed.includes(freeKey)) return res.status(400).json({ error: 'Milestone already claimed' });
 
-    // Count ALL direct referrals
-    const refCount = await query('SELECT COUNT(*) FROM users WHERE referrer_id = $1', [user.rows[0].id]);
+    // BUG FIX: Count ALL direct referrals across all parent IDs
+    const refCount = await query(
+      'SELECT COUNT(*) FROM users WHERE referrer_id = ANY($1::int[])',
+      [parentIds]
+    );
     const count = parseInt(refCount.rows[0].count);
     if (count < Number(milestoneThreshold)) {
       return res.status(400).json({ error: `Requires ${milestoneThreshold} friends (You have ${count})` });
@@ -833,13 +853,13 @@ app.post('/api/milestones/claim-free', async (req, res) => {
 
     claimed.push(freeKey);
     await query(
-      'UPDATE users SET local_reward = local_reward + $1, claimed_milestones = $2 WHERE id = $3',
-      [milestone.reward, JSON.stringify(claimed), user.rows[0].id]
+      'UPDATE users SET local_reward = COALESCE(local_reward, 0) + $1, claimed_milestones = $2 WHERE LOWER(wallet_address) = LOWER($3)',
+      [milestone.reward, JSON.stringify(claimed), walletAddress]
     );
 
     res.json({ success: true, reward: milestone.reward, label: milestone.label, claimed_milestones: claimed });
   } catch (err) {
-    console.error(err);
+    console.error('Free milestone error:', err.message);
     res.status(500).json({ error: 'Failed to claim free milestone' });
   }
 });
@@ -1577,17 +1597,21 @@ app.post('/api/referrals/track', async (req, res) => {
   const { walletAddress, refToken } = req.body;
   if (!walletAddress || !refToken) return res.status(400).json({ error: 'walletAddress and refToken required' });
 
-  // Prevent self-referral
+  // Prevent self-referral (basic string check)
   if (refToken.toLowerCase() === walletAddress.toLowerCase()) {
     return res.status(400).json({ error: 'Self-referral not allowed' });
   }
 
   try {
-    // 1. Ensure the free user exists in DB (upsert)
+    // 1. Ensure the free user exists in DB
+    // BUG FIX: Previous INSERT used ON CONFLICT (LOWER(wallet_address)) which is invalid.
+    // Must reference the actual constraint name. Use DO UPDATE with no-op to safely upsert.
     await query(
-      `INSERT INTO users (wallet_address, referred_by_memo)
-       VALUES (LOWER($1), $2)
-       ON CONFLICT (LOWER(wallet_address)) DO NOTHING`,
+      `INSERT INTO users 
+        (wallet_address, referred_by_memo, local_reward, claimed_milestones, created_at, last_claim_time)
+       VALUES (LOWER($1), $2, 0, '[]', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+       ON CONFLICT (wallet_address) DO UPDATE
+         SET referred_by_memo = COALESCE(users.referred_by_memo, EXCLUDED.referred_by_memo)`,
       [walletAddress, refToken]
     );
 
@@ -1611,7 +1635,7 @@ app.post('/api/referrals/track', async (req, res) => {
     // 3. Link referral — only if not already linked (one-time, never overwrite)
     const updateRes = await query(
       `UPDATE users
-       SET referrer_id = $1,
+       SET referrer_id      = $1,
            referred_by_memo = COALESCE(referred_by_memo, $2)
        WHERE LOWER(wallet_address) = LOWER($3)
          AND referrer_id IS NULL
@@ -1646,7 +1670,7 @@ app.post('/api/referrals/track', async (req, res) => {
     });
 
   } catch (err) {
-    console.error('Referral track error:', err);
+    console.error('Referral track error:', err.message);
     res.status(500).json({ error: 'Failed to track referral' });
   }
 });
