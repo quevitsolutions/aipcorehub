@@ -465,7 +465,10 @@ app.get('/api/user/:walletAddress', async (req, res) => {
 
       // Create new user record (sponsor locked at creation, memo stored for recovery)
       const newUser = await query(
-        'INSERT INTO users (wallet_address, referrer_id, referred_by_memo) VALUES ($1, $2, $3) RETURNING *',
+        `INSERT INTO users 
+          (wallet_address, referrer_id, referred_by_memo, local_reward, claimed_milestones, created_at, last_claim_time)
+         VALUES ($1, $2, $3, 0, '[]', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) 
+         RETURNING *`,
         [walletAddress, refId, req.query.ref || null]
       );
       
@@ -571,56 +574,77 @@ app.get('/api/user/:walletAddress', async (req, res) => {
   }
 });
 
-// POST Claim Mining Rewards
+// POST Claim Mining Rewards — Root-Cause-Fixed
 app.post('/api/mining/claim', async (req, res) => {
   const { walletAddress } = req.body;
   if (!walletAddress) return res.status(400).json({ error: 'Wallet required' });
 
   try {
-    const userResult = await query('SELECT * FROM users WHERE LOWER(wallet_address) = LOWER($1) ORDER BY id ASC', [walletAddress]);
-    if (userResult.rows.length === 0) return res.status(404).json({ error: 'User not found' });
-    
-    const user = userResult.rows[0];
-    const now = new Date();
-    const creationTime = new Date(user.created_at);
-    const isFreePeriod = (now - creationTime) < (30 * 24 * 60 * 60 * 1000);
-    
-    if (user.node_tier < 1 && !isFreePeriod) {
-      return res.status(403).json({ error: 'Free trial expired. Activate Node to continue mining.' });
+    // Fetch user — always use LOWER() for case-insensitive match
+    const userResult = await query(
+      `SELECT id, node_tier, is_premium, created_at, last_claim_time,
+              COALESCE(local_reward, 0) AS local_reward
+       FROM users WHERE LOWER(wallet_address) = LOWER($1) ORDER BY id ASC LIMIT 1`,
+      [walletAddress]
+    );
+    if (userResult.rows.length === 0) {
+      console.error(`Mining Claim: User not found for ${walletAddress}`);
+      return res.status(404).json({ error: 'User not found' });
     }
 
-    const lastClaim = new Date(user.last_claim_time);
-    const diffHours = (now - lastClaim) / (1000 * 60 * 60);
+    const user = userResult.rows[0];
+    const now = new Date();
+
+    // Trial period check — use COALESCE to guard NULL created_at
+    const createdAt = user.created_at ? new Date(user.created_at) : now;
+    const ageMs = now - createdAt;
+    const isFreePeriod = ageMs < (30 * 24 * 60 * 60 * 1000);
+
+    if (user.node_tier < 1 && !isFreePeriod) {
+      return res.status(403).json({ error: 'Free trial expired. Activate a Node to continue mining.' });
+    }
+
+    // Calculate reward — guard NULL last_claim_time
+    const lastClaim = user.last_claim_time ? new Date(user.last_claim_time) : createdAt;
+    const diffMs = Math.max(0, now - lastClaim);
+    const diffHours = diffMs / (1000 * 60 * 60);
     const cappedHours = Math.min(diffHours, 24);
-    
+
     let reward = 0;
     if (user.node_tier >= 1) {
       const baseRate = user.node_tier >= 2 ? 200 : 100;
       const multiplier = user.is_premium ? 2.0 : 1.0;
       reward = cappedHours * baseRate * multiplier;
     } else {
-      reward = cappedHours * 10;
+      reward = cappedHours * 10; // Free trial: 10 coins/hr
     }
 
+    // Skip the DB update if there's nothing to claim (protects last_claim_time)
+    if (reward <= 0) {
+      return res.status(400).json({ error: 'Nothing to claim yet. Come back later!' });
+    }
+
+    // Atomic update — wallet address lookup, never ID
     const update = await query(
-      `UPDATE users 
-       SET local_reward = COALESCE(local_reward, 0) + $2, 
-           last_claim_time = CURRENT_TIMESTAMP,
-           updated_at = CURRENT_TIMESTAMP
+      `UPDATE users
+       SET local_reward     = COALESCE(local_reward, 0) + $2,
+           last_claim_time  = CURRENT_TIMESTAMP,
+           updated_at       = CURRENT_TIMESTAMP
        WHERE LOWER(wallet_address) = LOWER($1)
-       RETURNING *`,
+       RETURNING id, wallet_address, local_reward, last_claim_time, node_tier, is_premium, claimed_milestones`,
       [walletAddress, reward]
     );
 
     if (update.rows.length === 0) {
-      console.error(`Claim Failed: Update affected 0 rows for ${walletAddress}`);
-      return res.status(500).json({ error: 'Claim failed — account update error' });
+      console.error(`Mining Claim UPDATE failed for ${walletAddress}`);
+      return res.status(500).json({ error: 'Claim update failed' });
     }
 
+    console.log(`✅ Mined: ${walletAddress} claimed ${reward.toFixed(4)} $AIP`);
     res.json({ success: true, reward, user: update.rows[0] });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Claim failed' });
+    console.error(`Mining Claim Error [${walletAddress}]:`, err.message);
+    res.status(500).json({ error: `Claim failed: ${err.message}` });
   }
 });
 
@@ -820,24 +844,38 @@ app.post('/api/milestones/claim-free', async (req, res) => {
   }
 });
 
-// POST Claim Signup Bonus (One-time Welcome Bonus)
+// POST Claim Signup Bonus (One-time Welcome Bonus) — Root-Cause-Fixed
 app.post('/api/user/claim-signup', async (req, res) => {
   const { walletAddress } = req.body;
   if (!walletAddress) return res.status(400).json({ error: 'Wallet address required' });
 
   try {
-    const user = await query('SELECT id, claimed_milestones, local_reward FROM users WHERE LOWER(wallet_address) = LOWER($1) ORDER BY id ASC', [walletAddress]);
-    if (user.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    // Always use wallet address in all queries — never rely on row.id from a previous SELECT
+    // because reconciliation may have changed IDs between requests
+    const userResult = await query(
+      `SELECT id, COALESCE(claimed_milestones, '[]') AS claimed_milestones,
+              COALESCE(local_reward, 0) AS local_reward
+       FROM users WHERE LOWER(wallet_address) = LOWER($1) ORDER BY id ASC LIMIT 1`,
+      [walletAddress]
+    );
 
-    const row = user.rows[0];
+    if (userResult.rows.length === 0) {
+      console.error(`Signup Bonus: User not found for ${walletAddress}`);
+      return res.status(404).json({ error: 'User not found. Please refresh the app.' });
+    }
+
+    const row = userResult.rows[0];
+
+    // Safe JSON parse
     let claimed = [];
     try {
-      claimed = JSON.parse(row.claimed_milestones || '[]');
+      claimed = JSON.parse(row.claimed_milestones);
+      if (!Array.isArray(claimed)) claimed = [];
     } catch (e) {
       console.warn(`Malformed claimed_milestones for ${walletAddress}, resetting to []`);
       claimed = [];
     }
-    
+
     if (claimed.includes('signup_bonus')) {
       return res.status(400).json({ error: 'Signup bonus already claimed' });
     }
@@ -845,22 +883,32 @@ app.post('/api/user/claim-signup', async (req, res) => {
     const reward = 100;
     claimed.push('signup_bonus');
 
+    // Use wallet_address in WHERE clause (not id) to survive any reconciliation race
     const update = await query(
-      'UPDATE users SET local_reward = COALESCE(local_reward, 0) + $1, claimed_milestones = $2 WHERE id = $3 RETURNING local_reward',
-      [reward, JSON.stringify(claimed), row.id]
+      `UPDATE users
+       SET local_reward      = COALESCE(local_reward, 0) + $1,
+           claimed_milestones = $2,
+           updated_at         = CURRENT_TIMESTAMP
+       WHERE LOWER(wallet_address) = LOWER($3)
+       RETURNING COALESCE(local_reward, 0) AS local_reward, claimed_milestones`,
+      [reward, JSON.stringify(claimed), walletAddress]
     );
 
-    if (update.rows.length === 0) throw new Error('Update failed');
+    if (update.rows.length === 0) {
+      console.error(`Signup Bonus UPDATE failed for ${walletAddress}`);
+      return res.status(500).json({ error: 'Bonus update failed — no rows affected' });
+    }
 
-    res.json({ 
-      success: true, 
-      reward, 
-      new_balance: parseFloat(update.rows[0].local_reward), 
-      claimed_milestones: claimed 
+    console.log(`🎁 Signup Bonus: ${walletAddress} claimed 100 $AIP`);
+    res.json({
+      success: true,
+      reward,
+      new_balance: parseFloat(update.rows[0].local_reward),
+      claimed_milestones: claimed
     });
   } catch (err) {
-    console.error(`Signup Bonus Error for ${walletAddress}:`, err.message);
-    res.status(500).json({ error: 'Failed to claim signup bonus — internal error' });
+    console.error(`Signup Bonus Error [${walletAddress}]:`, err.message);
+    res.status(500).json({ error: `Signup bonus failed: ${err.message}` });
   }
 });
 
