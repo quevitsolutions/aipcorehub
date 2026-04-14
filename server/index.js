@@ -477,30 +477,27 @@ app.get('/api/user/:walletAddress', async (req, res) => {
 
     // If existing user has NO sponsor yet and a ref is provided — set it now (one-time, never overwrite)
     if (!user.referrer_id && req.query.ref) {
-      // Don't allow self-referral
-      if (req.query.ref.toLowerCase() !== walletAddress.toLowerCase()) {
-        const sponsor = await findSponsorByRef(req.query.ref);
-        if (sponsor) {
-          // Perform the update and ensure we don't overwrite if it was set in a parallel request
-          const updateRes = await query(`
-            UPDATE users 
-            SET referrer_id = $1, 
-                referred_by_memo = COALESCE(referred_by_memo, $3)
-            WHERE LOWER(wallet_address) = LOWER($2) 
-            AND referrer_id IS NULL 
-            RETURNING referrer_id
-          `, [sponsor.id, walletAddress, req.query.ref]);
-          
-          if (updateRes.rows.length > 0) {
-            user.referrer_id = sponsor.id;
-            user.sponsor_wallet = sponsor.wallet_address;
-            console.log(`🔗 Linked User ${walletAddress} to Sponsor ${sponsor.wallet_address}`);
-          }
-        } else {
-           // Store memo even if sponsor not found yet
-           await query(`UPDATE users SET referred_by_memo = $1 WHERE LOWER(wallet_address) = LOWER($2) AND referred_by_memo IS NULL`, 
-             [req.query.ref, walletAddress]);
+      const sponsor = await findSponsorByRef(req.query.ref);
+      if (sponsor && sponsor.wallet_address.toLowerCase() !== walletAddress.toLowerCase()) {
+        // Perform the update and ensure we don't overwrite if it was set in a parallel request
+        const updateRes = await query(`
+          UPDATE users 
+          SET referrer_id = $1, 
+              referred_by_memo = COALESCE(referred_by_memo, $3)
+          WHERE LOWER(wallet_address) = LOWER($2) 
+          AND referrer_id IS NULL 
+          RETURNING referrer_id
+        `, [sponsor.id, walletAddress, req.query.ref]);
+        
+        if (updateRes.rows.length > 0) {
+          user.referrer_id = sponsor.id;
+          user.sponsor_wallet = sponsor.wallet_address;
+          console.log(`🔗 Linked User ${walletAddress} to Sponsor ${sponsor.wallet_address}`);
         }
+      } else if (req.query.ref) {
+          // Store memo even if sponsor not found yet or is self
+          await query(`UPDATE users SET referred_by_memo = $1 WHERE LOWER(wallet_address) = LOWER($2) AND referred_by_memo IS NULL`, 
+            [req.query.ref, walletAddress]);
       }
     }
 
@@ -1139,7 +1136,7 @@ app.get('/api/network/level/:walletAddress/:level', async (req, res) => {
             UNION ALL
             SELECT s.id, st.d + 1 FROM users s INNER JOIN sub_tree st ON s.matrix_parent_id = st.id WHERE st.d < 18
           )
-          SELECT COUNT(*) FROM sub_tree WHERE d > 0
+          SELECT COUNT(*) FROM sub_tree
         ) as team_size,
         CASE WHEN u.referrer_id = $1 THEN true ELSE false END as is_direct
       FROM users u
@@ -1490,6 +1487,12 @@ app.post('/api/referrals/track', async (req, res) => {
 
     // 2. Resolve sponsor from ref token (wallet address or node ID)
     const sponsor = await findSponsorByRef(refToken);
+    
+    // Prevent self-referral (check resolved wallet)
+    if (sponsor && sponsor.wallet_address.toLowerCase() === walletAddress.toLowerCase()) {
+      return res.status(400).json({ error: 'Self-referral not allowed' });
+    }
+
     if (!sponsor) {
       // Sponsor not yet in DB — store memo for later reconciliation
       await query(
