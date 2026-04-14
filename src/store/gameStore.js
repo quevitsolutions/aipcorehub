@@ -291,9 +291,9 @@ export const useGameStore = create(
         
         const finalReferrer = forcedReferrer || referrerId;
 
-        // Skip sync if we did it in the last 60 seconds (unless initialLoaded is false)
+        // Skip sync if we did it in the last 30 seconds (unless initialLoaded is false)
         const now = Date.now();
-        if (get().initialLoaded && lastBackendSync && (now - lastBackendSync < 60000)) {
+        if (get().initialLoaded && lastBackendSync && (now - lastBackendSync < 30000)) {
             return;
         }
 

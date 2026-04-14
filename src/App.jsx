@@ -84,7 +84,8 @@ export default function App() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const ref = params.get('ref');
-    if (ref && /^0x[a-fA-F0-9]{40}$/.test(ref)) setReferrerId(ref);
+    // BUG FIX: Accept BOTH wallet addresses AND numeric Node IDs as referral tokens
+    if (ref && /^(0x[a-fA-F0-9]{40}|\d+)$/i.test(ref)) setReferrerId(ref);
   }, [setReferrerId]);
 
   // Show "Referred by" banner once on first connect
@@ -145,6 +146,38 @@ export default function App() {
     }
     return () => removeListeners();
   }, [isConnected, setupListeners, removeListeners]);
+
+  // Auto-refresh user data every 30s when connected (keeps balance and stats live)
+  useEffect(() => {
+    if (!isConnected) return;
+    const interval = setInterval(() => {
+      const { fetchUserData, walletAddress } = useGameStore.getState();
+      if (walletAddress) {
+        // Force refresh by bypassing throttle
+        useGameStore.setState({ lastBackendSync: null });
+        fetchUserData().catch(() => {});
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [isConnected]);
+
+  // Tab-switch refresh: instantly reload data when navigating to data-heavy screens
+  useEffect(() => {
+    if (!isConnected) return;
+    const { fetchReferralData, fetchUserData, fetchTasksData, fetchLeaderboardData, walletAddress } = useGameStore.getState();
+    if (!walletAddress) return;
+    
+    if (activeTab === 'friends') {
+      fetchReferralData().catch(() => {});
+      fetchLeaderboardData().catch(() => {});
+    } else if (activeTab === 'tasks') {
+      fetchTasksData().catch(() => {});
+    } else if (activeTab === 'earn' || activeTab === 'dash') {
+      // Force latest user data on earn/stats tabs
+      useGameStore.setState({ lastBackendSync: null });
+      fetchUserData().catch(() => {});
+    }
+  }, [activeTab, isConnected]);
 
   if (!isConnected) {
     return (
