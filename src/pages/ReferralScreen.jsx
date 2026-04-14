@@ -198,13 +198,25 @@ export default function ReferralScreen() {
         <button 
           onClick={fetchReferralData}
           disabled={loadingReferrals}
-          style={{ 
-            background: 'none', border: 'none', color: '#4FC3F7', cursor: 'pointer', 
-            fontSize: '14px', padding: '4px', opacity: loadingReferrals ? 0.3 : 1 
-          }}
           title="Refresh List"
+          style={{ 
+            display: 'flex', alignItems: 'center', gap: '7px',
+            background: loadingReferrals ? 'rgba(79,195,247,0.05)' : 'rgba(79,195,247,0.12)',
+            border: '1px solid rgba(79,195,247,0.4)',
+            borderRadius: '20px',
+            color: '#4FC3F7',
+            cursor: loadingReferrals ? 'not-allowed' : 'pointer',
+            fontSize: '13px',
+            fontWeight: 800,
+            letterSpacing: '0.5px',
+            padding: '8px 16px',
+            opacity: loadingReferrals ? 0.5 : 1,
+            transition: 'all 0.2s ease',
+            boxShadow: loadingReferrals ? 'none' : '0 0 10px rgba(79,195,247,0.15)',
+          }}
         >
-          {loadingReferrals ? '⌛' : '🔄'}
+          <span style={{ fontSize: '16px', lineHeight: 1 }}>{loadingReferrals ? '⌛' : '🔄'}</span>
+          <span>{loadingReferrals ? 'SYNCING...' : 'REFRESH'}</span>
         </button>
       </div>
       
