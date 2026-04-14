@@ -436,6 +436,20 @@ export const useGameStore = create(
           return res;
         }
       },
+      
+      claimSignupBonusAction: async () => {
+        const { walletAddress, claimedMilestones } = get();
+        if (!walletAddress) throw new Error("Not connected");
+
+        const res = await api.claimSignupBonus(walletAddress);
+        if (res?.success) {
+          set({
+            localReward: Number(res.new_balance || (Number(get().localReward) + Number(res.reward))),
+            claimedMilestones: res.claimed_milestones || [...claimedMilestones, 'signup_bonus'],
+          });
+          return res;
+        }
+      },
 
       claimDailyReward: async () => {
         const { walletAddress } = get();

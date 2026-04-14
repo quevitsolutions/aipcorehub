@@ -135,13 +135,15 @@ export default function EarnScreen() {
     hasNode, lastClaimTime, teamHistory, isHistoryLoading,
     claimMined, setActiveTab, addLocalReward, fetchTeamHistory,
     isFreeActive, createdAt, globalHistory, fetchGlobalHistory,
-    initialLoaded, pendingMined, lastSyncTime
+    initialLoaded, pendingMined, lastSyncTime,
+    claimedMilestones, claimSignupBonusAction
   } = useGameStore();
 
   const [view, setView] = useState('mining'); // 'mining' | 'history'
   const [historyMode, setHistoryMode] = useState('personal'); // 'personal' | 'global'
   const [isExploding, setIsExploding] = useState(false);
   const [isClaiming, setIsClaiming] = useState(false); // Prevents double-click
+  const [isBonusClaiming, setIsBonusClaiming] = useState(false);
   const [displayReward, setDisplayReward] = useState(localReward);
   const [claimedTasks, setClaimedTasks] = useState(() => {
     try { return JSON.parse(localStorage.getItem('aip-tasks') || '[]'); } catch { return []; }
@@ -581,6 +583,82 @@ export default function EarnScreen() {
           <div style={{ height: 40 }} /> {/* Spacer */}
         </div>
       )}
+
+      {/* ── Welcome Bonus Modal ── */}
+      <AnimatePresence>
+        {initialLoaded && !claimedMilestones?.includes('signup_bonus') && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 1000,
+              background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.8, y: 20, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              transition={{ type: 'spring', damping: 20, stiffness: 200 }}
+              style={{
+                width: '100%', maxWidth: 320, background: 'linear-gradient(135deg, #1A1A1A 0%, #0D0D0D 100%)',
+                borderRadius: 28, border: '1px solid rgba(163,255,18,0.2)', padding: '32px 24px',
+                textAlign: 'center', position: 'relative', overflow: 'hidden',
+                boxShadow: '0 20px 50px rgba(0,0,0,0.5), 0 0 30px rgba(163,255,18,0.1)'
+              }}
+            >
+              {/* Decorative elements */}
+              <div style={{ position: 'absolute', top: -40, right: -40, width: 100, height: 100, background: 'radial-gradient(circle, rgba(163,255,18,0.1) 0%, transparent 70%)', borderRadius: '50%' }} />
+              
+              <div style={{ fontSize: 48, marginBottom: 16 }}>🎁</div>
+              
+              <h2 style={{ fontSize: 24, fontWeight: 900, color: '#fff', marginBottom: 8, letterSpacing: -0.5 }}>Welcome Bonus!</h2>
+              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', lineHeight: 1.5, marginBottom: 24 }}>
+                Welcome to AIPCore! Here is a special starter gift to kickstart your mining journey.
+              </p>
+              
+              <div style={{ 
+                background: 'rgba(163,255,18,0.05)', borderRadius: 20, padding: '20px 10px', 
+                border: '1px dashed rgba(163,255,18,0.2)', marginBottom: 28 
+              }}>
+                <div style={{ fontSize: 11, fontWeight: 900, color: 'var(--neon-lime)', letterSpacing: 1.5, marginBottom: 4 }}>YOU RECEIVE</div>
+                <div style={{ fontSize: 36, fontWeight: 950, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                  <span style={{ color: '#FFD700' }}>$AIP</span> 100
+                </div>
+              </div>
+
+              <button
+                disabled={isBonusClaiming}
+                onClick={async () => {
+                  if (isBonusClaiming) return;
+                  setIsBonusClaiming(true);
+                  try {
+                    const res = await claimSignupBonusAction();
+                    if (res?.success) {
+                      toast.success('100 $AIP Bonus Claimed! 🚀', { duration: 4000 });
+                    }
+                  } catch (err) {
+                    toast.error(err.message || 'Failed to claim bonus');
+                  } finally {
+                    setIsBonusClaiming(false);
+                  }
+                }}
+                style={{
+                  width: '100%', background: 'var(--neon-lime)', border: 'none', borderRadius: 16,
+                  padding: '16px', fontSize: 13, fontWeight: 950, color: '#000', cursor: 'pointer',
+                  boxShadow: '0 8px 20px rgba(163,255,18,0.3)', transition: 'transform 0.2s',
+                  opacity: isBonusClaiming ? 0.6 : 1
+                }}
+                onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.96)'}
+                onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+              >
+                {isBonusClaiming ? 'CLAIMING...' : 'CLAIM GIFT NOW'}
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

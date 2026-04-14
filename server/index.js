@@ -806,6 +806,37 @@ app.post('/api/milestones/claim-free', async (req, res) => {
   }
 });
 
+// POST Claim Signup Bonus (One-time Welcome Bonus)
+app.post('/api/user/claim-signup', async (req, res) => {
+  const { walletAddress } = req.body;
+  if (!walletAddress) return res.status(400).json({ error: 'Wallet address required' });
+
+  try {
+    const user = await query('SELECT id, claimed_milestones, local_reward FROM users WHERE LOWER(wallet_address) = LOWER($1) ORDER BY id ASC', [walletAddress]);
+    if (user.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+
+    const row = user.rows[0];
+    const claimed = JSON.parse(row.claimed_milestones || '[]');
+    
+    if (claimed.includes('signup_bonus')) {
+      return res.status(400).json({ error: 'Signup bonus already claimed' });
+    }
+
+    const reward = 100;
+    claimed.push('signup_bonus');
+
+    await query(
+      'UPDATE users SET local_reward = local_reward + $1, claimed_milestones = $2 WHERE id = $3',
+      [reward, JSON.stringify(claimed), row.id]
+    );
+
+    res.json({ success: true, reward, new_balance: parseFloat(row.local_reward) + reward, claimed_milestones: claimed });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to claim signup bonus' });
+  }
+});
+
 app.post('/api/admin/tasks', checkAdmin, async (req, res) => {
   const { name, reward, icon, url, type } = req.body;
   if (!name || !reward) return res.status(400).json({ error: 'Name and reward required' });

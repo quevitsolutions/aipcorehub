@@ -150,6 +150,19 @@ class ApiService {
     return res.json();
   }
 
+  async claimSignupBonus(walletAddress) {
+    const res = await fetch(`${this.baseUrl}/user/claim-signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ walletAddress })
+    });
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.error || 'Signup bonus claim failed');
+    }
+    return res.json();
+  }
+
   async fetchReferralStats(walletAddress) {
     const res = await fetch(`${this.baseUrl}/referrals/stats/${walletAddress}`);
     if (!res.ok) throw new Error('Failed to fetch referral stats');
