@@ -372,7 +372,7 @@ export default function EarnScreen() {
                   style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                   <span style={{ fontSize: 15, fontWeight: 950, color: '#000', letterSpacing: 0.5 }}>{hasNode ? 'BOOST' : 'UPGRADE'} NODE</span>
                   <span style={{ fontSize: 10, fontWeight: 900, color: 'rgba(0,0,0,0.5)' }}>
-                    {hasNode ? `TIER ${displayTier} → ${displayTier + 1} 🚀` : (isFreeActive ? `TRIAL EXPIRES IN ${daysLeft} DAYS ⚡` : 'ACTIVATE CORE ⚡')}
+                    {hasNode ? `TIER ${displayTier} → ${displayTier + 1} 🚀` : (!isExpired ? `TRIAL EXPIRES IN ${daysLeft} DAYS ⚡` : 'ACTIVATE CORE ⚡')}
                   </span>
                 </motion.div>
               </button>
