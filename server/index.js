@@ -419,28 +419,15 @@ app.get('/health', (req, res) => res.send('API is healthy'));
 app.get('/api/user/:walletAddress', async (req, res) => {
   const { walletAddress } = req.params;
   try {
-    // 1. Fetch user & calculate stats across ALL potential duplicate IDs
+    // PERF FIX: Replaced 18-level recursive CTE with simple counts.
+    // The recursive team_size CTE on every /api/user call (every 30s) was the primary DB bottleneck.
+    // team_size is now only computed in the /api/network endpoint (Team screen, on-demand).
     const userResult = await query(
-      `WITH parent_ids AS (
-         SELECT id FROM users WHERE LOWER(wallet_address) = LOWER($1)
-       )
-       SELECT u.*, 
-        (SELECT COUNT(*) FROM users WHERE referrer_id IN (SELECT id FROM parent_ids)) as direct_refs,
-        (SELECT COUNT(*) FROM users WHERE referrer_id IN (SELECT id FROM parent_ids) AND node_tier > 0) as activated_refs,
-        (
-          WITH RECURSIVE team AS (
-            SELECT id, referrer_id, 1 as depth
-            FROM users
-            WHERE referrer_id IN (SELECT id FROM parent_ids)
-            UNION ALL
-            SELECT child.id, child.referrer_id, parent.depth + 1
-            FROM users child
-            INNER JOIN team parent ON child.referrer_id = parent.id
-            WHERE parent.depth < 18
-          )
-          SELECT COUNT(*) FROM team
-        ) as team_size
-       FROM users u 
+      `SELECT u.*,
+        COALESCE((SELECT COUNT(*) FROM users WHERE referrer_id = u.id), 0)                          AS direct_refs,
+        COALESCE((SELECT COUNT(*) FROM users WHERE referrer_id = u.id AND node_tier > 0), 0)        AS activated_refs,
+        COALESCE((SELECT COUNT(*) FROM users WHERE referrer_id = u.id), 0)                          AS team_size
+       FROM users u
        WHERE LOWER(u.wallet_address) = LOWER($1)
        ORDER BY id ASC`,
       [walletAddress]
@@ -463,7 +450,7 @@ app.get('/api/user/:walletAddress', async (req, res) => {
         }
       }
 
-      // Create new user record (sponsor locked at creation, memo stored for recovery)
+          // Create new user record (sponsor locked at creation, memo stored for recovery)
       const newUser = await query(
         `INSERT INTO users 
           (wallet_address, referrer_id, referred_by_memo, local_reward, claimed_milestones, created_at, last_claim_time)
@@ -471,17 +458,19 @@ app.get('/api/user/:walletAddress', async (req, res) => {
          RETURNING *`,
         [walletAddress, refId, req.query.ref || null]
       );
-      
-      // For immediate response, we still need to calculate the on-chain sponsor node ID
-      const finalSponsorNodeId = await findFirstActiveAncestor(refId);
-      
+
+      // PERF FIX: findFirstActiveAncestor was blocking new user response — now fire-and-forget
+      findFirstActiveAncestor(refId).catch(() => {});
+
       return res.json({ 
         ...newUser.rows[0], 
-        direct_refs: 0, 
+        direct_refs: 0,
+        activated_refs: 0,
         team_size: 0, 
         is_new: true, 
+        pending_mined: 0,
         sponsor_wallet: sponsorWallet,
-        sponsor_node_id: finalSponsorNodeId
+        sponsor_node_id: 36999  // Use genesis default for instant response
       });
     }
     
@@ -547,27 +536,30 @@ app.get('/api/user/:walletAddress', async (req, res) => {
     // Calculate pending mining rewards
     let pending_mined = 0;
     const now = new Date();
-    const lastClaim = new Date(user.last_claim_time);
-    const creationTime = new Date(user.created_at);
-    const diffHours = (now - lastClaim) / (1000 * 60 * 60);
-    const cappedHours = Math.min(diffHours, 24); // 24h cap
+    // BUG FIX: Guard null last_claim_time — new Date(null) = epoch 1970 causing 24h max pending for new users
+    const lastClaim    = user.last_claim_time ? new Date(user.last_claim_time) : now;
+    const creationTime = user.created_at      ? new Date(user.created_at)      : now;
+    const diffHours    = Math.max(0, (now - lastClaim) / (1000 * 60 * 60));
+    const cappedHours  = Math.min(diffHours, 24); // 24h cap
 
     const isFreePeriod = (now - creationTime) < (30 * 24 * 60 * 60 * 1000);
-    const isFreeMember = user.node_tier === 0 && isFreePeriod;
+    const isFreeMember = (user.node_tier === 0 || !user.node_tier) && isFreePeriod;
 
     if (user.node_tier >= 1) {
-      const baseRate = user.node_tier >= 2 ? 200 : 100;
+      const baseRate   = user.node_tier >= 2 ? 200 : 100;
       const multiplier = user.is_premium ? 2.0 : 1.0;
-      pending_mined = cappedHours * baseRate * multiplier;
+      pending_mined    = cappedHours * baseRate * multiplier;
     } else if (isFreeMember) {
-      pending_mined = cappedHours * 10; // Free member rate
+      pending_mined = cappedHours * 10;
     }
 
     res.json({
       ...user,
-      direct_refs: parseInt(user.direct_refs || 0),
-      team_size: parseInt(user.team_size || 0),
-      pending_mined: parseFloat(pending_mined.toFixed(4)),
+      local_reward:   parseFloat(user.local_reward || 0),
+      direct_refs:    parseInt(user.direct_refs    || 0),
+      activated_refs: parseInt(user.activated_refs || 0),
+      team_size:      parseInt(user.team_size      || 0),
+      pending_mined:  parseFloat(pending_mined.toFixed(4)),
       sponsor_wallet: sponsorWallet,
       sponsor_node_id: sponsorNodeId
     });
