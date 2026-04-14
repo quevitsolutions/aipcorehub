@@ -375,7 +375,7 @@ export default function EarnScreen() {
                     {hasNode 
                       ? <span style={{ color: 'rgba(0,0,0,0.5)' }}>TIER {displayTier} → {displayTier + 1} 🚀</span> 
                       : (!isExpired 
-                          ? <span style={{ color: '#FFD700', textShadow: '0px 1px 2px rgba(0,0,0,0.5)', fontSize: 11 }}>TRIAL EXPIRES IN {daysLeft} DAYS ⚡</span> 
+                          ? <span style={{ color: '#ffffff', textShadow: '0px 1px 2px rgba(0,0,0,0.5)', fontSize: 11 }}>TRIAL EXPIRES IN {daysLeft} DAYS ⚡</span> 
                           : <span style={{ color: 'rgba(0,0,0,0.5)' }}>ACTIVATE CORE ⚡</span>)
                     }
                   </span>
