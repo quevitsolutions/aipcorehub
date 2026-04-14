@@ -371,8 +371,13 @@ export default function EarnScreen() {
                 <motion.div animate={{ opacity: [1, 0.6, 1] }} transition={{ duration: 2, repeat: Infinity }}
                   style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                   <span style={{ fontSize: 15, fontWeight: 950, color: '#000', letterSpacing: 0.5 }}>{hasNode ? 'BOOST' : 'UPGRADE'} NODE</span>
-                  <span style={{ fontSize: 10, fontWeight: 900, color: 'rgba(0,0,0,0.5)' }}>
-                    {hasNode ? `TIER ${displayTier} → ${displayTier + 1} 🚀` : (!isExpired ? `TRIAL EXPIRES IN ${daysLeft} DAYS ⚡` : 'ACTIVATE CORE ⚡')}
+                  <span style={{ fontSize: 10, fontWeight: 900 }}>
+                    {hasNode 
+                      ? <span style={{ color: 'rgba(0,0,0,0.5)' }}>TIER {displayTier} → {displayTier + 1} 🚀</span> 
+                      : (!isExpired 
+                          ? <span style={{ color: '#FFD700', textShadow: '0px 1px 2px rgba(0,0,0,0.5)', fontSize: 11 }}>TRIAL EXPIRES IN {daysLeft} DAYS ⚡</span> 
+                          : <span style={{ color: 'rgba(0,0,0,0.5)' }}>ACTIVATE CORE ⚡</span>)
+                    }
                   </span>
                 </motion.div>
               </button>
