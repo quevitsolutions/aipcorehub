@@ -81,6 +81,11 @@ export const useContract = () => {
             body: JSON.stringify({ walletAddress, tier: 1, nodeId: nid })
           }).catch(() => {});
 
+          // Force tree-link repair so direct/team counts show instantly on Team screen
+          fetch(`${import.meta.env.VITE_API_URL || ''}/api/network/force-repair`, {
+            method: 'POST'
+          }).catch(() => {});
+
           // Force-reload all user state immediately (bypass 30s throttle)
           useGameStore.setState({ lastBackendSync: null });
           setTimeout(() => {

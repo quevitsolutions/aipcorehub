@@ -126,6 +126,10 @@ export default function TeamScreen() {
       if (!walletAddress) return;
       setLoadingCounts(true);
       try {
+        // Force-repair tree links first so direct/team counts are accurate
+        // (bypasses the server-side 30s throttle for explicit user screen loads)
+        fetch('/api/network/force-repair', { method: 'POST' }).catch(() => {});
+
         const data = await api.fetchNetworkCounts(walletAddress);
         const dc = {
           referral: data.referralCounts || new Array(18).fill(0),

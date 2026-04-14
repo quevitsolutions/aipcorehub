@@ -1368,6 +1368,23 @@ app.post('/api/network/sync', async (req, res) => {
 });
 
 /**
+ * Force Tree Repair — bypasses the 30s throttle.
+ * Called explicitly after node creation or tier upgrade to ensure
+ * referrer_id and matrix_parent_id links are immediately consistent.
+ */
+app.post('/api/network/force-repair', async (req, res) => {
+  try {
+    // Reset throttle — allow immediate repair
+    lastRepairTime = 0;
+    await repairTreeLinks();
+    res.json({ success: true, message: 'Tree links repaired' });
+  } catch (err) {
+    console.error('Force repair failed:', err.message);
+    res.status(500).json({ error: 'Repair failed' });
+  }
+});
+
+/**
  * High-Precision RPC-Mirror Sync: Fetches 100% accurate contract state for a node.
  */
 async function syncNodeStateFromRPC(nodeId) {
