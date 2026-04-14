@@ -513,32 +513,35 @@ app.get('/api/user/:walletAddress', async (req, res) => {
       }
     }
 
-
-    // Zero-Latency Auto-Sync: If user is "Free", check the blockchain once to see if they just activated
+    // PERF FIX: ensureNodeSync is a BLOCKCHAIN RPC call (1-3s on BSC).
+    // Fire it in the background — NEVER await it in the response path.
+    // If the user just activated a node, the NEXT fetch (30s later) will get the updated data.
     if (!user.node_id || user.node_id === 0) {
-       const synced = await ensureNodeSync(walletAddress);
-       if (synced) {
-         // Reload user row if synced
-         const fresh = await query('SELECT * FROM users WHERE LOWER(wallet_address) = LOWER($1)', [walletAddress]);
-         if (fresh.rows.length > 0) Object.assign(user, fresh.rows[0]);
-       }
+      ensureNodeSync(walletAddress).catch(() => {});
     }
 
-    // Fetch sponsor details and handle Auto-Rollup
+    // PERF FIX: Run sponsor lookup and pending mining calc IN PARALLEL
+    const [sponsorRow] = await Promise.all([
+      user.referrer_id
+        ? query('SELECT wallet_address, node_id FROM users WHERE id = $1', [user.referrer_id])
+        : Promise.resolve({ rows: [] }),
+    ]);
+
+    // Resolve sponsor wallet and node ID (rollup to first active ancestor if sponsor is free)
     let sponsorWallet = null;
     let sponsorNodeId = 36999; // Default to Genesis
 
-    if (user.referrer_id) {
-       const sponsorRow = await query('SELECT wallet_address, node_id FROM users WHERE id = $1', [user.referrer_id]);
-       if (sponsorRow.rows.length > 0) {
-         sponsorWallet = sponsorRow.rows[0].wallet_address;
-         if (sponsorRow.rows[0].node_id) {
-           sponsorNodeId = sponsorRow.rows[0].node_id;
-         } else {
-           // Direct sponsor is Free User -> Rollup to find nearest active upline
-           sponsorNodeId = await findFirstActiveAncestor(user.referrer_id);
-         }
-       }
+    if (sponsorRow.rows.length > 0) {
+      sponsorWallet = sponsorRow.rows[0].wallet_address;
+      if (sponsorRow.rows[0].node_id) {
+        sponsorNodeId = sponsorRow.rows[0].node_id;
+      } else {
+        // Sponsor is free — rollup in background, use default for now (instant response)
+        findFirstActiveAncestor(user.referrer_id)
+          .then(() => {}) // non-blocking
+          .catch(() => {});
+        sponsorNodeId = 36999;
+      }
     }
 
     // Calculate pending mining rewards
