@@ -37,12 +37,16 @@ export const useContract = () => {
         });
         return data.nodeId;
       } else {
-        setNodeData({ nodeId: 0, tier: 0, active: false });
+        // STABILITY FIX: Never downgrade to 'no node' if the store already shows the user has one.
+        // Blockchain RPC can return stale/empty data during BSC congestion — trust DB state.
+        const currentTier = useGameStore.getState().nodeTier || 0;
+        if (currentTier === 0) {
+          setNodeData({ nodeId: 0, tier: 0, active: false });
+        }
         return 0;
       }
     } catch (err) {
-      // PERF FIX: Reduced retry delay 2000 -> 1000ms and retries 3 -> 2
-      // Avoids a 6-second hang when RPC is slow
+      // PERF FIX: Reduced retry 2s -> 1s, 3 retries -> 2
       if (retries > 0) {
         await new Promise(r => setTimeout(r, 1000));
         return loadNodeData(address, retries - 1);
@@ -141,29 +145,35 @@ export const useWalletLifecycle = () => {
   const { loadNodeData, fetchBnbBalance } = useContract();
 
   useEffect(() => {
-    if (isConnected && address) {
-      // 1. Instant: set wallet and fire DB fetch immediately (no delay)
-      setWallet(address);
+    // STABILITY FIX: Only run on exact 'connected' status.
+    // Wagmi cycles through 'connecting' -> 'reconnecting' -> 'connected',
+    // causing this effect to fire 3+ times and creating race conditions.
+    if (!isConnected || !address || status !== 'connected') return;
 
-      // 2. Parallel: fire all non-blocking data fetches at once
-      Promise.all([
-        fetchUserData(),
-        fetchAdminStatus(),
-        fetchUserConversions(),
-        fetchBnbBalance(address),
-      ]).catch(() => {});
+    // Set wallet first (synchronous)
+    setWallet(address);
 
-      // 3. Background: blockchain RPC data (slower, non-critical for initial render)
-      loadNodeData(address).then((nId) => {
-        if (nId > 0) {
-          setTimeout(() => fetchTeamHistory(), 1000);
-        }
-      }).catch(() => {});
+    // Parallel: fire all DB fetches immediately — no delay
+    Promise.all([
+      fetchUserData(),
+      fetchAdminStatus(),
+      fetchUserConversions(),
+      fetchBnbBalance(address),
+    ]).catch(() => {});
 
-    } else if (status === 'disconnected') {
+    // Background: blockchain RPC (slower, non-critical for initial render)
+    loadNodeData(address).then((nId) => {
+      if (nId > 0) setTimeout(() => fetchTeamHistory(), 1000);
+    }).catch(() => {});
+
+  }, [isConnected, address, status]);
+
+  // Separate disconnect handler — isolated to prevent re-runs on status flicker
+  useEffect(() => {
+    if (status === 'disconnected') {
       disconnectWallet();
     }
-  }, [isConnected, address, status]);
+  }, [status]);
 
   return {
     setupListeners: () => {}, 
