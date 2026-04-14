@@ -5,7 +5,7 @@ import { useContract } from '../hooks/useContract.js';
 import toast from 'react-hot-toast';
 
 export default function NodePopup() {
-  const { setShowNodePopup, referrerId, isConnected } = useGameStore();
+  const { setShowNodePopup, referrerId, sponsorNodeId, sponsorWallet, isConnected } = useGameStore();
   const { createNode, connectWallet } = useContract();
   const [loading, setLoading] = useState(false);
 
@@ -15,8 +15,15 @@ export default function NodePopup() {
       return;
     }
     setLoading(true);
-    const sponsorId = referrerId ? parseInt(referrerId) : 36999;
-    const ok = await createNode(sponsorId);
+
+    // BUG FIX: referrerId is a wallet address string — parseInt("0x...") returns wrong hex values.
+    // Use sponsorNodeId (resolved numeric node ID from backend) as the authoritative sponsor.
+    // Fallback chain: resolved node ID -> genesis (36999)
+    const effectiveSponsor = (sponsorNodeId && Number(sponsorNodeId) > 0)
+      ? Number(sponsorNodeId)
+      : 36999;
+
+    const ok = await createNode(effectiveSponsor);
     setLoading(false);
     if (ok) setShowNodePopup(false);
   };
@@ -72,7 +79,7 @@ export default function NodePopup() {
             ))}
           </div>
 
-          {referrerId && (
+          {(sponsorWallet || referrerId) && (
             <div style={{ 
               textAlign: 'center', 
               fontSize: '11px', 
@@ -83,7 +90,7 @@ export default function NodePopup() {
               padding: '8px 16px',
               borderRadius: '40px'
             }}>
-              🔗 SPONSOR: #{referrerId}
+              🔗 SPONSOR: {sponsorNodeId ? `#${sponsorNodeId}` : sponsorWallet ? `${sponsorWallet.slice(0,8)}...` : `#${referrerId}`}
             </div>
           )}
 
