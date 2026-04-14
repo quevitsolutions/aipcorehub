@@ -1421,9 +1421,6 @@ async function syncNodeStateFromRPC(nodeId, walletAddress = null) {
   }
 }
 
-  }
-}
-
 /**
  * Universal Orphan Rescue: Scans for active nodes without sponsors and repairs via RPC.
  */
