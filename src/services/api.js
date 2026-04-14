@@ -78,11 +78,11 @@ class ApiService {
     return res.json();
   }
 
-  async upgradeTier(walletAddress, { tier, isPremium }) {
+  async upgradeTier(walletAddress, { tier, isPremium, nodeId } = {}) {
     const res = await fetch(`${this.baseUrl}/mining/upgrade`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ walletAddress, tier, isPremium })
+      body: JSON.stringify({ walletAddress, tier: tier || null, isPremium: isPremium ?? null, nodeId: nodeId || null })
     });
     if (!res.ok) throw new Error('Upgrade failed');
     return res.json();
@@ -280,17 +280,8 @@ class ApiService {
     return res.json();
   }
 
-  async fetchNetworkCounts(walletAddress) {
-    const res = await fetch(`${this.baseUrl}/network/counts/${walletAddress}`);
-    if (!res.ok) throw new Error('Failed to fetch network counts');
-    return res.json();
-  }
-
-  async fetchNetworkLevelMembers(walletAddress, level) {
-    const res = await fetch(`${this.baseUrl}/network/level/${walletAddress}/${level}`);
-    if (!res.ok) throw new Error('Failed to fetch level members');
-    return res.json();
-  }
+  // NOTE: fetchNetworkCounts and fetchNetworkLevelMembers are defined above (lines 210-219)
+  // Removed duplicate definitions that were silently overriding the originals.
 
   async fetchReferrals(walletAddress) {
     const res = await fetch(`${this.baseUrl}/referrals/${walletAddress}`);

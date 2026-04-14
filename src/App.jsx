@@ -132,20 +132,10 @@ export default function App() {
 
   useEffect(() => {
     if (!isConnected) return;
-    setupListeners();
-    const { fetchUserData, fetchTasksData, walletAddress } = useGameStore.getState();
-    if (walletAddress) {
-      // Capture ref from URL to ensure it reaches the backend during the first load
-      const params = new URLSearchParams(window.location.search);
-      const refToken = params.get('ref');
-      // Accept either a 0x-prefixed wallet or a numerical Node ID
-      const validRef = (refToken && /^(0x[a-fA-F0-9]{40}|\d+)$/i.test(refToken)) ? refToken : null;
-      
-      fetchUserData(validRef).catch(() => {});
-      fetchTasksData().catch(() => {});
-    }
-    return () => removeListeners();
-  }, [isConnected, setupListeners, removeListeners]);
+    // fetchTasksData on connect (not covered by useWalletLifecycle)
+    const { fetchTasksData } = useGameStore.getState();
+    fetchTasksData().catch(() => {});
+  }, [isConnected]);
 
   // Auto-refresh user data every 30s when connected (keeps balance and stats live)
   useEffect(() => {
@@ -153,7 +143,6 @@ export default function App() {
     const interval = setInterval(() => {
       const { fetchUserData, walletAddress } = useGameStore.getState();
       if (walletAddress) {
-        // Force refresh by bypassing throttle
         useGameStore.setState({ lastBackendSync: null });
         fetchUserData().catch(() => {});
       }
@@ -166,14 +155,14 @@ export default function App() {
     if (!isConnected) return;
     const { fetchReferralData, fetchUserData, fetchTasksData, fetchLeaderboardData, walletAddress } = useGameStore.getState();
     if (!walletAddress) return;
-    
+
     if (activeTab === 'friends') {
       fetchReferralData().catch(() => {});
       fetchLeaderboardData().catch(() => {});
     } else if (activeTab === 'tasks') {
       fetchTasksData().catch(() => {});
-    } else if (activeTab === 'earn' || activeTab === 'dash') {
-      // Force latest user data on earn/stats tabs
+    } else if (activeTab === 'earn' || activeTab === 'dash' || activeTab === 'mine') {
+      // Force latest user data on earn/stats/upgrade tabs
       useGameStore.setState({ lastBackendSync: null });
       fetchUserData().catch(() => {});
     }
