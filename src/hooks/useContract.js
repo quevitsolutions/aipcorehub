@@ -134,7 +134,7 @@ export const useContract = () => {
 };
 
 export const useWalletLifecycle = () => {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected, status } = useAccount();
   const { setWallet, disconnectWallet, fetchUserData, fetchAdminStatus, fetchUserConversions, fetchTeamHistory } = useGameStore();
   const { loadNodeData, fetchBnbBalance } = useContract();
 
@@ -163,10 +163,10 @@ export const useWalletLifecycle = () => {
         ]).catch(() => {});
       }, 500);
 
-    } else if (!isConnected) {
+    } else if (status === 'disconnected') {
       disconnectWallet();
     }
-  }, [isConnected, address]);
+  }, [isConnected, address, status]);
 
   return {
     setupListeners: () => {}, 
