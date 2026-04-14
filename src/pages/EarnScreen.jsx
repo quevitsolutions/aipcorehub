@@ -132,7 +132,7 @@ function RegistrationGate({ setActiveTab }) {
 export default function EarnScreen() {
   const {
     walletAddress, localReward, nodeTier, isPremium,
-    hasNode, lastClaimTime, teamHistory, isHistoryLoading,
+    hasNode, nodeId, lastClaimTime, teamHistory, isHistoryLoading,
     claimMined, setActiveTab, addLocalReward, fetchTeamHistory,
     isFreeActive, createdAt, globalHistory, fetchGlobalHistory,
     initialLoaded, pendingMined, lastSyncTime,
@@ -149,7 +149,58 @@ export default function EarnScreen() {
     try { return JSON.parse(localStorage.getItem('aip-tasks') || '[]'); } catch { return []; }
   });
   const [visibleDays, setVisibleDays] = useState(3);
+  const [liveRewards, setLiveRewards] = useState([]);
+  const latestIncomeRef = useRef(null);
 
+  // Live On-Chain Reward Poller
+  useEffect(() => {
+    if (!hasNode || !nodeId) return;
+    let isMounted = true;
+
+    const pollIncome = async () => {
+      try {
+        const { blockchain } = await import('../services/blockchain.js');
+        const incomes = await blockchain.fetchTeamHistoryOnChain(nodeId, 5);
+        if (!isMounted || !incomes || incomes.length === 0) return;
+
+        const latestIdentifier = `${incomes[0].timestamp}_${incomes[0].from_node_id}_${incomes[0].amount_bnb}`;
+
+        // Initialize ref gracefully on first load to prevent flooding
+        if (!latestIncomeRef.current) {
+          latestIncomeRef.current = latestIdentifier;
+          return;
+        }
+
+        if (latestIdentifier === latestIncomeRef.current) return; // No new incomes
+
+        // Found new incomes
+        let newItems = [];
+        for (let i = 0; i < incomes.length; i++) {
+          const id = `${incomes[i].timestamp}_${incomes[i].from_node_id}_${incomes[i].amount_bnb}`;
+          if (id === latestIncomeRef.current) break;
+          newItems.push({ ...incomes[i], uniqueId: id + '_' + Math.random() });
+        }
+
+        if (newItems.length > 0) {
+          latestIncomeRef.current = latestIdentifier;
+          setLiveRewards(prev => [...prev, ...newItems.reverse()]); // Oldest of new items first
+
+          // Autoclear after 3.5 seconds
+          setTimeout(() => {
+            if (isMounted) {
+              setLiveRewards(prev => prev.filter(r => !newItems.find(n => n.uniqueId === r.uniqueId)));
+            }
+          }, 3500);
+        }
+      } catch (e) {}
+    };
+
+    const interval = setInterval(pollIncome, 20000); // 20s poll
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [hasNode, nodeId]);
   // Keep displayReward in sync with store (animates upward only)
   useEffect(() => {
     setDisplayReward(localReward);
@@ -307,6 +358,37 @@ export default function EarnScreen() {
                     style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle, var(--neon-lime) 0%, transparent 70%)', zIndex: 5, borderRadius: '50%' }} />
                 )}
               </AnimatePresence>
+
+              {/* FLOATING LIVE REWARDS */}
+              <div style={{ position: 'absolute', top: '20%', left: 0, right: 0, bottom: 0, zIndex: 100, pointerEvents: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                <AnimatePresence>
+                  {liveRewards.map((reward) => (
+                    <motion.div
+                      key={reward.uniqueId}
+                      initial={{ opacity: 0, y: 0, scale: 0.5 }}
+                      animate={{ opacity: 1, y: -70, scale: 1 }}
+                      exit={{ opacity: 0, y: -110, scale: 0.8 }}
+                      transition={{ duration: 2.5, ease: 'easeOut' }}
+                      style={{
+                        position: 'absolute',
+                        background: 'rgba(0,0,0,0.85)',
+                        border: '1px solid rgba(255, 215, 0, 0.5)',
+                        boxShadow: '0 0 20px rgba(255, 215, 0, 0.3)',
+                        padding: '8px 16px',
+                        borderRadius: '20px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      <span style={{ fontSize: 16 }}>✨</span>
+                      <span style={{ fontSize: 13, fontWeight: 900, color: '#A3FF12' }}>+{reward.amount_bnb} BNB</span>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase' }}>({reward.event_type})</span>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
 
               {/* EGG */}
               <div style={{
