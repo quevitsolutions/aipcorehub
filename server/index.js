@@ -1521,25 +1521,73 @@ app.get('/api/leaderboard', async (req, res) => {
   }
 });
 
+// GET Free Referral Stats — MUST be registered BEFORE /:walletAddress to avoid route collision
+// Bug: Express was matching /stats/:wallet as /:walletAddress with walletAddress="stats"
+app.get('/api/referrals/stats/:walletAddress', async (req, res) => {
+  const { walletAddress } = req.params;
+  try {
+    // BUG FIX: Fetch ALL parent IDs (handles duplicate accounts)
+    const parentsResult = await query(
+      'SELECT id FROM users WHERE LOWER(wallet_address) = LOWER($1)',
+      [walletAddress]
+    );
+    if (parentsResult.rows.length === 0) {
+      return res.json({ total: 0, free: 0, activated: 0, expired: 0, conversionRate: '0.0' });
+    }
+    const parentIds = parentsResult.rows.map(r => r.id);
+
+    const stats = await query(`
+      SELECT
+        COUNT(*)                                                                              AS total,
+        COUNT(*) FILTER (WHERE node_tier > 0)                                                AS activated,
+        COUNT(*) FILTER (WHERE node_tier = 0 AND created_at > NOW() - INTERVAL '30 days')   AS in_trial,
+        COUNT(*) FILTER (WHERE node_tier = 0 AND created_at <= NOW() - INTERVAL '30 days')  AS expired
+      FROM users
+      WHERE referrer_id = ANY($1::int[])
+    `, [parentIds]);
+
+    const s = stats.rows[0];
+    const total     = parseInt(s.total);
+    const activated = parseInt(s.activated);
+    res.json({
+      total,
+      activated,
+      in_trial:       parseInt(s.in_trial),
+      expired:        parseInt(s.expired),
+      conversionRate: total > 0 ? ((activated / total) * 100).toFixed(1) : '0.0'
+    });
+  } catch (err) {
+    console.error('Stats error:', err.message);
+    res.status(500).json({ error: 'Failed to fetch referral stats' });
+  }
+});
+
 // GET Referral List (My Team)
 app.get('/api/referrals/:walletAddress', async (req, res) => {
   const { walletAddress } = req.params;
   try {
     // Find all IDs associated with this wallet (case-insensitive) to handle duplicates
-    const parentsResult = await query('SELECT id FROM users WHERE LOWER(wallet_address) = LOWER($1)', [walletAddress]);
+    const parentsResult = await query(
+      'SELECT id FROM users WHERE LOWER(wallet_address) = LOWER($1)',
+      [walletAddress]
+    );
     if (parentsResult.rows.length === 0) return res.json([]);
     const parentIds = parentsResult.rows.map(r => r.id);
 
     const result = await query(
-      `SELECT wallet_address, 
-              local_reward, 
-              COALESCE(created_at, NOW()) as joined_at,
-              -- Pre-calculate trial_days_left server-side for accuracy
-              GREATEST(0, EXTRACT(DAY FROM (COALESCE(created_at, NOW()) + INTERVAL '30 days') - NOW())::int) as trial_days_left,
-              COALESCE(node_tier, 0) as node_tier, 
-              COALESCE(node_id, 0) as node_id,
-              (SELECT COUNT(*) FROM users WHERE referrer_id = u.id) as direct_count,
-              (SELECT COUNT(*) FROM users WHERE matrix_parent_id = u.id) as team_size
+      `SELECT wallet_address,
+              COALESCE(local_reward, 0)         AS local_reward,
+              COALESCE(created_at, NOW())        AS joined_at,
+              COALESCE(node_tier, 0)             AS node_tier,
+              COALESCE(node_id, 0)               AS node_id,
+              -- BUG FIX: Use EPOCH math for correct days remaining (EXTRACT(DAY) is wrong across months)
+              GREATEST(0,
+                CEIL(
+                  EXTRACT(EPOCH FROM ((COALESCE(created_at, NOW()) + INTERVAL '30 days') - NOW())) / 86400
+                )::int
+              )                                  AS trial_days_left,
+              (SELECT COUNT(*) FROM users WHERE referrer_id = u.id)           AS direct_count,
+              (SELECT COUNT(*) FROM users WHERE matrix_parent_id = u.id)      AS team_size
        FROM users u
        WHERE referrer_id = ANY($1::int[])
        ORDER BY u.created_at DESC
@@ -1548,42 +1596,8 @@ app.get('/api/referrals/:walletAddress', async (req, res) => {
     );
     res.json(result.rows);
   } catch (err) {
-    console.error('Referral fetching error:', err);
+    console.error('Referral list error:', err.message);
     res.status(500).json({ error: 'Failed to fetch referrals' });
-  }
-});
-
-// GET Free Referral Stats (total count, trial breakdown, conversion rate)
-app.get('/api/referrals/stats/:walletAddress', async (req, res) => {
-  const { walletAddress } = req.params;
-  try {
-    const parentsResult = await query('SELECT id FROM users WHERE LOWER(wallet_address) = LOWER($1)', [walletAddress]);
-    if (parentsResult.rows.length === 0) return res.json({ total: 0, free: 0, activated: 0, expired: 0, conversionRate: 0 });
-    const parentId = parentsResult.rows[0].id;
-
-    const stats = await query(`
-      SELECT
-        COUNT(*) as total,
-        COUNT(*) FILTER (WHERE node_tier > 0) as activated,
-        COUNT(*) FILTER (WHERE node_tier = 0 AND created_at > NOW() - INTERVAL '30 days') as in_trial,
-        COUNT(*) FILTER (WHERE node_tier = 0 AND created_at <= NOW() - INTERVAL '30 days') as expired
-      FROM users
-      WHERE referrer_id = $1
-    `, [parentId]);
-
-    const s = stats.rows[0];
-    const total = parseInt(s.total);
-    const activated = parseInt(s.activated);
-    res.json({
-      total,
-      activated,
-      in_trial: parseInt(s.in_trial),
-      expired: parseInt(s.expired),
-      conversionRate: total > 0 ? ((activated / total) * 100).toFixed(1) : '0.0'
-    });
-  } catch (err) {
-    console.error('Stats error:', err);
-    res.status(500).json({ error: 'Failed to fetch referral stats' });
   }
 });
 
