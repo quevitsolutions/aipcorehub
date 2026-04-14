@@ -139,8 +139,8 @@ export default function UpgradeScreen() {
                 height: 'auto', padding: '16px 20px', borderRadius: 16, gap: 4, letterSpacing: '0.5px' 
               }}>
               <span style={{ fontSize: 15, fontWeight: 900 }}>ACTIVATE NODE (LEVEL 1)</span>
-              <span style={{ fontSize: 13, fontWeight: 800, opacity: 0.8 }}>
-                {parseFloat(tierCosts[0]).toFixed(3)} BNB <span style={{ fontSize: 11, fontWeight: 700, color: '#4FC3F7', marginLeft: 4 }}>≈ ${(parseFloat(tierCosts[0]) * bnbPrice).toFixed(2)} USD</span>
+              <span style={{ fontSize: 13, fontWeight: 800, opacity: 0.9 }}>
+                {parseFloat(tierCosts[0]).toFixed(3)} BNB <span style={{ fontSize: 11, fontWeight: 900, color: '#ffffff', marginLeft: 4, textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>≈ ${(parseFloat(tierCosts[0]) * bnbPrice).toFixed(2)} USD</span>
               </span>
             </button>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 16, color: '#A3FF12' }}>
