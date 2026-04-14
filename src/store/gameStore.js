@@ -137,33 +137,27 @@ export const useGameStore = create(
         set({ isProcessing, processingLabel }),
 
       setNodeData: (data) => {
-        // Tier from blockchain (authoritative) — clamp to min 1 for active nodes
         const rawTier = data.tier !== undefined ? Number(data.tier) : 0;
         const currentTier = get().nodeTier || 0;
-        // Never downgrade an already-known tier from the blockchain
         const tier = rawTier > 0 ? rawTier : currentTier > 0 ? currentTier : 1;
 
         const newMiningRate = 1000 * Math.pow(2, Math.max(0, tier - 1));
-        const newMaxEnergy = 500 + (tier - 1) * 200;
+        const newMaxEnergy  = 500 + (tier - 1) * 200;
         const isActuallyActive = data.nodeId && Number(data.nodeId) > 0;
 
         set({
-          hasNode: isActuallyActive,
-          nodeId: isActuallyActive ? Number(data.nodeId) : null,
-          nodeTier: isActuallyActive ? tier : 0,
+          hasNode:    isActuallyActive,
+          nodeId:     isActuallyActive ? Number(data.nodeId) : null,
+          nodeTier:   isActuallyActive ? tier : 0,
           nodeActive: data.active,
           miningRate: newMiningRate,
-          maxEnergy: newMaxEnergy,
-          energy: Math.min(newMaxEnergy, get().energy),
-          isLocked: !isActuallyActive,
-          // ...
-          demoTaps: 0,
+          maxEnergy:  newMaxEnergy,
+          energy:     Math.min(newMaxEnergy, get().energy),
+          isLocked:   !isActuallyActive,
+          demoTaps:   0,
+          // ANTI-FLICKER: syncWithBackend() removed — was triggering a 2nd re-render
+          // on every blockchain data load. DB is now kept in sync via /api/mining/upgrade.
         });
-
-        // Instantly inform the server of the authoritative blockchain tier
-        if (isActuallyActive) {
-          get().syncWithBackend();
-        }
       },
 
       handleTap: () => {

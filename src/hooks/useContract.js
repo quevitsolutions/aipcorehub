@@ -22,13 +22,21 @@ export const useContract = () => {
     try {
       const data = await blockchain.getFullDashboardData(address);
       if (data.hasNode) {
-        setNodeData({ nodeId: data.nodeId, tier: data.tier, active: data.nodeActive });
+        // ANTI-FLICKER: DB is now authoritative for node identity (hasNode/nodeId/nodeTier).
+        // Only call setNodeData if DB doesn't know about this node yet.
+        // Calling setNodeData when DB already has the data causes an extra re-render.
+        const dbHasNode = useGameStore.getState().hasNode;
+        if (!dbHasNode) {
+          setNodeData({ nodeId: data.nodeId, tier: data.tier, active: data.nodeActive });
+        }
+
+        // Always update chain-specific data — additive, not overwriting node identity
         updateChainData({
-          totalEarned:    parseFloat(data.totalEarned),
+          totalEarned:    parseFloat(data.totalEarned    || 0),
           teamSize:       data.teamSize,
           directRefs:     data.directRefs,
-          pendingReward:  parseFloat(data.pendingReward),
-          poolClaimable:  parseFloat(data.poolClaimable),
+          pendingReward:  parseFloat(data.pendingReward  || 0),
+          poolClaimable:  parseFloat(data.poolClaimable  || 0),
           poolName:       data.poolName || 'None',
           totalDeposited: parseFloat(data.totalDeposited || 0),
           missingDirects: data.missingDirects || 0,
@@ -37,8 +45,7 @@ export const useContract = () => {
         });
         return data.nodeId;
       } else {
-        // STABILITY FIX: Never downgrade to 'no node' if the store already shows the user has one.
-        // Blockchain RPC can return stale/empty data during BSC congestion — trust DB state.
+        // STABILITY: Never downgrade if DB already shows the user has a node.
         const currentTier = useGameStore.getState().nodeTier || 0;
         if (currentTier === 0) {
           setNodeData({ nodeId: 0, tier: 0, active: false });
@@ -46,7 +53,6 @@ export const useContract = () => {
         return 0;
       }
     } catch (err) {
-      // PERF FIX: Reduced retry 2s -> 1s, 3 retries -> 2
       if (retries > 0) {
         await new Promise(r => setTimeout(r, 1000));
         return loadNodeData(address, retries - 1);
