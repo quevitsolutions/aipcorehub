@@ -2,18 +2,37 @@
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     wallet_address VARCHAR(42) UNIQUE NOT NULL,
-    telegram_id BIGINT, -- Kept for historical/cross-platform support
+    telegram_id BIGINT,
     taps INTEGER DEFAULT 0,
+    demo_taps INTEGER DEFAULT 0,
     local_reward NUMERIC(36, 18) DEFAULT 0,
+    total_earned NUMERIC(36, 18) DEFAULT 0,
     energy INTEGER DEFAULT 500,
     max_energy INTEGER DEFAULT 500,
     mining_rate NUMERIC(36, 18) DEFAULT 1000,
     last_claim_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     streak INTEGER DEFAULT 0,
     last_streak_date DATE,
+    daily_streak INTEGER DEFAULT 0,
+    last_daily_claim TIMESTAMP,
     referrer_id BIGINT REFERENCES users(id),
-    node_tier INTEGER DEFAULT 0, -- 0: No Node, 1: Base (100/hr), 2: Pro (200/hr)
-    is_premium BOOLEAN DEFAULT FALSE, -- 100% bonus (2x) flag
+    referred_by_memo TEXT,
+    activated_refs INTEGER DEFAULT 0,
+    -- Node / Matrix fields
+    node_id INTEGER UNIQUE,
+    node_tier INTEGER DEFAULT 0,
+    node_active BOOLEAN DEFAULT TRUE,
+    is_premium BOOLEAN DEFAULT FALSE,
+    sponsor_node_id INTEGER,
+    matrix_parent_id INTEGER,
+    matrix_parent_node_id INTEGER,
+    matrix_counts JSONB DEFAULT '[]',
+    -- Milestone / reward tracking
+    claimed_milestones TEXT DEFAULT '[]',
+    -- Sync tracking
+    last_synced_block INTEGER DEFAULT 0,
+    last_rpc_sync TIMESTAMP,
+    -- Timestamps
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
