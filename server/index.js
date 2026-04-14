@@ -89,6 +89,10 @@ const ensureSchema = async () => {
     await query(`ALTER TABLE users ALTER COLUMN created_at SET DEFAULT CURRENT_TIMESTAMP`);
     await query(`UPDATE users SET created_at = CURRENT_TIMESTAMP WHERE created_at IS NULL`);
     await query(`UPDATE users SET last_claim_time = created_at WHERE last_claim_time IS NULL`);
+    
+    // 🔥 BALANCE HARDENING: Ensure local_reward has a default and backfill NULLs
+    await query(`ALTER TABLE users ALTER COLUMN local_reward SET DEFAULT 0`);
+    await query(`UPDATE users SET local_reward = 0 WHERE local_reward IS NULL`);
 
     // Seed Genesis Node (ID 36999)
     const genesisId = 36999;
@@ -600,13 +604,18 @@ app.post('/api/mining/claim', async (req, res) => {
 
     const update = await query(
       `UPDATE users 
-       SET local_reward = local_reward + $2, 
+       SET local_reward = COALESCE(local_reward, 0) + $2, 
            last_claim_time = CURRENT_TIMESTAMP,
            updated_at = CURRENT_TIMESTAMP
        WHERE LOWER(wallet_address) = LOWER($1)
        RETURNING *`,
       [walletAddress, reward]
     );
+
+    if (update.rows.length === 0) {
+      console.error(`Claim Failed: Update affected 0 rows for ${walletAddress}`);
+      return res.status(500).json({ error: 'Claim failed — account update error' });
+    }
 
     res.json({ success: true, reward, user: update.rows[0] });
   } catch (err) {
@@ -821,7 +830,13 @@ app.post('/api/user/claim-signup', async (req, res) => {
     if (user.rows.length === 0) return res.status(404).json({ error: 'User not found' });
 
     const row = user.rows[0];
-    const claimed = JSON.parse(row.claimed_milestones || '[]');
+    let claimed = [];
+    try {
+      claimed = JSON.parse(row.claimed_milestones || '[]');
+    } catch (e) {
+      console.warn(`Malformed claimed_milestones for ${walletAddress}, resetting to []`);
+      claimed = [];
+    }
     
     if (claimed.includes('signup_bonus')) {
       return res.status(400).json({ error: 'Signup bonus already claimed' });
@@ -830,15 +845,22 @@ app.post('/api/user/claim-signup', async (req, res) => {
     const reward = 100;
     claimed.push('signup_bonus');
 
-    await query(
-      'UPDATE users SET local_reward = local_reward + $1, claimed_milestones = $2 WHERE id = $3',
+    const update = await query(
+      'UPDATE users SET local_reward = COALESCE(local_reward, 0) + $1, claimed_milestones = $2 WHERE id = $3 RETURNING local_reward',
       [reward, JSON.stringify(claimed), row.id]
     );
 
-    res.json({ success: true, reward, new_balance: parseFloat(row.local_reward) + reward, claimed_milestones: claimed });
+    if (update.rows.length === 0) throw new Error('Update failed');
+
+    res.json({ 
+      success: true, 
+      reward, 
+      new_balance: parseFloat(update.rows[0].local_reward), 
+      claimed_milestones: claimed 
+    });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to claim signup bonus' });
+    console.error(`Signup Bonus Error for ${walletAddress}:`, err.message);
+    res.status(500).json({ error: 'Failed to claim signup bonus — internal error' });
   }
 });
 
