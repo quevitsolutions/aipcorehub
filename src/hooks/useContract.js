@@ -131,15 +131,43 @@ export const useContract = () => {
       }
     },
     unlockTier: async (nodeId, toTier) => {
+      if (!nodeId) return toast.error('Node ID missing — reconnect wallet') && false;
       const tid = toast.loading(`Upgrading to Level ${toTier}...`);
       setProcessing(true, `Upgrading to Level ${toTier}...`);
       try {
         await blockchain.unlockTier(nodeId, toTier);
-        toast.success(`🚀 Level ${toTier} Unlocked!`, { id: tid });
+
+        // ✅ Immediately sync DB (same pattern as createNode)
+        const walletAddress = useGameStore.getState().walletAddress;
+        if (walletAddress) {
+          await fetch(`${import.meta.env.VITE_API_URL || ''}/api/mining/upgrade`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ walletAddress, tier: toTier })
+          }).catch(() => {});
+
+          // Force-reload all state immediately after chain propagation
+          useGameStore.setState({ lastBackendSync: null });
+          setTimeout(() => {
+            Promise.all([
+              useGameStore.getState().fetchUserData(),
+              loadNodeData(walletAddress),
+              fetchBnbBalance(walletAddress),
+            ]).catch(() => {});
+          }, 2000);
+        }
+
+        toast.success(`🚀 Level ${toTier} Unlocked!`, { id: tid, duration: 5000 });
         setProcessing(false);
         return true;
       } catch (e) {
-        toast.error("Upgrade failed", { id: tid });
+        if (e?.message?.includes('insufficient funds') || e?.code === -32000) {
+          toast.error('⚠️ Not enough BNB for this upgrade.', { id: tid, duration: 8000 });
+        } else if (e?.code === 4001 || e?.message?.includes('rejected')) {
+          toast.error('Transaction cancelled.', { id: tid });
+        } else {
+          toast.error(e?.shortMessage || e?.message?.slice(0, 80) || 'Upgrade failed', { id: tid });
+        }
         setProcessing(false);
         return false;
       }
