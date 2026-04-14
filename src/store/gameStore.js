@@ -7,6 +7,15 @@ const MAX_ENERGY = 500;
 const ENERGY_REGEN_INTERVAL = 3000; // ms per 1 energy
 const BASE_MINING_RATE = 1000;
 
+const RESET_STATE = {
+  hasNode: false, nodeId: null, nodeTier: 0, nodeActive: false, isPremium: false,
+  isFreeActive: false, createdAt: null, initialLoaded: false, pendingMined: 0,
+  lastSyncTime: null, sponsorWallet: null, sponsorNodeId: null, localReward: 0,
+  taps: 0, demoTaps: 0, teamSize: 0, directRefs: 0, totalEarned: 0, streak: 0,
+  lastClaimDate: null, teamHistory: [], leaderboard: [], isAdmin: false,
+  adminStats: null, claimedMilestones: [], activatedRefs: 0
+};
+
 export const useGameStore = create(
   persist(
     (set, get) => ({
@@ -98,15 +107,17 @@ export const useGameStore = create(
       referralCode: null,
 
       // Actions
-      setWallet: (address) =>
+      setWallet: (address) => {
+        const current = get().walletAddress;
+        // If connecting a different wallet while one is already in state, wipe the slate clean
+        const isSwitching = address && current && address.toLowerCase() !== current.toLowerCase();
+        
         set({
           walletAddress: address,
           isConnected: !!address,
-          // Reset node data if disconnecting
-          ...(address
-            ? {}
-            : { hasNode: false, nodeId: null, nodeTier: 0, nodeActive: false }),
-        }),
+          ...(address ? (isSwitching ? RESET_STATE : {}) : RESET_STATE),
+        });
+      },
 
       setBnbBalance: (balance) => set({ bnbBalance: balance }),
 
@@ -115,18 +126,7 @@ export const useGameStore = create(
           walletAddress: null,
           isConnected: false,
           bnbBalance: "0.00",
-          hasNode: false,
-          nodeId: null,
-          nodeTier: 0,
-          nodeActive: false,
-          // Bug #6 fix: reset all free user state on disconnect
-          isFreeActive: false,
-          createdAt: null,
-          initialLoaded: false,
-          pendingMined: 0,
-          lastSyncTime: null,
-          sponsorWallet: null,
-          sponsorNodeId: null,
+          ...RESET_STATE
         });
         localStorage.removeItem("aipcore-game-state");
       },
