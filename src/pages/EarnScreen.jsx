@@ -166,12 +166,14 @@ export default function EarnScreen() {
   const isExpired = initialLoaded && !hasNode && daysLeftCalc <= 0;
   const effectiveRate = isExpired ? 0 : ratePerHour;
 
-  const localMinedSinceSync = (initialLoaded && lastSyncTime && !isExpired)
-    ? Math.max(0, ((Date.now() - lastSyncTime) / 3600000) * effectiveRate)
-    : 0;
-
-  // The true authoritative total is what the server told us + the live delta since that sync
-  const totalMined = isExpired ? 0 : Math.min(24 * effectiveRate, Number(pendingMined || 0) + localMinedSinceSync);
+  const now = Date.now();
+  const elapsed = Math.max(0, now - lastClaimTime);
+  
+  // Calculate totalMined precisely identical to the backend /api/mining/claim
+  const diffHours = elapsed / 3600000;
+  const cappedHours = Math.min(diffHours, 24);
+  const totalMined = isExpired ? 0 : (cappedHours * effectiveRate);
+  
   const totalWealth = Number(localReward || 0) + totalMined;
 
   // Live timer — re-renders every second
@@ -181,8 +183,6 @@ export default function EarnScreen() {
     return () => clearInterval(t);
   }, []);
 
-  const now = Date.now();
-  const elapsed = now - lastClaimTime;
   // Bug #3 fix: expired users should see no time remaining
   const timeRemaining = isExpired ? 0 : Math.max(0, MAX_SESSION - elapsed);
   // Bug #2 fix: ring fills for both node owners AND free trial users

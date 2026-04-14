@@ -177,7 +177,17 @@ async function reconcileDuplicateUsers() {
       // 3. Move matrix links
       await query(`UPDATE users SET matrix_parent_id = $1 WHERE matrix_parent_id = ANY($2)`, [keepId, dropIds]);
 
-      // 4. Delete duplicates
+      // 4. Safely consolidate and merge balances before dropping duplicates
+      await query(`
+        UPDATE users 
+        SET local_reward = local_reward + (SELECT COALESCE(SUM(local_reward), 0) FROM users WHERE id = ANY($1)),
+            taps = taps + (SELECT COALESCE(SUM(taps), 0) FROM users WHERE id = ANY($1)),
+            demo_taps = demo_taps + (SELECT COALESCE(SUM(demo_taps), 0) FROM users WHERE id = ANY($1)),
+            total_earned = total_earned + (SELECT COALESCE(SUM(total_earned), 0) FROM users WHERE id = ANY($1))
+        WHERE id = $2
+      `, [dropIds, keepId]);
+
+      // 5. Delete duplicates
       await query(`DELETE FROM users WHERE id = ANY($1)`, [dropIds]);
     }
     
