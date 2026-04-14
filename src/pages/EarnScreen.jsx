@@ -279,8 +279,8 @@ export default function EarnScreen() {
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontSize: '20px', fontWeight: 900, color: '#FFD700', letterSpacing: '2px' }}>$AIP</span>
-              <span className="balance-value" style={{ fontSize: 48, fontWeight: 900, color: '#fff', textShadow: '0 0 20px rgba(255,255,255,0.1)' }}>
-                {Math.floor(totalWealth).toLocaleString('en-US')}
+              <span className="balance-value" style={{ fontSize: 44, fontWeight: 900, color: '#fff', textShadow: '0 0 20px rgba(255,255,255,0.1)' }}>
+                {totalWealth >= 1 ? Math.floor(totalWealth).toLocaleString('en-US') : totalWealth.toFixed(4)}
               </span>
             </div>
           </div>
@@ -380,24 +380,24 @@ export default function EarnScreen() {
               {/* COLLECT (30%) */}
               <button
                 onClick={onClaim}
-                disabled={isClaiming || totalMined <= 0 || isExpired}
+                disabled={isClaiming || isExpired}
                 style={{
                   flex: 0.3,
-                  background: (!isClaiming && totalMined > 0) ? '#4FC3F7' : 'rgba(255,255,255,0.04)',
+                  background: (!isClaiming && !isExpired) ? '#4FC3F7' : 'rgba(255,255,255,0.04)',
                   border: 'none', borderRadius: 16, padding: '16px 5px',
-                  cursor: (!isClaiming && totalMined > 0) ? 'pointer' : 'default',
+                  cursor: (!isClaiming && !isExpired) ? 'pointer' : 'default',
                   transition: 'all 0.3s',
                   opacity: isClaiming ? 0.6 : 1
                 }}
               >
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                  <span style={{ fontSize: 13, fontWeight: 950, color: (!isClaiming && totalMined > 0) ? '#000' : 'rgba(255,255,255,0.2)' }}>
+                  <span style={{ fontSize: 13, fontWeight: 950, color: (!isClaiming && !isExpired) ? '#000' : 'rgba(255,255,255,0.2)' }}>
                     {isClaiming ? '⏳' : maturity >= 1 ? '🥚' : 'CLAIM'}
                   </span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                    <span style={{ fontSize: 9, fontWeight: 900, color: totalMined > 0 ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.1)' }}>$AIP</span>
-                    <span style={{ fontSize: 11, fontWeight: 950, color: totalMined > 0 ? '#000' : 'rgba(255,255,255,0.2)' }}>
-                      {isClaiming ? '...' : Math.floor(totalMined)}
+                    <span style={{ fontSize: 9, fontWeight: 900, color: (!isClaiming && !isExpired) ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.1)' }}>$AIP</span>
+                    <span style={{ fontSize: 11, fontWeight: 950, color: (!isClaiming && !isExpired) ? '#000' : 'rgba(255,255,255,0.2)' }}>
+                      {isClaiming ? '...' : totalMined.toFixed(4)}
                     </span>
                   </div>
                 </div>
