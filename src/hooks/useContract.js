@@ -145,10 +145,11 @@ export const useWalletLifecycle = () => {
   const { loadNodeData, fetchBnbBalance } = useContract();
 
   useEffect(() => {
-    // STABILITY FIX: Only run on exact 'connected' status.
-    // Wagmi cycles through 'connecting' -> 'reconnecting' -> 'connected',
-    // causing this effect to fire 3+ times and creating race conditions.
-    if (!isConnected || !address || status !== 'connected') return;
+    // STABILITY FIX: Accept both 'connected' AND 'reconnecting' status.
+    // On page refresh with a saved wallet, Wagmi starts as 'reconnecting' — blocking
+    // on 'connected' only means fetchUserData never fires and the app shows all nulls.
+    // Block only 'connecting' (unconfirmed first-connect attempt).
+    if (!isConnected || !address || status === 'connecting') return;
 
     // Set wallet first (synchronous)
     setWallet(address);

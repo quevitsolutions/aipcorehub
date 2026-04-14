@@ -40,6 +40,7 @@ export const useGameStore = create(
 
       // Backend Sync
       isSyncing: false,
+      isFetchingUser: false,
       isProcessing: false,
       processingLabel: "",
       initialLoaded: false,
