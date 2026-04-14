@@ -1386,38 +1386,41 @@ app.post('/api/network/force-repair', async (req, res) => {
 
 /**
  * High-Precision RPC-Mirror Sync: Fetches 100% accurate contract state for a node.
+ * Accepts optional walletAddress for dual-key lookup when node_id not yet in DB.
  */
-async function syncNodeStateFromRPC(nodeId) {
+async function syncNodeStateFromRPC(nodeId, walletAddress = null) {
   if (!nodeId || nodeId === 0) return;
   try {
-    // 1. Fetch Node Struct (Tier, Sponsor, etc.)
     const nodeInfo = await aipcoreContract.nodes(nodeId);
-    
-    // 2. Update DB with live contract state (links and metadata only)
+
+    // DUAL-KEY UPDATE: Finds the row by node_id OR wallet_address (whichever exists).
+    // Also writes node_id onto the row so future lookups use node_id.
     await query(`
       UPDATE users 
-      SET node_tier = $1,
-          sponsor_node_id = $2,
-          matrix_parent_node_id = $3,
-          last_rpc_sync = CURRENT_TIMESTAMP
-      WHERE node_id = $4
-    `, [Number(nodeInfo.tier), Number(nodeInfo.sponsor), Number(nodeInfo.matrixParent), nodeId]);
+      SET node_id                = $1,
+          node_tier              = $2,
+          sponsor_node_id        = $3,
+          matrix_parent_node_id  = $4,
+          node_active            = TRUE,
+          last_rpc_sync          = CURRENT_TIMESTAMP
+      WHERE node_id = $1
+         OR (LOWER(wallet_address) = LOWER($5) AND $5 IS NOT NULL)
+    `, [nodeId, Number(nodeInfo.tier), Number(nodeInfo.sponsor), Number(nodeInfo.matrixParent), walletAddress || null]);
 
-    // 3. Critically repair links to enable CTE matrix calculation
+    // Repair tree links after every sync
     await repairTreeLinks();
+    console.log(`✨ RPC Mirror: Synced Node ${nodeId}${walletAddress ? ` (wallet: ${walletAddress})` : ''} metadata and repaired links`);
 
-    console.log(`✨ RPC Mirror: Synced Node ${nodeId} metadata and repaired links`);
-
-    // Chain Reaction: If this is a new link, trigger an upline scan periodically
-    // (Note: To avoid recursion, we only climb 3 levels per event)
-    let parent = Number(nodeInfo.sponsor);
+    // Chain Reaction: climb upline to sync sponsor chain (max 3 hops per call)
+    const parent = Number(nodeInfo.sponsor);
     if (parent > 0) {
-       // We set a small timeout to avoid hammering the RPC node too hard in one event block
-       setTimeout(() => syncNodeStateFromRPC(parent), 2000);
+      setTimeout(() => syncNodeStateFromRPC(parent), 2000);
     }
-
   } catch (err) {
     console.error(`Failed to RPC sync Node ${nodeId}:`, err.message);
+  }
+}
+
   }
 }
 
@@ -1876,26 +1879,23 @@ async function findFirstActiveAncestor(userId) {
  */
 async function ensureNodeSync(wallet) {
   try {
-    // Check if the wallet was previously a free user (no node_id)
     const prevState = await query('SELECT node_id, referrer_id FROM users WHERE LOWER(wallet_address) = LOWER($1)', [wallet]);
     const wasFreeBefore = prevState.rows.length > 0 && !prevState.rows[0].node_id;
-    const referrerId = prevState.rows.length > 0 ? prevState.rows[0].referrer_id : null;
+    const referrerId    = prevState.rows.length > 0 ? prevState.rows[0].referrer_id : null;
 
     const nodeId = await aipcoreContract.addressToNodeId(wallet);
     if (Number(nodeId) > 0) {
       console.log(`📡 Auto-Sync: Found on-chain node ${nodeId} for ${wallet}. Updating DB...`);
-      await syncNodeStateFromRPC(Number(nodeId));
+      // DUAL-KEY: Pass wallet so syncNodeStateFromRPC can find+update by wallet_address too
+      await syncNodeStateFromRPC(Number(nodeId), wallet);
 
-      // 🔥 Conversion Event: If this user just converted from Free to Node Owner,
-      // proactively update the referrer's activated_refs so their milestone/task progress is instant.
       if (wasFreeBefore && referrerId) {
         await query(
           `UPDATE users SET activated_refs = COALESCE(activated_refs, 0) + 1 WHERE id = $1`,
           [referrerId]
         );
-        console.log(`🎉 Conversion: Incremented activated_refs for referrer ID ${referrerId} (wallet: ${wallet} activated node ${nodeId})`);
+        console.log(`🎉 Conversion: Incremented activated_refs for referrer ID ${referrerId}`);
       }
-
       return true;
     }
   } catch (err) {
