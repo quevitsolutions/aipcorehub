@@ -305,6 +305,9 @@ export const useGameStore = create(
           const creationTime = data.created_at ? new Date(data.created_at).getTime() : now;
           const isFreeActive = backendTier === 0 && (now - creationTime < 30 * 24 * 60 * 60 * 1000);
 
+          const currentNodeId = get().nodeId;
+          const currentHasNode = get().hasNode;
+
           // BUG FIX: safe JSON parse for claimed_milestones
           let claimedMilestones = [];
           try { claimedMilestones = JSON.parse(data.claimed_milestones || '[]'); }
@@ -319,8 +322,9 @@ export const useGameStore = create(
             directRefs:    parseInt(data.direct_refs || 0),
             teamSize:      parseInt(data.team_size   || 0),
             activatedRefs: parseInt(data.activated_refs || 0),
-            hasNode:       backendTier > 0 || !!(data.node_id && data.node_id > 0),
-            nodeId:        data.node_id || null,
+            // STABILITY FIX: Never let 30s fetch downgrade node identity if DB is out of sync
+            hasNode:       backendTier > 0 || !!(data.node_id && data.node_id > 0) || currentHasNode,
+            nodeId:        data.node_id || currentNodeId,
             nodeTier:      backendTier > currentTier ? backendTier : currentTier,
             isPremium:     data.is_premium || false,
             pendingMined:  parseFloat(data.pending_mined || 0),
