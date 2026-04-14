@@ -22,11 +22,11 @@ export const useContract = () => {
     try {
       const data = await blockchain.getFullDashboardData(address);
       if (data.hasNode) {
-        // ANTI-FLICKER: DB is now authoritative for node identity (hasNode/nodeId/nodeTier).
-        // Only call setNodeData if DB doesn't know about this node yet.
-        // Calling setNodeData when DB already has the data causes an extra re-render.
-        const dbHasNode = useGameStore.getState().hasNode;
-        if (!dbHasNode) {
+        // ANTI-FLICKER: Only skip setNodeData if DB already has BOTH hasNode AND nodeId.
+        // If nodeId is null (DB has tier but no node_id yet), we still need blockchain data.
+        const storeState = useGameStore.getState();
+        const dbFullyLoaded = storeState.hasNode && storeState.nodeId && Number(storeState.nodeId) > 0;
+        if (!dbFullyLoaded) {
           setNodeData({ nodeId: data.nodeId, tier: data.tier, active: data.nodeActive });
         }
 
