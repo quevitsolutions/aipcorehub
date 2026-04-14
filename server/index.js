@@ -85,6 +85,11 @@ const ensureSchema = async () => {
     // Ensure activated_refs exists (used for milestone tracking)
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS activated_refs INTEGER DEFAULT 0`);
     
+    // 🔥 CRITICAL FIX: Ensure created_at has a default and backfill NULLs (Fixes "Claim Failed" bug)
+    await query(`ALTER TABLE users ALTER COLUMN created_at SET DEFAULT CURRENT_TIMESTAMP`);
+    await query(`UPDATE users SET created_at = CURRENT_TIMESTAMP WHERE created_at IS NULL`);
+    await query(`UPDATE users SET last_claim_time = created_at WHERE last_claim_time IS NULL`);
+
     // Seed Genesis Node (ID 36999)
     const genesisId = 36999;
     const adminWallet = process.env.VITE_ADMIN_WALLET ? process.env.VITE_ADMIN_WALLET.toLowerCase() : null;

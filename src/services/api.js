@@ -58,7 +58,10 @@ class ApiService {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ walletAddress })
     });
-    if (!res.ok) throw new Error('Claim failed');
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Claim failed');
+    }
     return res.json();
   }
 
