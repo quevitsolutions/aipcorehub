@@ -267,6 +267,18 @@ class BlockchainService {
     ).wait();
   }
 
+  async registerPool(nodeId) {
+    const signer = await getEthersSigner(config);
+    if (!signer) throw new Error("Wallet not connected");
+    return (
+      await new ethers.Contract(
+        CONTRACTS.REWARDPOOL,
+        REWARDPOOL_ABI,
+        signer,
+      ).registerNode(nodeId)
+    ).wait();
+  }
+
   async unlockTier(nodeId, toTier) {
     const signer = await getEthersSigner(config);
     if (!signer) throw new Error("Wallet not connected");

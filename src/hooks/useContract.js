@@ -141,6 +141,42 @@ export const useContract = () => {
         return false;
       }
     },
+    claimPool: async (nodeId) => {
+      if (!nodeId) return;
+      const tid = toast.loading("Claiming Pool Rewards...");
+      setProcessing(true, "Claiming Pool...");
+      try {
+        await blockchain.claimPool(nodeId);
+        toast.success("✅ Pool Rewards Claimed!", { id: tid });
+        const walletAddress = useGameStore.getState().walletAddress;
+        setTimeout(() => loadNodeData(walletAddress), 1500);
+        setProcessing(false);
+        return true;
+      } catch (e) {
+        toast.error("Claim failed: " + e.message.slice(0, 40), { id: tid });
+        setProcessing(false);
+        return false;
+      }
+    },
+    registerPool: async (nodeId) => {
+      if (!nodeId) return;
+      const tid = toast.loading("Registering into Reward Pool...");
+      setProcessing(true, "Registering...");
+      try {
+        await blockchain.registerPool(nodeId);
+        toast.success("🏆 Successfully registered for the Reward Pool!", { id: tid });
+        const walletAddress = useGameStore.getState().walletAddress;
+        setTimeout(() => loadNodeData(walletAddress), 1500);
+        setProcessing(false);
+        return true;
+      } catch (e) {
+        let msg = e.message;
+        if (msg.includes("insufficient funds")) msg = "Insufficient BNB to pay gas for registration.";
+        toast.error("Registration failed: " + msg.slice(0, 50), { id: tid });
+        setProcessing(false);
+        return false;
+      }
+    },
     unlockTier: async (nodeId, toTier) => {
       if (!nodeId) return toast.error('Node ID missing — reconnect wallet') && false;
       const tid = toast.loading(`Upgrading to Level ${toTier}...`);

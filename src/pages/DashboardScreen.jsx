@@ -12,7 +12,7 @@ export default function DashboardScreen() {
     poolClaimable, poolQual, localReward, streak, isConnected,
     conversionHistory, isFreeActive, globalStats
   } = useGameStore();
-  const { loadNodeData, connectWallet, claimPool, fetchTeamCounts } = useContract();
+  const { loadNodeData, connectWallet, claimPool, fetchTeamCounts, registerPool } = useContract();
   const bnbPrice = useBnbPrice();
   const usd = (bnb) => bnbPrice > 0 ? <span style={{ fontSize: 11, fontWeight: 700, color: '#4FC3F7', display: 'block', marginTop: 2 }}>≈ ${(parseFloat(bnb || 0) * bnbPrice).toFixed(2)}</span> : null;
 
@@ -145,6 +145,25 @@ export default function DashboardScreen() {
             );
           })}
         </div>
+
+        {/* Manual Registration Button shown when qualified for next tier */}
+        {poolQual.isPoolQualified && poolQual.poolName !== "Gold" && (
+          <button 
+            className="giant-btn" 
+            style={{ 
+              marginTop: 24, 
+              background: 'var(--neon-lime)', 
+              color: '#000', 
+              height: 44, 
+              fontSize: 13,
+              boxShadow: '0 0 20px rgba(203, 255, 1, 0.4)'
+            }}
+            onClick={() => registerPool(nodeId)}
+          >
+            ACTIVATE {poolQual.poolName === 'None' ? 'BRONZE' : poolQual.poolName === 'Bronze' ? 'SILVER' : 'GOLD'} POOL
+          </button>
+        )}
+
 
         {poolClaimable > 0 && (
           <button 
