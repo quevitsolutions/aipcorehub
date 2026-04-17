@@ -288,6 +288,13 @@ export default function EarnScreen() {
   const cappedHours = Math.min(diffHours, 24);
   const totalMined = isExpired ? 0 : (cappedHours * effectiveRate);
   
+  // 24-Hour Cap Warning Levels
+  const capPercent = Math.min(100, (diffHours / 24) * 100);
+  const isCapReached  = diffHours >= 24;        // 100% — coins being wasted
+  const isCapCritical = !isCapReached && diffHours >= 22; // 92%+ — under 2h left
+  const isCapWarning  = !isCapCritical && diffHours >= 19.2; // 80%+ — under ~5h left
+  const hoursLeft = Math.max(0, 24 - diffHours);
+
   // Balance is static — shows only what has been claimed
   // totalMined is the pending counter shown separately below the balance
 
@@ -393,6 +400,35 @@ export default function EarnScreen() {
     }
   }, [shouldShowBanner, daysLeft]);
 
+  // 24h Cap Toast — fires once per session when user is near the cap
+  useEffect(() => {
+    if (!initialLoaded || isExpired || totalMined <= 0) return;
+    if (!isCapWarning && !isCapCritical && !isCapReached) return;
+
+    const sessionKey = 'aip-cap-toast-session';
+    if (sessionStorage.getItem(sessionKey)) return; // Already shown this session
+    sessionStorage.setItem(sessionKey, '1');
+
+    setTimeout(() => {
+      if (isCapReached) {
+        toast.error('🚨 DAILY CAP REACHED! New coins are being wasted — CLAIM NOW!', {
+          duration: 8000, position: 'top-center',
+          style: { background: '#1A0000', border: '1px solid #FF3D00', fontWeight: 900, fontSize: '13px' }
+        });
+      } else if (isCapCritical) {
+        toast.error(`⏰ Under 2 hours left! Claim your ${Math.floor(totalMined).toLocaleString()} $AIP before cap resets!`, {
+          duration: 7000, position: 'top-center',
+          style: { background: '#1A0000', border: '1px solid #FF5722', fontWeight: 900, fontSize: '13px' }
+        });
+      } else {
+        toast(`⚠️ Mining cap at ${Math.floor(capPercent)}% — claim before the 24h reset!`, {
+          duration: 5000, position: 'top-center', icon: '⏱️',
+          style: { background: '#1A0F00', border: '1px solid #FF8F00', fontWeight: 800, fontSize: '12px' }
+        });
+      }
+    }, 2000);
+  }, [initialLoaded, isCapWarning, isCapCritical, isCapReached]);
+
   // We no longer use the full-screen RegistrationGate here, 
   // as the "Session Expired" overlay on the mining egg handles the activation nudge better.
   // This ensures users can always see their dashboard and balance.
@@ -460,13 +496,51 @@ export default function EarnScreen() {
                 <motion.div
                   animate={{ opacity: [0.6, 1, 0.6] }}
                   transition={{ duration: 1.5, repeat: Infinity }}
-                  style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--neon-lime)' }}
+                  style={{ width: 6, height: 6, borderRadius: '50%', background: isCapReached ? '#FF3D00' : 'var(--neon-lime)' }}
                 />
-                <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--neon-lime)' }}>
+                <span style={{ fontSize: 13, fontWeight: 800, color: isCapReached ? '#FF5252' : 'var(--neon-lime)' }}>
                   +{totalMined >= 1 ? Math.floor(totalMined).toLocaleString('en-US') : totalMined.toFixed(4)} PENDING
                 </span>
                 <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.4)' }}>→ CLAIM TO CREDIT</span>
               </div>
+            )}
+
+            {/* ── 24h Cap Warning Banner ── */}
+            {(isCapWarning || isCapCritical || isCapReached) && !isExpired && totalMined > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                style={{
+                  marginTop: 10,
+                  padding: '8px 14px',
+                  borderRadius: 12,
+                  background: isCapReached
+                    ? 'linear-gradient(90deg, rgba(255,61,0,0.35), rgba(183,28,28,0.5))'
+                    : isCapCritical
+                    ? 'linear-gradient(90deg, rgba(255,87,34,0.25), rgba(255,61,0,0.35))'
+                    : 'linear-gradient(90deg, rgba(255,143,0,0.2), rgba(255,111,0,0.3))',
+                  border: `1px solid ${isCapReached ? 'rgba(255,61,0,0.6)' : isCapCritical ? 'rgba(255,87,34,0.5)' : 'rgba(255,143,0,0.4)'}`,
+                  display: 'flex', alignItems: 'center', gap: 8,
+                }}
+              >
+                <motion.span
+                  animate={{ scale: isCapReached ? [1, 1.3, 1] : [1, 1.1, 1] }}
+                  transition={{ duration: isCapReached ? 0.6 : 1.2, repeat: Infinity }}
+                  style={{ fontSize: 16 }}
+                >
+                  {isCapReached ? '🚨' : isCapCritical ? '🔥' : '⏱️'}
+                </motion.span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 10, fontWeight: 900, color: isCapReached ? '#FF5252' : '#FF7043', letterSpacing: 0.5 }}>
+                    {isCapReached ? 'CAP REACHED — COINS WASTING!' : isCapCritical ? `CLAIM IN ${Math.floor(hoursLeft)}h ${Math.floor((hoursLeft % 1) * 60)}m` : `24H CAP: ${Math.floor(capPercent)}% FULL`}
+                  </div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#fff', marginTop: 2 }}>
+                    {isCapReached
+                      ? 'Mining paused — claim now or lose new coins'
+                      : `~${Math.floor(hoursLeft)}h ${Math.floor((hoursLeft % 1) * 60)}m left before daily reset`}
+                  </div>
+                </div>
+              </motion.div>
             )}
           </div>
 
