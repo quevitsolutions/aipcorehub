@@ -5,7 +5,7 @@ import { api } from "../services/api.js";
 const DEMO_TAP_LIMIT = 20;
 const MAX_ENERGY = 500;
 const ENERGY_REGEN_INTERVAL = 3000; // ms per 1 energy
-const BASE_MINING_RATE = 1000;
+const BASE_MINING_RATE = 10;
 
 const RESET_STATE = {
   hasNode: false, nodeId: null, nodeTier: 0, nodeActive: false, isPremium: false,
@@ -113,7 +113,7 @@ export const useGameStore = create(
         const current = get().walletAddress;
         // If connecting a different wallet while one is already in state, wipe the slate clean
         const isSwitching = address && current && address.toLowerCase() !== current.toLowerCase();
-        
+
         set({
           walletAddress: address,
           isConnected: !!address,
@@ -133,7 +133,7 @@ export const useGameStore = create(
         localStorage.removeItem("aipcore-game-state");
       },
 
-      setProcessing: (isProcessing, processingLabel = "") => 
+      setProcessing: (isProcessing, processingLabel = "") =>
         set({ isProcessing, processingLabel }),
 
       setNodeData: (data) => {
@@ -141,22 +141,23 @@ export const useGameStore = create(
         const currentTier = get().nodeTier || 0;
         const tier = rawTier > 0 ? rawTier : currentTier > 0 ? currentTier : 1;
 
-        const newMiningRate = 1000 * Math.pow(2, Math.max(0, tier - 1));
+        // 10x MULTIPLIER: If node is active, rate jumps from 10 -> 100
+        const isActive = data.nodeId && Number(data.nodeId) > 0;
+        const multiplier = isActive ? 10 : 1;
+        const newMiningRate = (BASE_MINING_RATE * multiplier) * Math.pow(2, Math.max(0, tier - 1));
+        
         const newMaxEnergy  = 500 + (tier - 1) * 200;
-        const isActuallyActive = data.nodeId && Number(data.nodeId) > 0;
 
         set({
-          hasNode:    isActuallyActive,
-          nodeId:     isActuallyActive ? Number(data.nodeId) : null,
-          nodeTier:   isActuallyActive ? tier : 0,
+          hasNode:    isActive,
+          nodeId:     isActive ? Number(data.nodeId) : null,
+          nodeTier:   isActive ? tier : 0,
           nodeActive: data.active,
           miningRate: newMiningRate,
           maxEnergy:  newMaxEnergy,
           energy:     Math.min(newMaxEnergy, get().energy),
-          isLocked:   !isActuallyActive,
+          isLocked:   !isActive,
           demoTaps:   0,
-          // ANTI-FLICKER: syncWithBackend() removed — was triggering a 2nd re-render
-          // on every blockchain data load. DB is now kept in sync via /api/mining/upgrade.
         });
       },
 
@@ -193,12 +194,11 @@ export const useGameStore = create(
 
       rechargeEnergy: () => {
         const state = get();
-        // Energy always recharges
-        set((s) => ({ energy: Math.min(s.maxEnergy, s.energy + 1) }));
-        // Bug #4 fix: do NOT recalculate pendingMined here.
-        // The authoritative pendingMined comes from the server via fetchUserData,
-        // and the live counter in EarnScreen correctly adds the local delta on top.
-        // Overwriting it here causes balance flicker and double-counting.
+        // Elite Sync: Node owners recharge 3x faster (3 per tick vs 1)
+        const amount = state.hasNode ? 3 : 1;
+        set((s) => ({ energy: Math.min(s.maxEnergy, s.energy + amount) }));
+        
+        // Anti-flicker: authoritative balance remains on server
       },
 
       claimMined: async () => {
@@ -237,8 +237,14 @@ export const useGameStore = create(
       setReferrerId: (id) => set({ referrerId: id }),
 
       claimStreak: (day) => {
-        const rewards = [10000, 25000, 45000, 70000, 100000, 180000, 250000];
-        const reward = rewards[Math.min(day - 1, 6)];
+        const { hasNode } = get();
+        // Harmonized Economy: Base rewards match the ~10/hr pace.
+        const baseRewards = [100, 250, 450, 700, 1000, 1800, 2500];
+        
+        // 10x Multiplier: Elite Nodes receive 10x the daily reward.
+        const multiplier = hasNode ? 10 : 1;
+        const reward = baseRewards[Math.min(day - 1, 6)] * multiplier;
+        
         set((s) => ({
           localReward: s.localReward + reward,
           streak: day,
@@ -275,6 +281,7 @@ export const useGameStore = create(
             taps: state.taps,
             energy: state.energy,
             nodeTier: state.nodeTier,
+            localReward: state.localReward,
           });
         } catch (err) {
           console.warn("API Sync Failed:", err.message);
@@ -300,8 +307,8 @@ export const useGameStore = create(
           const data = await api.fetchUser(walletAddress, finalReferrer);
           if (!data) return;
 
-          const currentTier  = get().nodeTier || 0;
-          const backendTier  = Number(data.node_tier || 0);
+          const currentTier = get().nodeTier || 0;
+          const backendTier = Number(data.node_tier || 0);
           const creationTime = data.created_at ? new Date(data.created_at).getTime() : now;
           const isFreeActive = backendTier === 0 && (now - creationTime < 30 * 24 * 60 * 60 * 1000);
 
@@ -315,33 +322,33 @@ export const useGameStore = create(
           if (!Array.isArray(claimedMilestones)) claimedMilestones = [];
 
           set({
-            taps:          data.taps || 0,
+            taps: data.taps || 0,
             // BUG FIX: parseFloat for NUMERIC(36,18) — Number() loses precision on large values
-            localReward:   parseFloat(data.local_reward || 0),
-            energy:        data.energy || 0,
-            directRefs:    parseInt(data.direct_refs || 0),
-            teamSize:      parseInt(data.team_size   || 0),
+            localReward: parseFloat(data.local_reward || 0),
+            energy: data.energy || 0,
+            directRefs: parseInt(data.direct_refs || 0),
+            teamSize: parseInt(data.team_size || 0),
             activatedRefs: parseInt(data.activated_refs || 0),
             // STABILITY FIX: Never let 30s fetch downgrade node identity if DB is out of sync
-            hasNode:       backendTier > 0 || !!(data.node_id && data.node_id > 0) || currentHasNode,
-            nodeId:        data.node_id || currentNodeId,
-            nodeTier:      backendTier > currentTier ? backendTier : currentTier,
-            isPremium:     data.is_premium || false,
-            pendingMined:  parseFloat(data.pending_mined || 0),
+            hasNode: backendTier > 0 || !!(data.node_id && data.node_id > 0) || currentHasNode,
+            nodeId: data.node_id || currentNodeId,
+            nodeTier: backendTier > currentTier ? backendTier : currentTier,
+            isPremium: data.is_premium || false,
+            pendingMined: parseFloat(data.pending_mined || 0),
             // BUG FIX: Guard null last_claim_time — new Date(null) = epoch 1970
             lastClaimTime: data.last_claim_time ? new Date(data.last_claim_time).getTime() : now,
-            createdAt:     data.created_at || null,
+            createdAt: data.created_at || null,
             isFreeActive,
-            sponsorWallet:  data.sponsor_wallet || get().sponsorWallet,
-            sponsorNodeId:  data.sponsor_node_id || get().sponsorNodeId || 36999,
-            isNewUser:      !!data.is_new,
-            streak:         parseInt(data.daily_streak || 0),
+            sponsorWallet: data.sponsor_wallet || get().sponsorWallet,
+            sponsorNodeId: data.sponsor_node_id || get().sponsorNodeId || 36999,
+            isNewUser: !!data.is_new,
+            streak: parseInt(data.daily_streak || 0),
             // BUG FIX: Guard null last_daily_claim
-            lastClaimDate:  data.last_daily_claim ? new Date(data.last_daily_claim).getTime() : null,
+            lastClaimDate: data.last_daily_claim ? new Date(data.last_daily_claim).getTime() : null,
             claimedMilestones,
             lastBackendSync: Date.now(),
-            lastSyncTime:    Date.now(),
-            initialLoaded:   true,
+            lastSyncTime: Date.now(),
+            initialLoaded: true,
           });
 
           // PERF FIX: Removed fetchReferralData() from here — it was firing every 30s
@@ -353,7 +360,7 @@ export const useGameStore = create(
               if (result?.linked) {
                 console.log(`✅ Referral confirmed: ${walletAddress} → ${result.sponsor_wallet}`);
               }
-            }).catch(() => {});
+            }).catch(() => { });
           }
         } catch (err) {
           console.warn('fetchUserData failed:', err.message);
@@ -439,7 +446,7 @@ export const useGameStore = create(
           return res;
         }
       },
-      
+
       claimSignupBonusAction: async () => {
         const { walletAddress, claimedMilestones } = get();
         if (!walletAddress) throw new Error("Not connected");
@@ -457,13 +464,13 @@ export const useGameStore = create(
       claimDailyReward: async () => {
         const { walletAddress } = get();
         if (!walletAddress) throw new Error("Wallet not connected");
-        
+
         const res = await api.claimDailyReward(walletAddress);
         if (res?.success) {
           set({
             // BUG FIX: parseFloat because Postgres NUMERIC returns a string
-            localReward:   parseFloat(res.local_reward || 0),
-            streak:        Number(res.daily_streak || 0),
+            localReward: parseFloat(res.local_reward || 0),
+            streak: Number(res.daily_streak || 0),
             // Store as millisecond timestamp for accurate 24h comparison
             lastClaimDate: res.last_daily_claim ? new Date(res.last_daily_claim).getTime() : Date.now(),
           });

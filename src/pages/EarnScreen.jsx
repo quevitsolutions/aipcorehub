@@ -129,6 +129,69 @@ function RegistrationGate({ setActiveTab }) {
   );
 }
 
+// ── High-Urgency Alert for Free Users with Progressive Scaling ──
+function ActivationAlert({ onAction, daysLeft }) {
+  const isCritical = daysLeft <= 3;
+  const isHigh = daysLeft <= 10;
+  
+  // Dynamic styling based on urgency
+  const urgencyStyles = {
+    bg: isCritical 
+      ? 'linear-gradient(90deg, rgba(255, 61, 0, 0.3) 0%, rgba(183, 28, 28, 0.45) 100%)' 
+      : (isHigh ? 'linear-gradient(90deg, rgba(255, 112, 67, 0.2) 0%, rgba(255, 61, 0, 0.3) 100%)' : 'linear-gradient(90deg, rgba(255, 112, 67, 0.15) 0%, rgba(255, 112, 67, 0.25) 100%)'),
+    border: isCritical ? 'rgba(255, 61, 0, 0.5)' : (isHigh ? 'rgba(255, 112, 67, 0.4)' : 'rgba(255, 112, 67, 0.3)'),
+    icon: isCritical ? '🔥' : '⚠️',
+    pulse: isCritical ? 0.8 : (isHigh ? 1.5 : 3.0),
+    title: isCritical ? 'CRITICAL: NODE EXPIRE SOON' : (isHigh ? 'URGENCY: NODE UNSECURED' : 'NODE STATUS: UNSECURED')
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      whileHover={{ scale: 1.01 }}
+      onClick={onAction}
+      style={{
+        margin: '0 0 20px',
+        padding: '12px 16px',
+        background: urgencyStyles.bg,
+        borderRadius: 16,
+        border: `1px solid ${urgencyStyles.border}`,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        cursor: 'pointer',
+        boxShadow: isCritical ? '0 0 25px rgba(255, 61, 0, 0.2)' : '0 0 15px rgba(255, 61, 0, 0.1)'
+      }}
+    >
+      <motion.div 
+        animate={{ scale: isCritical ? [1, 1.3, 1] : [1, 1.2, 1], opacity: [0.7, 1, 0.7] }}
+        transition={{ duration: urgencyStyles.pulse, repeat: Infinity }}
+        style={{ fontSize: 20 }}
+      >
+        {urgencyStyles.icon}
+      </motion.div>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: 10, fontWeight: 900, color: isCritical ? '#FF5252' : '#FF7043', letterSpacing: 1 }}>{urgencyStyles.title}</div>
+        <div style={{ fontSize: 11, fontWeight: 700, color: '#fff', marginTop: 2, lineHeight: 1.4 }}>
+          {isCritical ? 'ACTIVATE NOW' : 'Activate Master Node'} to <span style={{ color: '#FF7043' }}>SAVE</span> {Math.floor(daysLeft)} days of $AIP & unlock <span style={{ color: 'var(--neon-lime)' }}>10X SPEED</span> 🚀
+        </div>
+      </div>
+      <div style={{ 
+        background: 'var(--neon-lime)', 
+        color: '#000', 
+        fontSize: 9, 
+        fontWeight: 950, 
+        padding: '6px 10px', 
+        borderRadius: 8,
+        boxShadow: '0 0 10px rgba(163, 255, 18, 0.3)'
+      }}>
+        ACTIVATE
+      </div>
+    </motion.div>
+  );
+}
+
 export default function EarnScreen() {
   const {
     walletAddress, localReward, nodeTier, isPremium,
@@ -136,7 +199,7 @@ export default function EarnScreen() {
     claimMined, setActiveTab, addLocalReward, fetchTeamHistory,
     isFreeActive, createdAt, globalHistory, fetchGlobalHistory,
     initialLoaded, pendingMined, lastSyncTime,
-    claimedMilestones, claimSignupBonusAction
+    claimedMilestones, claimSignupBonusAction, miningRate
   } = useGameStore();
 
   const [view, setView] = useState('mining'); // 'mining' | 'history'
@@ -206,10 +269,8 @@ export default function EarnScreen() {
     setDisplayReward(localReward);
   }, [localReward]);
 
-  const hourlyBase = hasNode ? (nodeTier >= 2 ? 200 : 100) : 10;
-  // Bug #1 fix: isPremium multiplier only applies to node owners (not free trial users)
-  const multiplier = (hasNode && isPremium) ? 2 : 1;
-  const ratePerHour = hourlyBase * multiplier;
+  // Source of truth: miningRate comes from gameStore logic (10 for Free, 100*2^(tier-1) for Node)
+  const ratePerHour = miningRate || 10;
   const displayTier = Number(nodeTier || 1);
 
   // Bug #3 fix: compute isExpired early so we can zero out rate for expired users
@@ -258,7 +319,19 @@ export default function EarnScreen() {
     try {
       const ok = await claimMined();
       if (ok) {
-        toast.success(`🥚 +${Math.floor(totalMined).toLocaleString()} $AIP claimed!`, { duration: 3000 });
+        toast.success(`🥚 +${Math.floor(totalMined).toLocaleString()} $AIP claimed!`, { 
+          duration: 3000,
+          style: {
+            background: 'var(--bg-card)',
+            color: '#fff',
+            border: '1px solid var(--neon-lime)',
+            fontWeight: 900
+          }
+        });
+        
+        // Finalize explosion
+        setTimeout(() => setIsExploding(false), 2000);
+        
         if (!hasNode) {
           setTimeout(() => {
             toast('Activate an AIPCore Node to earn real BNB, 10x more coins, and massive pool rewards!', {
@@ -266,16 +339,17 @@ export default function EarnScreen() {
               duration: 6000,
               style: { border: '1px solid var(--neon-lime)' }
             });
-          }, 800);
+          }, 1200);
         }
       } else {
         toast.error('Claim failed — please try again.', { duration: 4000 });
+        setIsExploding(false);
       }
     } catch (err) {
       toast.error(err?.message || 'Claim failed.', { duration: 4000 });
+      setIsExploding(false);
     } finally {
       setIsClaiming(false);
-      setTimeout(() => setIsExploding(false), 800);
     }
   };
 
@@ -288,8 +362,35 @@ export default function EarnScreen() {
     addLocalReward(task.reward);
   };
 
-  // daysLeft is derived from the pre-computed daysLeftCalc above (already factoring initialLoaded)
+  // Progressive Urgency Logic: Hide until day 20, escalate thereafter
   const daysLeft = daysLeftCalc;
+  const shouldShowBanner = initialLoaded && !hasNode && daysLeft <= 20 && !isExpired;
+
+  // Daily Urgency Toast Implementation
+  useEffect(() => {
+    if (!shouldShowBanner) return;
+    
+    const todayStr = new Date().toDateString();
+    const lastAlert = localStorage.getItem('aip-last-urgency-toast');
+    
+    if (lastAlert !== todayStr) {
+      setTimeout(() => {
+        toast.error(`⚠️ Node trial expires in ${Math.floor(daysLeft)} days! Activate now to secure your $AIP.`, {
+          duration: 6000,
+          position: 'top-center',
+          icon: daysLeft <= 3 ? '🔥' : '⚠️',
+          style: {
+            background: '#1A0B0B',
+            color: '#fff',
+            border: `1px solid ${daysLeft <= 3 ? '#FF3D00' : '#FF7043'}`,
+            fontWeight: 800,
+            fontSize: '13px'
+          }
+        });
+        localStorage.setItem('aip-last-urgency-toast', todayStr);
+      }, 3000);
+    }
+  }, [shouldShowBanner, daysLeft]);
 
   // We no longer use the full-screen RegistrationGate here, 
   // as the "Session Expired" overlay on the mining egg handles the activation nudge better.
@@ -328,13 +429,28 @@ export default function EarnScreen() {
       {/* ── Conditional View Content ── */}
       {view === 'mining' ? (
         <>
+          {/* Activation Alert (Triggered at Day 20) */}
+          {shouldShowBanner && (
+            <ActivationAlert 
+              daysLeft={daysLeft} 
+              onAction={() => setActiveTab('mine')} 
+            />
+          )}
+
           {/* ── Balance ── */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontSize: '20px', fontWeight: 900, color: '#FFD700', letterSpacing: '2px' }}>$AIP</span>
-              <span className="balance-value" style={{ fontSize: 44, fontWeight: 900, color: '#fff', textShadow: '0 0 20px rgba(255,255,255,0.1)' }}>
-                {totalWealth >= 1 ? Math.floor(totalWealth).toLocaleString('en-US') : totalWealth.toFixed(4)}
-              </span>
+            <motion.span 
+              key={totalWealth}
+              initial={{ scale: 1 }}
+              animate={{ scale: [1, 1.1, 1] }}
+              transition={{ duration: 0.3 }}
+              className="balance-value" 
+              style={{ fontSize: 44, fontWeight: 900, color: '#fff', textShadow: '0 0 20px rgba(255,255,255,0.1)' }}
+            >
+              {totalWealth >= 1 ? Math.floor(totalWealth).toLocaleString('en-US') : totalWealth.toFixed(4)}
+            </motion.span>
             </div>
           </div>
 

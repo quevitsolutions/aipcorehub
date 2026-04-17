@@ -371,8 +371,8 @@ const syncGlobalHistory = async () => {
     const currentBlock = await provider.getBlockNumber();
     if (currentBlock <= lastSyncBlock) return;
     
-    // limit max blocks to 3000 to avoid rpc timeout
-    const fromBlock = Math.max(lastSyncBlock, currentBlock - 3000);
+    // limit max blocks to 500 to avoid rpc rate limiting
+    const fromBlock = Math.max(lastSyncBlock, currentBlock - 500);
     const filterAIP = aipcoreContract.filters.RewardDistributed();
     const logsAIP = await aipcoreContract.queryFilter(filterAIP, fromBlock, currentBlock);
     
@@ -546,7 +546,8 @@ app.get('/api/user/:walletAddress', async (req, res) => {
     const isFreeMember = (user.node_tier === 0 || !user.node_tier) && isFreePeriod;
 
     if (user.node_tier >= 1) {
-      const baseRate   = user.node_tier >= 2 ? 200 : 100;
+      // 100 base for Node T1, then doubles per tier
+      const baseRate   = 100 * Math.pow(2, user.node_tier - 1);
       const multiplier = user.is_premium ? 2.0 : 1.0;
       pending_mined    = cappedHours * baseRate * multiplier;
     } else if (isFreeMember) {
@@ -607,7 +608,8 @@ app.post('/api/mining/claim', async (req, res) => {
 
     let reward = 0;
     if (user.node_tier >= 1) {
-      const baseRate = user.node_tier >= 2 ? 200 : 100;
+      // 100 base for Node T1, then doubles per tier
+      const baseRate = 100 * Math.pow(2, user.node_tier - 1);
       const multiplier = user.is_premium ? 2.0 : 1.0;
       reward = cappedHours * baseRate * multiplier;
     } else {
@@ -1305,7 +1307,7 @@ app.get('/api/network/counts/:walletAddress', async (req, res) => {
       )
       SELECT level, COUNT(*) as count FROM matrix_tree WHERE level > 0 GROUP BY level
     `, [rootId]);
-    matrixCounts = new Array(18).fill(0);
+    const matrixCounts = new Array(18).fill(0);
     matrixRes.rows.forEach(r => {
       const level = parseInt(r.level);
       const count = parseInt(r.count);
@@ -1348,6 +1350,7 @@ app.post('/api/network/sync', async (req, res) => {
     // 2. Bulk upsert members. We use node_id as the unique key.
     // wallet_address is stored in lowercase for global uniqueness.
     for (const m of members) {
+      if (!m.wallet) continue; // GUARD: Skip null wallets from broken logs
       await query(`
         INSERT INTO users (wallet_address, node_id, node_tier, created_at, matrix_parent_id, matrix_parent_node_id, node_active)
         VALUES (LOWER($1), $2, $3, TO_TIMESTAMP($4), $5, $6, TRUE)
@@ -1706,9 +1709,9 @@ app.post('/api/referrals/track', async (req, res) => {
   }
 });
 
-// Sync game state via wallet address (taps, energy & node tier sync)
+// Sync game state via wallet address (taps, energy, localReward & node tier sync)
 app.post('/api/sync', async (req, res) => {
-  const { walletAddress, taps, energy, nodeTier } = req.body;
+  const { walletAddress, taps, energy, nodeTier, localReward } = req.body;
   
   if (!walletAddress) return res.status(400).json({ error: 'Wallet address required' });
 
@@ -1718,17 +1721,18 @@ app.post('/api/sync', async (req, res) => {
        SET taps = COALESCE($2, taps), 
            energy = COALESCE($3, energy), 
            node_tier = GREATEST(COALESCE($4, node_tier), node_tier),
+           local_reward = COALESCE($5, local_reward),
            updated_at = CURRENT_TIMESTAMP
        WHERE wallet_address = $1
        RETURNING *`,
-      [walletAddress, taps, energy, nodeTier]
+      [walletAddress, taps, energy, nodeTier, localReward]
     );
     
     if (result.rows.length === 0) {
       // If user doesn't exist yet, create them during sync
       const newUser = await query(
-        'INSERT INTO users (wallet_address, taps, energy, node_tier) VALUES ($1, $2, $3, COALESCE($4, 0)) RETURNING *',
-        [walletAddress, taps, energy, nodeTier]
+        'INSERT INTO users (wallet_address, taps, energy, node_tier, local_reward) VALUES ($1, $2, $3, COALESCE($4, 0), COALESCE($5, 0)) RETURNING *',
+        [walletAddress, taps, energy, nodeTier, localReward]
       );
       return res.json(newUser.rows[0]);
     }
