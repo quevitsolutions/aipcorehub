@@ -288,7 +288,8 @@ export default function EarnScreen() {
   const cappedHours = Math.min(diffHours, 24);
   const totalMined = isExpired ? 0 : (cappedHours * effectiveRate);
   
-  const totalWealth = Number(localReward || 0) + totalMined;
+  // Balance is static — shows only what has been claimed
+  // totalMined is the pending counter shown separately below the balance
 
   // Live timer — re-renders every second
   const [, setTick] = useState(0);
@@ -437,21 +438,36 @@ export default function EarnScreen() {
             />
           )}
 
-          {/* ── Balance ── */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 20 }}>
+          {/* ── Balance (Static — only updates on Claim) ── */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontSize: '20px', fontWeight: 900, color: '#FFD700', letterSpacing: '2px' }}>$AIP</span>
             <motion.span 
-              key={totalWealth}
+              key={Math.floor(localReward)}
               initial={{ scale: 1 }}
-              animate={{ scale: [1, 1.1, 1] }}
+              animate={{ scale: [1, 1.05, 1] }}
               transition={{ duration: 0.3 }}
               className="balance-value" 
               style={{ fontSize: 44, fontWeight: 900, color: '#fff', textShadow: '0 0 20px rgba(255,255,255,0.1)' }}
             >
-              {totalWealth >= 1 ? Math.floor(totalWealth).toLocaleString('en-US') : totalWealth.toFixed(4)}
+              {Number(localReward || 0) >= 1 ? Math.floor(localReward).toLocaleString('en-US') : Number(localReward || 0).toFixed(4)}
             </motion.span>
             </div>
+
+            {/* ── Pending Mined Ticker (ticks up, clears on Claim) ── */}
+            {totalMined > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                <motion.div
+                  animate={{ opacity: [0.6, 1, 0.6] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                  style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--neon-lime)' }}
+                />
+                <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--neon-lime)' }}>
+                  +{totalMined >= 1 ? Math.floor(totalMined).toLocaleString('en-US') : totalMined.toFixed(4)} PENDING
+                </span>
+                <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.4)' }}>→ CLAIM TO CREDIT</span>
+              </div>
+            )}
           </div>
 
           {/* ── Egg Zone ── */}
