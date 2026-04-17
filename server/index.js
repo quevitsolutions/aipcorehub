@@ -546,8 +546,8 @@ app.get('/api/user/:walletAddress', async (req, res) => {
     const isFreeMember = (user.node_tier === 0 || !user.node_tier) && isFreePeriod;
 
     if (user.node_tier >= 1) {
-      // 100 base for Node T1, then doubles per tier
-      const baseRate   = 100 * Math.pow(2, user.node_tier - 1);
+      // Tier scaling: Tier 1 = 100 AIP/hr, +20% per tier (1.2^(tier-1))
+      const baseRate   = Math.round(100 * Math.pow(1.2, user.node_tier - 1));
       const multiplier = user.is_premium ? 2.0 : 1.0;
       pending_mined    = cappedHours * baseRate * multiplier;
     } else if (isFreeMember) {
@@ -608,8 +608,8 @@ app.post('/api/mining/claim', async (req, res) => {
 
     let reward = 0;
     if (user.node_tier >= 1) {
-      // 100 base for Node T1, then doubles per tier
-      const baseRate = 100 * Math.pow(2, user.node_tier - 1);
+      // Tier scaling: Tier 1 = 100 AIP/hr, +20% per tier (1.2^(tier-1))
+      const baseRate = Math.round(100 * Math.pow(1.2, user.node_tier - 1));
       const multiplier = user.is_premium ? 2.0 : 1.0;
       reward = cappedHours * baseRate * multiplier;
     } else {

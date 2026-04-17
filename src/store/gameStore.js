@@ -141,10 +141,11 @@ export const useGameStore = create(
         const currentTier = get().nodeTier || 0;
         const tier = rawTier > 0 ? rawTier : currentTier > 0 ? currentTier : 1;
 
-        // 10x MULTIPLIER: If node is active, rate jumps from 10 -> 100
+        // TIER SCALING: Tier 1 = 100 AIP/hr, each tier +20% (1.2^(tier-1))
+        // Free users: 10 AIP/hr base, no exponential scaling
         const isActive = data.nodeId && Number(data.nodeId) > 0;
-        const multiplier = isActive ? 10 : 1;
-        const newMiningRate = (BASE_MINING_RATE * multiplier) * Math.pow(2, Math.max(0, tier - 1));
+        const baseRate = isActive ? 100 : BASE_MINING_RATE;
+        const newMiningRate = Math.round(baseRate * Math.pow(1.2, Math.max(0, tier - 1)));
         
         const newMaxEnergy  = 500 + (tier - 1) * 200;
 
@@ -170,20 +171,19 @@ export const useGameStore = create(
             set({ isLocked: true, showNodePopup: true });
             return { status: "LOCKED" };
           }
+          // BALANCE CHANGE: Do NOT increment localReward in real-time — credit only on Claim
           set((s) => ({
             demoTaps: s.demoTaps + 1,
             taps: s.taps + 1,
             energy: Math.max(0, s.energy - 1),
-            localReward: s.localReward + s.miningRate,
           }));
           return { status: "DEMO", taps: get().taps };
         }
 
-        // Optimistic Update
+        // BALANCE CHANGE: Tap only costs energy and increments taps — NO real-time balance
         set((s) => ({
           taps: s.taps + 1,
           energy: Math.max(0, s.energy - 1),
-          localReward: s.localReward + s.miningRate,
         }));
 
         // Trigger background sync every 10 taps
