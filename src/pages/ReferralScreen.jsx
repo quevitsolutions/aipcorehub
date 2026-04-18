@@ -194,9 +194,15 @@ export default function ReferralScreen() {
   const [showShareCard, setShowShareCard] = useState(false);
 
   const safeReferralList = Array.isArray(referralList) ? referralList : [];
-  const activatedList    = safeReferralList.filter(f => Number(f?.node_tier || 0) > 0);
-  const freeTrialList    = safeReferralList.filter(f => Number(f?.node_tier || 0) === 0 && Number(f?.trial_days_left || 0) > 0);
-  const expiredList      = safeReferralList.filter(f => Number(f?.node_tier || 0) === 0 && Number(f?.trial_days_left || 0) === 0);
+
+  // A referral is "activated" if they have a node_id assigned OR node_active=true OR node_tier > 0.
+  // node_tier may lag behind due to RPC sync delay, so we use all three signals.
+  const isActivated  = (f) => Number(f?.node_id || 0) > 0 || f?.node_active === true || Number(f?.node_tier || 0) > 0;
+  const activatedList = safeReferralList.filter(f => isActivated(f));
+  const freeTrialList = safeReferralList.filter(f => !isActivated(f) && Number(f?.trial_days_left || 0) > 0);
+  const expiredList   = safeReferralList.filter(f => !isActivated(f) && Number(f?.trial_days_left || 0) === 0);
+
+
   const conversionRate   = safeReferralList.length > 0
     ? ((activatedList.length / safeReferralList.length) * 100).toFixed(1) : '0.0';
 

@@ -1618,6 +1618,7 @@ app.get('/api/referrals/:walletAddress', async (req, res) => {
               COALESCE(created_at, NOW())        AS joined_at,
               COALESCE(node_tier, 0)             AS node_tier,
               COALESCE(node_id, 0)               AS node_id,
+              COALESCE(node_active, FALSE)        AS node_active,
               -- BUG FIX: Use EPOCH math for correct days remaining (EXTRACT(DAY) is wrong across months)
               GREATEST(0,
                 CEIL(
@@ -1633,6 +1634,7 @@ app.get('/api/referrals/:walletAddress', async (req, res) => {
       [parentIds]
     );
     res.json(result.rows);
+
   } catch (err) {
     console.error('Referral list error:', err.message);
     res.status(500).json({ error: 'Failed to fetch referrals' });
