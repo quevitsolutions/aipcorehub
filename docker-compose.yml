@@ -38,6 +38,8 @@ services:
       - DB_USER=postgres
       - DB_PASSWORD=aipcore_pass
       - DB_NAME=aipcore_game
+      - VITE_ADMIN_WALLET=${VITE_ADMIN_WALLET}
+      - VITE_RPC_URL=${VITE_RPC_URL}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
       interval: 30s
