@@ -32,16 +32,17 @@ export const useContract = () => {
 
         // Always update chain-specific data — additive, not overwriting node identity
         updateChainData({
-          totalEarned:    parseFloat(data.totalEarned    || 0),
-          teamSize:       data.teamSize,
-          directRefs:     data.directRefs,
-          pendingReward:  parseFloat(data.pendingReward  || 0),
-          poolClaimable:  parseFloat(data.poolClaimable  || 0),
-          poolName:       data.poolName || 'None',
-          totalDeposited: parseFloat(data.totalDeposited || 0),
-          missingDirects: data.missingDirects || 0,
-          missingTier:    data.missingTier    || 0,
-          missingTeam:    data.missingTeam    || 0,
+          totalEarned:      parseFloat(data.totalEarned    || 0),
+          teamSize:         data.teamSize,
+          directRefs:       data.directRefs,
+          pendingReward:    parseFloat(data.pendingReward  || 0),
+          poolClaimable:    parseFloat(data.poolClaimable  || 0),
+          poolName:         data.poolName        || 'None',
+          totalDeposited:   parseFloat(data.totalDeposited || 0),
+          isPoolQualified:  Boolean(data.isPoolQualified),  // FIX: was missing
+          missingDirects:   data.missingDirects  || 0,
+          missingTier:      data.missingTier     || 0,
+          missingTeam:      data.missingTeam     || 0,
         });
         return data.nodeId;
       } else {

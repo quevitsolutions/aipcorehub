@@ -18,7 +18,7 @@ export default function DashboardScreen() {
     conversionHistory, isFreeActive, globalStats
   } = useGameStore();
   
-  const { loadNodeData, connectWallet, claimPool, fetchTeamCounts, registerPool } = useContract();
+  const { loadNodeData, connectWallet, claimPool, claimRewards, fetchTeamCounts, registerPool } = useContract();
   const bnbPrice = useBnbPrice();
   
   const [levelCounts, setLevelCounts] = useState([]);
@@ -134,22 +134,47 @@ export default function DashboardScreen() {
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 32 }}>
           {[
-            { label: 'SELF LEVEL', val: `TIER ${nodeTier}`, sub: formatBNB(poolQual.totalDeposited), color: '#FFB74D' },
-            { label: 'AIP COINS', val: formatNumber(localReward), sub: 'Mining Asset', color: '#FFD700' },
-            { label: 'UNCLAIMED', val: formatBNB(pendingReward), sub: 'Node Balance', color: 'var(--neon-lime)' },
-            { label: 'POOL ROI', val: formatBNB(poolClaimable), sub: 'Global Payout', color: '#4FC3F7' }
+            { label: 'SELF LEVEL',  val: `TIER ${nodeTier}`, sub: formatBNB(poolQual.totalDeposited), color: '#FFB74D', glowKey: null },
+            { label: 'AIP COINS',   val: formatNumber(localReward), sub: 'Mining Asset',  color: '#FFD700', glowKey: null },
+            { 
+              label: 'UNCLAIMED', val: formatBNB(pendingReward), sub: 'Node Balance', color: 'var(--neon-lime)',
+              glowKey: parseFloat(pendingReward) > 0 ? 'lime' : null,
+              action: parseFloat(pendingReward) > 0 ? 'TAP TO CLAIM' : null,
+            },
+            { 
+              label: 'POOL ROI',   val: formatBNB(poolClaimable), sub: 'Global Payout', color: '#4FC3F7',
+              glowKey: parseFloat(poolClaimable) > 0 ? 'blue' : null,
+              action: parseFloat(poolClaimable) > 0 ? 'TAP TO CLAIM' : null,
+            }
           ].map((item, i) => (
             <motion.div 
               key={i}
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: i * 0.05 }}
+              onClick={() => {
+                if (item.glowKey === 'lime' && nodeId)  claimRewards();
+                if (item.glowKey === 'blue' && nodeId) claimPool(nodeId);
+              }}
               className="partner-card" 
-              style={{ flexDirection: 'column', alignItems: 'flex-start', margin: 0, padding: 16, border: '1px solid rgba(255,255,255,0.05)' }}
+              style={{ 
+                flexDirection: 'column', alignItems: 'flex-start', margin: 0, padding: 16,
+                border: item.glowKey === 'lime' ? '1px solid rgba(163,255,18,0.5)' 
+                      : item.glowKey === 'blue' ? '1px solid rgba(79,195,247,0.5)' 
+                      : '1px solid rgba(255,255,255,0.05)',
+                boxShadow: item.glowKey === 'lime' ? '0 0 12px rgba(163,255,18,0.15)' 
+                         : item.glowKey === 'blue' ? '0 0 12px rgba(79,195,247,0.15)' 
+                         : 'none',
+                cursor: item.glowKey ? 'pointer' : 'default',
+                transition: 'border 0.3s, box-shadow 0.3s'
+              }}
             >
               <span style={{ fontSize: '10px', fontWeight: 800, color: item.color, letterSpacing: 0.5 }}>{item.label}</span>
               <span style={{ fontSize: '18px', fontWeight: 900, color: '#fff', marginTop: 4 }}>{item.val}</span>
-              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 700 }}>{item.sub}</span>
+              {item.action 
+                ? <span style={{ fontSize: '9px', color: item.color, fontWeight: 900, marginTop: 3, letterSpacing: 1, animation: 'pulse 1.5s infinite' }}>{item.action} →</span>
+                : <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 700 }}>{item.sub}</span>
+              }
             </motion.div>
           ))}
         </div>
@@ -298,14 +323,47 @@ export default function DashboardScreen() {
         )}
 
 
-        {poolClaimable > 0 && (
+        {/* Claim Node Rewards — activates when pendingReward > 0 */}
+        {parseFloat(pendingReward) > 0 && (
           <button 
             className="giant-btn" 
-            style={{ marginTop: 24, background: 'var(--neon-lime)', color: '#000', height: 44, fontSize: 13 }}
+            style={{ 
+              marginTop: 16, 
+              background: 'linear-gradient(135deg, var(--neon-lime), #7BFF00)',
+              color: '#000', height: 48, fontSize: 13, fontWeight: 900,
+              boxShadow: '0 0 20px rgba(163,255,18,0.35)'
+            }}
+            onClick={() => claimRewards()}
+          >
+            ⬡ CLAIM NODE REWARDS ({formatBNB(pendingReward)} BNB)
+          </button>
+        )}
+
+        {/* Claim Pool Rewards — activates when poolClaimable > 0 */}
+        {parseFloat(poolClaimable) > 0 && (
+          <button 
+            className="giant-btn" 
+            style={{ 
+              marginTop: 12,
+              background: 'linear-gradient(135deg, #4FC3F7, #0288D1)',
+              color: '#000', height: 48, fontSize: 13, fontWeight: 900,
+              boxShadow: '0 0 20px rgba(79,195,247,0.35)'
+            }}
             onClick={() => claimPool(nodeId)}
           >
-            CLAIM POOL REWARDS ({formatBNB(poolClaimable)})
+            🏆 CLAIM POOL REWARDS ({formatBNB(poolClaimable)} BNB)
           </button>
+        )}
+
+        {/* Show a disabled state when neither is claimable */}
+        {parseFloat(pendingReward) <= 0 && parseFloat(poolClaimable) <= 0 && (
+          <div style={{
+            marginTop: 16, padding: '14px', borderRadius: 12, textAlign: 'center',
+            background: 'rgba(255,255,255,0.03)', border: '1px dashed rgba(255,255,255,0.1)'
+          }}>
+            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', fontWeight: 700, letterSpacing: 1 }}>NO CLAIMABLE BALANCE</div>
+            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.2)', marginTop: 4 }}>Rewards accumulate from matrix activity</div>
+          </div>
         )}
       </div>
 

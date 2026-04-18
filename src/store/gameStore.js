@@ -263,11 +263,12 @@ export const useGameStore = create(
           poolClaimable: data.poolClaimable ?? s.poolClaimable,
           poolQual: {
             ...s.poolQual,
-            poolName: data.poolName ?? s.poolQual.poolName,
-            totalDeposited: data.totalDeposited ?? s.poolQual.totalDeposited,
-            missingDirects: data.missingDirects ?? s.poolQual.missingDirects,
-            missingTier: data.missingTier ?? s.poolQual.missingTier,
-            missingTeam: data.missingTeam ?? s.poolQual.missingTeam,
+            poolName:        data.poolName        ?? s.poolQual.poolName,
+            totalDeposited:  data.totalDeposited  ?? s.poolQual.totalDeposited,
+            isPoolQualified: data.isPoolQualified ?? s.poolQual.isPoolQualified, // FIX: was missing
+            missingDirects:  data.missingDirects  ?? s.poolQual.missingDirects,
+            missingTier:     data.missingTier     ?? s.poolQual.missingTier,
+            missingTeam:     data.missingTeam     ?? s.poolQual.missingTeam,
           },
         })),
 
