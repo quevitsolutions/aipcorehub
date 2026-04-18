@@ -335,15 +335,33 @@ const syncUserHistory = async (wallet) => {
           [node.toLowerCase(), nodeIdNum, referrerIdNum, Number(log.args[3] || 0), joinedAt]
         );
 
-        // TRIGGER RPC SYNC: Full accuracy refresh for both user and sponsor
+        // TRIGGER RPC SYNC: Full accuracy refresh for new node + direct sponsor (await both)
         await syncNodeStateFromRPC(nodeIdNum);
-        if (referrerIdNum > 0) syncNodeStateFromRPC(referrerIdNum);
+        if (referrerIdNum > 0) await syncNodeStateFromRPC(referrerIdNum); // FIX: was fire-and-forget
+
+        // INSTANT UPLINE LOCK: Walk up to 5 ancestor hops synchronously so all uplines
+        // are populated in DB immediately — no 2s-per-hop delay for instant interaction.
+        await (async () => {
+          let currentNodeId = referrerIdNum;
+          for (let hop = 0; hop < 5 && currentNodeId > 0; hop++) {
+            try {
+              const nodeInfo = await aipcoreContract.nodes(currentNodeId);
+              const parentNodeId = Number(nodeInfo.sponsor);
+              if (parentNodeId === 0 || parentNodeId === currentNodeId) break;
+              await syncNodeStateFromRPC(parentNodeId);
+              currentNodeId = parentNodeId;
+            } catch { break; }
+          }
+        })();
+
+        // Force tree repair immediately (bypass 30s throttle for new registrations)
+        await repairTreeLinks(true);
 
       } catch (e) { console.error("Node Sync Err:", e.message); }
     }
 
-    // 4. Fast SQL-Native Repair (Rebuilds tree instantly from DB data)
-    await repairTreeLinks();
+    // 4. Fast SQL-Native Repair (Rebuilds tree instantly from DB data, bypass throttle for events)
+    await repairTreeLinks(true);
 
     // 5. Fetch TierUnlocked Events
     const filterTiers = aipcoreContract.filters.TierUnlocked();
@@ -1377,13 +1395,11 @@ app.post('/api/network/sync', async (req, res) => {
  */
 app.post('/api/network/force-repair', async (req, res) => {
   try {
-    // Reset throttle — allow immediate repair
-    lastRepairTime = 0;
-    await repairTreeLinks();
-    res.json({ success: true, message: 'Tree links repaired' });
+    await repairTreeLinks(true); // Always bypass throttle for explicit admin requests
+    res.json({ success: true });
   } catch (err) {
     console.error('Force repair failed:', err.message);
-    res.status(500).json({ error: 'Repair failed' });
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -1459,9 +1475,11 @@ async function deepRepairOrphans() {
  */
 let lastRepairTime = 0;
 let repairInFlight = false;
-async function repairTreeLinks() {
+async function repairTreeLinks(bypassThrottle = false) {
   const now = Date.now();
-  if (now - lastRepairTime < 30000 || repairInFlight) return;
+  // Throttle: skip if ran within 30s, UNLESS bypassed (new node events, force-repair, etc.)
+  if (!bypassThrottle && (now - lastRepairTime < 30000 || repairInFlight)) return;
+  if (repairInFlight) return; // Never run concurrently even when bypassing
   
   repairInFlight = true;
   try {
