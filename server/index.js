@@ -94,16 +94,15 @@ const ensureSchema = async () => {
     await query(`ALTER TABLE users ALTER COLUMN local_reward SET DEFAULT 0`);
     await query(`UPDATE users SET local_reward = 0 WHERE local_reward IS NULL`);
 
-    // Seed Genesis Node (ID 36999)
+    // Seed Genesis Node (ID 36999) - Never bind this to the active Admin Wallet
     const genesisId = 36999;
-    const adminWallet = process.env.VITE_ADMIN_WALLET ? process.env.VITE_ADMIN_WALLET.toLowerCase() : null;
-    if (adminWallet) {
-      await query(`
-        INSERT INTO users (wallet_address, node_id, node_tier, node_active, created_at)
-        VALUES ($1, $2, 1, TRUE, '2024-01-01 00:00:00')
-        ON CONFLICT (node_id) DO UPDATE SET wallet_address = $1, node_active = TRUE
-      `, [adminWallet, genesisId]);
-    }
+    // This is the true contract creator wallet
+    const creatorWallet = '0x8112011370fdba02c428da5938fe72cbf3e0d54a';
+    await query(`
+      INSERT INTO users (wallet_address, node_id, node_tier, node_active, created_at)
+      VALUES ($1, $2, 1, TRUE, '2024-01-01 00:00:00')
+      ON CONFLICT (node_id) DO NOTHING
+    `, [creatorWallet, genesisId]);
     
     // Performance Indexes
     await query(`CREATE INDEX IF NOT EXISTS idx_users_wallet_address ON users(wallet_address)`);
