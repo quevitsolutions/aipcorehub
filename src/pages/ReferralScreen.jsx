@@ -386,20 +386,37 @@ export default function ReferralScreen() {
               </div>
             );
           }
-          return displayList.slice(0, 50).map((friend, i) => {
-            const isActivated = Number(friend.node_tier) > 0;
+            // Use same 3-signal check as the filter above
+            const rowNodeId   = Number(friend.node_id || 0);
+            const rowActive   = friend.node_active === true;
+            const rowTier     = Number(friend.node_tier || 0);
+            const isActivated = rowNodeId > 0 || rowActive || rowTier > 0;
             const daysLeft    = Number(friend.trial_days_left || 0);
             const isExpired   = !isActivated && daysLeft === 0;
             const isFreeTrial = !isActivated && daysLeft > 0;
             const rowColor    = isActivated ? 'var(--neon-lime)' : isExpired ? '#FF5252' : '#4FC3F7';
             const rowIcon     = isActivated ? '⬡' : isExpired ? '⏰' : '👤';
             const rowBg       = isActivated ? 'rgba(203,255,1,0.12)' : isExpired ? 'rgba(255,59,48,0.12)' : 'rgba(79,195,247,0.08)';
-            const statusText  = isActivated ? `✅ Node Active — Tier ${friend.node_tier}` : isExpired ? '⚠️ Trial Expired — nudge them!' : `🔵 Free Trial — ${daysLeft}d left`;
+            // Status line: show Node ID + Tier if activated
+            const tierLabel   = rowTier > 0 ? `Tier ${rowTier}` : 'Tier 1';
+            const statusText  = isActivated
+              ? `✅ Node Active · ${tierLabel}`
+              : isExpired
+                ? '⚠️ Trial Expired — nudge them!'
+                : `🔵 Free Trial — ${daysLeft}d left`;
             return (
               <div key={i} style={{ display: 'flex', alignItems: 'center', padding: '12px 0', borderBottom: i < displayList.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
                 <div style={{ width: 34, height: 34, borderRadius: 10, background: rowBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>{rowIcon}</div>
                 <div style={{ flex: 1, marginLeft: 12 }}>
-                  <span style={{ fontSize: 13, fontWeight: 800, color: '#fff', display: 'block' }}>{shortAddr(friend.wallet_address)}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: '#fff' }}>{shortAddr(friend.wallet_address)}</span>
+                    {/* Node ID pill — shown only when a node is activated */}
+                    {isActivated && rowNodeId > 0 && (
+                      <span style={{ fontSize: 9, fontWeight: 900, color: rowColor, background: `${rowColor}15`, border: `1px solid ${rowColor}40`, borderRadius: 6, padding: '1px 6px', letterSpacing: 0.5 }}>
+                        #{rowNodeId}
+                      </span>
+                    )}
+                  </div>
                   <span style={{ fontSize: 10, color: rowColor, fontWeight: 700 }}>{statusText}</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
