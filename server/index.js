@@ -78,7 +78,7 @@ const ensureSchema = async () => {
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS sponsor_node_id INTEGER`);
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS matrix_parent_node_id INTEGER`);
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS matrix_parent_id INTEGER`);
-    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS node_active BOOLEAN DEFAULT TRUE`);
+    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS node_active BOOLEAN DEFAULT FALSE`);
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS matrix_counts JSONB DEFAULT '[]'`);
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_rpc_sync TIMESTAMP`);
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by_memo TEXT`);
@@ -1203,6 +1203,39 @@ app.get('/api/admin/user/:walletAddress', checkAdmin, async (req, res) => {
   }
 });
 
+// POST Admin Backfill Missing Nodes 
+app.post('/api/admin/backfill-nodes', checkAdmin, async (req, res) => {
+  try {
+    const users = await query('SELECT id, wallet_address FROM users WHERE node_id IS NULL AND referrer_id IS NOT NULL');
+    console.log(`Starting backfill for ${users.rows.length} users with null node_id...`);
+    let updated = 0;
+    
+    // Process in batches
+    for (const u of users.rows) {
+      try {
+        const nodeId = await aipcoreContract.addressToNodeId(u.wallet_address);
+        if (Number(nodeId) > 0) {
+          console.log(`📡 Backfill: Found Node ${nodeId} for ${u.wallet_address}`);
+          await syncNodeStateFromRPC(Number(nodeId), u.wallet_address);
+          updated++;
+        }
+      } catch (e) {
+        // Ignore CALL_EXCEPTION (means they don't have a node yet)
+      }
+      await new Promise(r => setTimeout(r, 200)); // Throttle RPC
+    }
+    
+    // Clean up any users who don't have a node but got set to node_active=true incorrectly from old schema
+    const cleanup = await query('UPDATE users SET node_active = FALSE WHERE node_id IS NULL AND node_active = TRUE RETURNING id');
+    console.log(`Cleaned up ${cleanup.rows.length} users with incorrect node_active=TRUE`);
+    
+    res.json({ success: true, checked: users.rows.length, updated, cleanedUp: cleanup.rows.length });
+  } catch (err) {
+    console.error('Backfill error:', err);
+    res.status(500).json({ error: 'Backfill failed' });
+  }
+});
+
 // POST Adjust User Reward (Admin)
 app.post('/api/admin/user/adjust-reward', checkAdmin, async (req, res) => {
   const { walletAddress, amount, reason } = req.body;
@@ -1980,7 +2013,10 @@ async function ensureNodeSync(wallet) {
       return true;
     }
   } catch (err) {
-    console.error(`Status sync failed for ${wallet}:`, err.message);
+    // Suppress EVM CALL_EXCEPTION which simply means the mapping addressToNodeId reverted (node not registered)
+    if (err.code !== 'CALL_EXCEPTION') {
+      console.error(`Status sync failed for ${wallet}:`, err.message);
+    }
   }
   return false;
 }
