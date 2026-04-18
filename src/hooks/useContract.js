@@ -40,8 +40,10 @@ export const useContract = () => {
           poolName:         data.poolName        || 'None',
           totalDeposited:   parseFloat(data.totalDeposited || 0),
           isPoolQualified:  Boolean(data.isPoolQualified),
-          totalPoolEarned:  parseFloat(data.totalPoolEarned  || 0),  // NEW
-          totalPoolClaimed: parseFloat(data.totalPoolClaimed || 0),  // NEW
+          totalPoolEarned:  parseFloat(data.totalPoolEarned  || 0),
+          totalPoolClaimed: parseFloat(data.totalPoolClaimed || 0),
+          remainingCap:     parseFloat(data.remainingCap    || 0),
+          lifetimeCap:      parseFloat(data.lifetimeCap     || 0),
           missingDirects:   data.missingDirects  || 0,
           missingTier:      data.missingTier     || 0,
           missingTeam:      data.missingTeam     || 0,

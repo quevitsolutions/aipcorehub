@@ -304,7 +304,7 @@ export default function DashboardScreen() {
           })}
         </div>
 
-        {/* Pool Lifetime Stats Row */}
+        {/* Pool Lifetime Stats Row — 3 columns */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 20, paddingTop: 20, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
           {[
             { label: 'POOL EARNED',  val: formatBNB(poolQual.totalPoolEarned),  color: '#A3FF12', icon: '⬡' },
@@ -320,6 +320,38 @@ export default function DashboardScreen() {
           ))}
         </div>
 
+        {/* Pool Cap Row — lifetime cap + remaining with progress bar */}
+        {parseFloat(poolQual.lifetimeCap) > 0 && (() => {
+          const cap      = parseFloat(poolQual.lifetimeCap  || 0);
+          const rem      = parseFloat(poolQual.remainingCap || 0);
+          const used     = cap - rem;
+          const usedPct  = cap > 0 ? Math.min(100, (used / cap) * 100) : 0;
+          const capColor = usedPct >= 90 ? '#FF5252' : usedPct >= 60 ? '#FFB74D' : '#A3FF12';
+          return (
+            <div style={{ marginTop: 10, background: 'rgba(0,0,0,0.25)', borderRadius: 12, padding: '14px 12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', fontWeight: 800, letterSpacing: 0.5 }}>POOL CAP</span>
+                  <span style={{ fontSize: 14, fontWeight: 900, color: '#FFD700' }}>{formatBNB(cap)} BNB</span>
+                  {bnbPrice > 0 && <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)' }}>≈ ${(cap * bnbPrice).toFixed(2)}</span>}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                  <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', fontWeight: 800, letterSpacing: 0.5 }}>REMAINING</span>
+                  <span style={{ fontSize: 14, fontWeight: 900, color: capColor }}>{formatBNB(rem)} BNB</span>
+                  {bnbPrice > 0 && <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)' }}>≈ ${(rem * bnbPrice).toFixed(2)}</span>}
+                </div>
+              </div>
+              {/* Progress bar — used vs cap */}
+              <div style={{ width: '100%', height: 6, background: 'rgba(255,255,255,0.06)', borderRadius: 3, overflow: 'hidden' }}>
+                <div style={{ width: `${usedPct}%`, height: '100%', background: capColor, borderRadius: 3, transition: 'width 1s ease' }} />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+                <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.25)', fontWeight: 700 }}>USED {usedPct.toFixed(1)}%</span>
+                <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.25)', fontWeight: 700 }}>CAP LIMIT {formatBNB(cap)}</span>
+              </div>
+            </div>
+          );
+        })()}
 
         {poolQual.isPoolQualified && poolQual.poolName !== "Gold" && (
           <button 

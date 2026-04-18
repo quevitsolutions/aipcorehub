@@ -96,11 +96,12 @@ export const useGameStore = create(
         totalDeposited: 0,
         totalPoolEarned: 0,
         totalPoolClaimed: 0,
+        remainingCap: 0,
+        lifetimeCap: 0,
         missingDirects: 0,
         missingTier: 0,
         missingTeam: 0,
         totalEarned: 0,
-        remainingCap: 0,
       },
 
       // UI
@@ -271,6 +272,8 @@ export const useGameStore = create(
             isPoolQualified:  data.isPoolQualified  ?? s.poolQual.isPoolQualified,
             totalPoolEarned:  data.totalPoolEarned  ?? s.poolQual.totalPoolEarned,
             totalPoolClaimed: data.totalPoolClaimed ?? s.poolQual.totalPoolClaimed,
+            remainingCap:     data.remainingCap     ?? s.poolQual.remainingCap,
+            lifetimeCap:      data.lifetimeCap      ?? s.poolQual.lifetimeCap,
             missingDirects:   data.missingDirects   ?? s.poolQual.missingDirects,
             missingTier:      data.missingTier      ?? s.poolQual.missingTier,
             missingTeam:      data.missingTeam      ?? s.poolQual.missingTeam,
