@@ -20,12 +20,21 @@ export default function ReferralScreen() {
 
   const [inviteTab, setInviteTab] = useState('activated');
 
+  // Derived counts from the referral list for tab badges
+  const safeReferralList = Array.isArray(referralList) ? referralList : [];
+  const activatedList    = safeReferralList.filter(f => Number(f?.node_tier || 0) > 0);
+  const freeTrialList    = safeReferralList.filter(f => Number(f?.node_tier || 0) === 0 && Number(f?.trial_days_left || 0) > 0);
+  const expiredList      = safeReferralList.filter(f => Number(f?.node_tier || 0) === 0 && Number(f?.trial_days_left || 0) === 0);
+  const conversionRate   = safeReferralList.length > 0
+    ? ((activatedList.length / safeReferralList.length) * 100).toFixed(1)
+    : '0.0';
+
   // Smart tab defaulting: if no activated nodes but we have refs, show Free tab
   useEffect(() => {
-    if (Array.isArray(referralList) && referralList.length > 0 && Number(activatedRefs || 0) === 0 && inviteTab === 'activated') {
-      setInviteTab('free');
+    if (safeReferralList.length > 0 && activatedList.length === 0 && inviteTab === 'activated') {
+      setInviteTab(freeTrialList.length > 0 ? 'free' : 'expired');
     }
-  }, [referralList, activatedRefs, inviteTab]);
+  }, [safeReferralList.length, activatedList.length]);
 
   useEffect(() => {
     if (fetchLeaderboardData) fetchLeaderboardData();
@@ -89,16 +98,27 @@ export default function ReferralScreen() {
         </div>
       )}
 
-      {/* Stats Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px' }}>
-        <div className="booster-card" style={{ margin: 0, padding: '16px', alignItems: 'center', border: '1px solid rgba(163, 255, 18, 0.15)', background: 'rgba(203,255,1,0.04)' }}>
-          <span style={{ fontSize: '28px', fontWeight: 900, color: 'var(--neon-lime)' }}>{directRefs}</span>
-          <span style={{ fontSize: '10px', color: '#FFB74D', fontWeight: 800, marginTop: '4px' }}>FRIENDS INVITED</span>
-          <span style={{ fontSize: '9px', color: '#FFD700', fontWeight: 700, marginTop: 2 }}>{hasNode ? 'Activated Node' : 'Free User'}</span>
+      {/* Stats Cards — 4-up grid showing proper breakdown */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '24px' }}>
+        <div className="booster-card" style={{ margin: 0, padding: '14px', alignItems: 'center', border: '1px solid rgba(163,255,18,0.2)', background: 'rgba(203,255,1,0.04)' }}>
+          <span style={{ fontSize: '26px', fontWeight: 900, color: 'var(--neon-lime)' }}>{safeReferralList.length}</span>
+          <span style={{ fontSize: '9px', color: '#FFB74D', fontWeight: 800, marginTop: 2 }}>TOTAL INVITED</span>
+          <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.4)', fontWeight: 700, marginTop: 1 }}>{hasNode ? 'Node Owner' : 'Free User'}</span>
         </div>
-        <div className="booster-card" style={{ margin: 0, padding: '16px', alignItems: 'center', border: '1px solid rgba(163, 255, 18, 0.1)' }}>
-          <span style={{ fontSize: '24px', fontWeight: 900, color: 'var(--neon-lime)' }}>{(localReward / 1000000).toFixed(1)}M</span>
-          <span style={{ fontSize: '10px', color: '#FFD700', fontWeight: 800, marginTop: '4px' }}>EST. REWARDS</span>
+        <div className="booster-card" style={{ margin: 0, padding: '14px', alignItems: 'center', border: '1px solid rgba(163,255,18,0.15)', background: 'rgba(255,255,255,0.02)' }}>
+          <span style={{ fontSize: '26px', fontWeight: 900, color: 'var(--neon-lime)' }}>{activatedList.length}</span>
+          <span style={{ fontSize: '9px', color: '#A3FF12', fontWeight: 800, marginTop: 2 }}>ACTIVATED NODES</span>
+          <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.4)', fontWeight: 700, marginTop: 1 }}>Conversion: {conversionRate}%</span>
+        </div>
+        <div className="booster-card" style={{ margin: 0, padding: '14px', alignItems: 'center', border: '1px solid rgba(79,195,247,0.15)', background: 'rgba(79,195,247,0.03)' }}>
+          <span style={{ fontSize: '26px', fontWeight: 900, color: '#4FC3F7' }}>{freeTrialList.length}</span>
+          <span style={{ fontSize: '9px', color: '#4FC3F7', fontWeight: 800, marginTop: 2 }}>IN FREE TRIAL</span>
+          <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.4)', fontWeight: 700, marginTop: 1 }}>Active users</span>
+        </div>
+        <div className="booster-card" style={{ margin: 0, padding: '14px', alignItems: 'center', border: '1px solid rgba(255,59,48,0.15)', background: 'rgba(255,59,48,0.03)' }}>
+          <span style={{ fontSize: '26px', fontWeight: 900, color: '#FF5252' }}>{expiredList.length}</span>
+          <span style={{ fontSize: '9px', color: '#FF5252', fontWeight: 800, marginTop: 2 }}>TRIAL EXPIRED</span>
+          <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.4)', fontWeight: 700, marginTop: 1 }}>Need activation</span>
         </div>
       </div>
 
@@ -220,14 +240,25 @@ export default function ReferralScreen() {
         </button>
       </div>
       
-      {/* Referral Filter Tabs */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-        <button onClick={() => setInviteTab('activated')} style={{ flex: 1, padding: '10px', borderRadius: '12px', border: inviteTab === 'activated' ? '1px solid var(--neon-lime)' : '1px solid rgba(255,255,255,0.05)', background: inviteTab === 'activated' ? 'rgba(163,255,18,0.08)' : 'rgba(255,255,255,0.02)', color: inviteTab === 'activated' ? 'var(--neon-lime)' : '#FFFFFF', fontWeight: 800, fontSize: '11px', cursor: 'pointer' }}>
-          ACTIVATED NODES
-        </button>
-        <button onClick={() => setInviteTab('free')} style={{ flex: 1, padding: '10px', borderRadius: '12px', border: inviteTab === 'free' ? '1px solid #4FC3F7' : '1px solid rgba(255,255,255,0.05)', background: inviteTab === 'free' ? 'rgba(79,195,247,0.08)' : 'rgba(255,255,255,0.02)', color: inviteTab === 'free' ? '#4FC3F7' : '#FFFFFF', fontWeight: 800, fontSize: '11px', cursor: 'pointer' }}>
-          FREE MEMBERS
-        </button>
+      {/* Referral Filter Tabs — 3 states with live counts */}
+      <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
+        {[
+          { key: 'activated', label: 'ACTIVATED',  count: activatedList.length,  activeColor: 'var(--neon-lime)', activeBg: 'rgba(163,255,18,0.08)', activeBorder: 'var(--neon-lime)' },
+          { key: 'free',      label: 'FREE TRIAL', count: freeTrialList.length,   activeColor: '#4FC3F7',          activeBg: 'rgba(79,195,247,0.08)',  activeBorder: '#4FC3F7' },
+          { key: 'expired',   label: 'EXPIRED',    count: expiredList.length,     activeColor: '#FF5252',          activeBg: 'rgba(255,59,48,0.08)',   activeBorder: '#FF5252' },
+        ].map(tab => (
+          <button key={tab.key} onClick={() => setInviteTab(tab.key)} style={{
+            flex: 1, padding: '8px 4px', borderRadius: '12px',
+            border: inviteTab === tab.key ? `1px solid ${tab.activeBorder}` : '1px solid rgba(255,255,255,0.06)',
+            background: inviteTab === tab.key ? tab.activeBg : 'rgba(255,255,255,0.02)',
+            color: inviteTab === tab.key ? tab.activeColor : 'rgba(255,255,255,0.5)',
+            fontWeight: 800, fontSize: '9px', cursor: 'pointer', letterSpacing: 0.5,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2
+          }}>
+            <span style={{ fontSize: 14, fontWeight: 900, color: inviteTab === tab.key ? tab.activeColor : '#fff' }}>{tab.count}</span>
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       <div className="booster-card" style={{ padding: '8px 16px', marginBottom: '32px', minHeight: '100px', position: 'relative' }}>
@@ -237,46 +268,62 @@ export default function ReferralScreen() {
           </div>
         )}
         {(() => {
-          const safeList = Array.isArray(referralList) ? referralList : [];
-          const filteredList = safeList.filter(f => {
-            const tier = Number(f?.node_tier || 0);
-            return inviteTab === 'activated' ? tier > 0 : tier === 0;
-          });
-          
-          if (filteredList.length === 0 && !loadingReferrals) {
+          // Pick the right pre-filtered list per tab
+          const displayList = inviteTab === 'activated' ? activatedList
+            : inviteTab === 'free' ? freeTrialList
+            : expiredList;
+
+          if (displayList.length === 0 && !loadingReferrals) {
+            const emptyMsg = {
+              activated: { icon: '⬡', text: 'No activated nodes yet.', sub: 'Share your link to convert free trial members!' },
+              free:      { icon: '👤', text: 'No active free trial members.', sub: 'All invites either activated or expired.' },
+              expired:   { icon: '⏰', text: 'No expired trials.', sub: 'Great — everyone is still active!' },
+            }[inviteTab];
             return (
-              <div style={{ padding: '30px 20px', textAlign: 'center', fontSize: '11px', color: 'rgba(255,255,255,0.3)', fontWeight: 600 }}>
-                No {inviteTab === 'activated' ? 'activated nodes' : 'free members'} found.
+              <div style={{ padding: '30px 20px', textAlign: 'center' }}>
+                <div style={{ fontSize: 28, marginBottom: 8 }}>{emptyMsg.icon}</div>
+                <div style={{ fontSize: '11px', fontWeight: 800, color: 'rgba(255,255,255,0.5)' }}>{emptyMsg.text}</div>
+                <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.25)', marginTop: 4, fontWeight: 600 }}>{emptyMsg.sub}</div>
               </div>
             );
           }
 
-          return filteredList.slice(0, 50).map((friend, i) => {
-            const isActivated = Number(friend.node_tier) > 0;
-            // Bug fix: parse trial_days_left from backend API (default to 0 if missing)
-            const friendDaysLeft = !isActivated ? (friend.trial_days_left || 0) : null;
-            const trialExpired = friendDaysLeft !== null && friendDaysLeft === 0;
+          return displayList.slice(0, 50).map((friend, i) => {
+            const isActivated    = Number(friend.node_tier) > 0;
+            const daysLeft       = Number(friend.trial_days_left || 0);
+            const isExpired      = !isActivated && daysLeft === 0;
+            const isFreeTrial    = !isActivated && daysLeft > 0;
+
+            const rowColor   = isActivated ? 'var(--neon-lime)' : isExpired ? '#FF5252' : '#4FC3F7';
+            const rowIcon    = isActivated ? '⬡' : isExpired ? '⏰' : '👤';
+            const rowBg      = isActivated ? 'rgba(203,255,1,0.12)' : isExpired ? 'rgba(255,59,48,0.12)' : 'rgba(79,195,247,0.08)';
+            const statusText = isActivated
+              ? `✅ Node Active — Tier ${friend.node_tier}`
+              : isExpired
+                ? '⚠️ Trial Expired — nudge them to activate!'
+                : `🔵 Free Trial — ${daysLeft}d remaining`;
+
             return (
-            <div key={i} style={{ 
-              display: 'flex', alignItems: 'center', padding: '12px 0',
-              borderBottom: i < filteredList.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none'
-            }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: isActivated ? 'rgba(203,255,1,0.15)' : trialExpired ? 'rgba(255,59,48,0.15)' : 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>
-                {isActivated ? '⬡' : trialExpired ? '⏰' : '👤'}
+              <div key={i} style={{
+                display: 'flex', alignItems: 'center', padding: '12px 0',
+                borderBottom: i < displayList.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none'
+              }}>
+                <div style={{ width: 34, height: 34, borderRadius: 10, background: rowBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
+                  {rowIcon}
+                </div>
+                <div className="flex-column" style={{ flex: 1, marginLeft: 12 }}>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: '#fff' }}>{shortAddr(friend.wallet_address)}</span>
+                  <span style={{ fontSize: 10, color: rowColor, fontWeight: 700, marginTop: 2 }}>{statusText}</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                  <span style={{ fontSize: 12, fontWeight: 900, color: rowColor }}>
+                    {Number(friend.local_reward || 0) >= 1000 ? `${(friend.local_reward / 1000).toFixed(1)}K` : Math.floor(friend.local_reward || 0)}
+                  </span>
+                  <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', fontWeight: 700 }}>$AIP</span>
+                </div>
               </div>
-              <div className="flex-column" style={{ flex: 1, marginLeft: '12px' }}>
-                <span style={{ fontSize: '13px', fontWeight: 800 }}>{shortAddr(friend.wallet_address)}</span>
-                <span style={{ fontSize: '10px', color: isActivated ? 'var(--neon-lime)' : trialExpired ? '#FF3B30' : '#4FC3F7', fontWeight: 700 }}>
-                  {isActivated 
-                    ? `✅ Node Active (T${friend.node_tier})` 
-                    : trialExpired 
-                      ? '⚠️ Trial Expired — needs activation'
-                      : `🔵 Free Trial — ${friendDaysLeft}d left`}
-                </span>
-              </div>
-              <span style={{ fontSize: '12px', fontWeight: 900, color: isActivated ? 'var(--neon-lime)' : '#FFFFFF' }}>{(friend.local_reward / 1000).toFixed(1)}K</span>
-            </div>
-          );});
+            );
+          });
         })()}
       </div>
 
