@@ -347,12 +347,39 @@ class BlockchainService {
 
   async getMatrixMembers(nodeId, layer, num = 50) {
     const members = await this.core.getMatrixUsers(nodeId, layer, 0, num);
-    return members.map((m) => ({
+    const basic = members.map((m) => ({
       wallet: m.wallet,
       nodeId: Number(m.nodeId),
       tier: Number(m.tier),
       joinedAt: Number(m.joinedAt),
     }));
+
+    if (basic.length === 0) return basic;
+
+    // Enrich with per-member stats (directs + sub-team) via a single multicall batch
+    try {
+      const calls = basic.map(m => ({
+        target: CONTRACTS.AIPCORE,
+        callData: this.core.interface.encodeFunctionData("getNodeStats", [m.nodeId])
+      }));
+      const [, returnData] = await this.multicall.aggregate(calls);
+      return basic.map((m, i) => {
+        try {
+          const decoded = this.core.interface.decodeFunctionResult("getNodeStats", returnData[i]);
+          // getNodeStats → [tier, directCount, matrixCount, totalRewards, totalContribution, daysActive]
+          return {
+            ...m,
+            directNodes:      Number(decoded[1] || 0), // directCount
+            totalMatrixNodes: Number(decoded[2] || 0), // matrixCount (sub-team)
+          };
+        } catch {
+          return { ...m, directNodes: 0, totalMatrixNodes: 0 };
+        }
+      });
+    } catch (err) {
+      console.warn("Member stats multicall failed, using plain list:", err.message);
+      return basic.map(m => ({ ...m, directNodes: 0, totalMatrixNodes: 0 }));
+    }
   }
 }
 
