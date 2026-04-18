@@ -1613,27 +1613,52 @@ app.get('/api/referrals/:walletAddress', async (req, res) => {
     const parentIds = parentsResult.rows.map(r => r.id);
 
     const result = await query(
-      `SELECT wallet_address,
-              COALESCE(local_reward, 0)         AS local_reward,
-              COALESCE(created_at, NOW())        AS joined_at,
-              COALESCE(node_tier, 0)             AS node_tier,
-              COALESCE(node_id, 0)               AS node_id,
-              COALESCE(node_active, FALSE)        AS node_active,
-              -- BUG FIX: Use EPOCH math for correct days remaining (EXTRACT(DAY) is wrong across months)
+      `SELECT u.wallet_address,
+              COALESCE(u.local_reward, 0)                                            AS local_reward,
+              COALESCE(u.created_at, NOW())                                          AS joined_at,
+              COALESCE(u.node_tier, 0)                                               AS node_tier,
+              -- node_id: prefer this row's value, fall back to the activation row for same wallet
+              COALESCE(
+                NULLIF(u.node_id, 0),
+                (SELECT n.node_id FROM users n
+                 WHERE LOWER(n.wallet_address) = LOWER(u.wallet_address)
+                   AND n.node_id IS NOT NULL AND n.node_id > 0
+                 ORDER BY n.node_id ASC LIMIT 1)
+              )                                                                       AS node_id,
+              -- node_active: true if either row is active
+              (u.node_active = TRUE OR EXISTS (
+                SELECT 1 FROM users n
+                WHERE LOWER(n.wallet_address) = LOWER(u.wallet_address)
+                  AND n.node_active = TRUE AND n.node_id IS NOT NULL
+              ))                                                                      AS node_active,
+              -- tier: prefer highest tier across both rows
+              GREATEST(
+                COALESCE(u.node_tier, 0),
+                COALESCE((SELECT n.node_tier FROM users n
+                          WHERE LOWER(n.wallet_address) = LOWER(u.wallet_address)
+                            AND n.node_id IS NOT NULL ORDER BY n.node_tier DESC LIMIT 1), 0)
+              )                                                                       AS resolved_tier,
+              -- trial days remaining (from registration row)
               GREATEST(0,
                 CEIL(
-                  EXTRACT(EPOCH FROM ((COALESCE(created_at, NOW()) + INTERVAL '30 days') - NOW())) / 86400
+                  EXTRACT(EPOCH FROM ((COALESCE(u.created_at, NOW()) + INTERVAL '30 days') - NOW())) / 86400
                 )::int
-              )                                  AS trial_days_left,
-              (SELECT COUNT(*) FROM users WHERE referrer_id = u.id)           AS direct_count,
-              (SELECT COUNT(*) FROM users WHERE matrix_parent_id = u.id)      AS team_size
+              )                                                                       AS trial_days_left,
+              (SELECT COUNT(*) FROM users WHERE referrer_id = u.id)                  AS direct_count,
+              (SELECT COUNT(*) FROM users WHERE matrix_parent_id = u.id)             AS team_size
        FROM users u
-       WHERE referrer_id = ANY($1::int[])
+       WHERE u.referrer_id = ANY($1::int[])
        ORDER BY u.created_at DESC
        LIMIT 100`,
       [parentIds]
     );
-    res.json(result.rows);
+    // Normalise: use resolved_tier as node_tier so frontend sees the correct tier
+    const rows = result.rows.map(r => ({
+      ...r,
+      node_tier: Number(r.resolved_tier || r.node_tier || 0),
+      node_id:   Number(r.node_id || 0),
+    }));
+    res.json(rows);
 
   } catch (err) {
     console.error('Referral list error:', err.message);
