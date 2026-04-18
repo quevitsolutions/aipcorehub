@@ -1205,7 +1205,7 @@ app.get('/api/admin/user/:walletAddress', checkAdmin, async (req, res) => {
 // POST Admin Backfill Missing Nodes 
 app.post('/api/admin/backfill-nodes', checkAdmin, async (req, res) => {
   try {
-    const users = await query('SELECT id, wallet_address FROM users WHERE node_id IS NULL AND referrer_id IS NOT NULL');
+    const users = await query('SELECT id, wallet_address FROM users WHERE node_id IS NULL');
     console.log(`Starting backfill for ${users.rows.length} users with null node_id...`);
     let updated = 0;
     
