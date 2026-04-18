@@ -386,7 +386,9 @@ export default function ReferralScreen() {
               </div>
             );
           }
+          return displayList.slice(0, 50).map((friend, i) => {
             // Use same 3-signal check as the filter above
+
             const rowNodeId   = Number(friend.node_id || 0);
             const rowActive   = friend.node_active === true;
             const rowTier     = Number(friend.node_tier || 0);
