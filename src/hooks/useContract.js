@@ -39,7 +39,9 @@ export const useContract = () => {
           poolClaimable:    parseFloat(data.poolClaimable  || 0),
           poolName:         data.poolName        || 'None',
           totalDeposited:   parseFloat(data.totalDeposited || 0),
-          isPoolQualified:  Boolean(data.isPoolQualified),  // FIX: was missing
+          isPoolQualified:  Boolean(data.isPoolQualified),
+          totalPoolEarned:  parseFloat(data.totalPoolEarned  || 0),  // NEW
+          totalPoolClaimed: parseFloat(data.totalPoolClaimed || 0),  // NEW
           missingDirects:   data.missingDirects  || 0,
           missingTier:      data.missingTier     || 0,
           missingTeam:      data.missingTeam     || 0,

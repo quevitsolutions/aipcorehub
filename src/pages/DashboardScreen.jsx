@@ -304,7 +304,23 @@ export default function DashboardScreen() {
           })}
         </div>
 
-        {/* Manual Registration Button shown when qualified for next tier */}
+        {/* Pool Lifetime Stats Row */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 20, paddingTop: 20, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+          {[
+            { label: 'POOL EARNED',  val: formatBNB(poolQual.totalPoolEarned),  color: '#A3FF12', icon: '⬡' },
+            { label: 'POOL CLAIMED', val: formatBNB(poolQual.totalPoolClaimed), color: '#4FC3F7', icon: '✅' },
+            { label: 'DEPOSITED',    val: formatBNB(poolQual.totalDeposited),   color: '#FFD700', icon: '📥' },
+          ].map((s, i) => (
+            <div key={i} style={{ background: 'rgba(0,0,0,0.25)', borderRadius: 12, padding: '10px 6px', textAlign: 'center' }}>
+              <div style={{ fontSize: 18, marginBottom: 4 }}>{s.icon}</div>
+              <div style={{ fontSize: 13, fontWeight: 900, color: s.color }}>{s.val}</div>
+              <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.35)', fontWeight: 800, letterSpacing: 0.5, marginTop: 2 }}>{s.label}</div>
+              {bnbPrice > 0 && <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)', marginTop: 1 }}>≈ ${(parseFloat(s.val) * bnbPrice).toFixed(2)}</div>}
+            </div>
+          ))}
+        </div>
+
+
         {poolQual.isPoolQualified && poolQual.poolName !== "Gold" && (
           <button 
             className="giant-btn" 

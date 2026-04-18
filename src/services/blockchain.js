@@ -127,6 +127,8 @@ class BlockchainService {
         poolName:         String(poolData?.[1] || "None"),
         totalDeposited:   ethers.formatEther(poolData?.[7] || 0n),
         isPoolQualified:  Boolean(poolData?.[9]),
+        totalPoolEarned:  ethers.formatEther(poolData?.[3] || 0n),   // pool lifetime earned
+        totalPoolClaimed: ethers.formatEther(poolData?.[4] || 0n),   // pool lifetime claimed
         missingDirects:   Number(poolData?.[11]?.[0] || 0),
         missingTier:      Number(poolData?.[11]?.[1] || 0),
         missingTeam:      Number(poolData?.[11]?.[2] || 0),
