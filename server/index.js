@@ -459,8 +459,9 @@ app.get('/api/user/:walletAddress', async (req, res) => {
         [walletAddress, refId, req.query.ref || null]
       );
 
-      // PERF FIX: findFirstActiveAncestor was blocking new user response — now fire-and-forget
-      findFirstActiveAncestor(refId).catch(() => {});
+      // REFERRAL FIX: Await the ancestor lookup so we return the real sponsor node ID,
+      // not the genesis fallback (36999). This is what gets passed to createNode on-chain.
+      const ancestorNodeId = refId ? await findFirstActiveAncestor(refId) : 36999;
 
       return res.json({ 
         ...newUser.rows[0], 
@@ -470,7 +471,7 @@ app.get('/api/user/:walletAddress', async (req, res) => {
         is_new: true, 
         pending_mined: 0,
         sponsor_wallet: sponsorWallet,
-        sponsor_node_id: 36999  // Use genesis default for instant response
+        sponsor_node_id: ancestorNodeId  // Properly resolved — never blindly 36999
       });
     }
     
@@ -523,13 +524,12 @@ app.get('/api/user/:walletAddress', async (req, res) => {
     if (sponsorRow.rows.length > 0) {
       sponsorWallet = sponsorRow.rows[0].wallet_address;
       if (sponsorRow.rows[0].node_id) {
+        // Sponsor has a node — use it directly
         sponsorNodeId = sponsorRow.rows[0].node_id;
       } else {
-        // Sponsor is free — rollup in background, use default for now (instant response)
-        findFirstActiveAncestor(user.referrer_id)
-          .then(() => {}) // non-blocking
-          .catch(() => {});
-        sponsorNodeId = 36999;
+        // Sponsor is a free user — walk up the referral tree to find first active ancestor
+        // REFERRAL FIX: Await this lookup so we return the real node, not 36999
+        sponsorNodeId = await findFirstActiveAncestor(user.referrer_id);
       }
     }
 
@@ -1618,6 +1618,41 @@ app.get('/api/referrals/:walletAddress', async (req, res) => {
   } catch (err) {
     console.error('Referral list error:', err.message);
     res.status(500).json({ error: 'Failed to fetch referrals' });
+  }
+});
+
+/**
+ * GET /api/referrals/sponsor-node/:walletAddress
+ * Returns the resolved on-chain sponsor node ID for a wallet.
+ * Called by frontend at activation time to ensure fresh/correct sponsor node — never stale genesis.
+ */
+app.get('/api/referrals/sponsor-node/:walletAddress', async (req, res) => {
+  const { walletAddress } = req.params;
+  try {
+    const userRes = await query(
+      `SELECT u.referrer_id, u.referred_by_memo, s.node_id as sponsor_node_id, s.wallet_address as sponsor_wallet
+       FROM users u
+       LEFT JOIN users s ON s.id = u.referrer_id
+       WHERE LOWER(u.wallet_address) = LOWER($1)
+       ORDER BY u.id ASC LIMIT 1`,
+      [walletAddress]
+    );
+
+    if (userRes.rows.length === 0) return res.json({ sponsor_node_id: 36999 });
+
+    const row = userRes.rows[0];
+
+    // If referrer has an active node — use it directly
+    if (row.sponsor_node_id) {
+      return res.json({ sponsor_node_id: row.sponsor_node_id, sponsor_wallet: row.sponsor_wallet });
+    }
+
+    // If referrer is free — walk up to first active ancestor
+    const ancestorNodeId = await findFirstActiveAncestor(row.referrer_id);
+    return res.json({ sponsor_node_id: ancestorNodeId, sponsor_wallet: row.sponsor_wallet });
+  } catch (err) {
+    console.error('sponsor-node lookup error:', err.message);
+    res.json({ sponsor_node_id: 36999 });
   }
 });
 

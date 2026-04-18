@@ -99,9 +99,26 @@ export default function MarketingScreen() {
   const handleActivate = async () => {
     if (!isConnected) { connectWallet(); return; }
     setLoading(true);
-    const { sponsorNodeId } = useGameStore.getState();
-    await createNode(sponsorNodeId || 36999);
-    setLoading(false);
+    try {
+      const { walletAddress } = useGameStore.getState();
+      let sponsorNodeId = useGameStore.getState().sponsorNodeId || 36999;
+
+      // REFERRAL FIX: Fetch real-time resolved sponsor node — never use stale cached genesis
+      if (walletAddress) {
+        try {
+          const baseUrl = import.meta.env.VITE_API_URL || '/api';
+          const res = await fetch(`${baseUrl.replace(/\/api$/, '')}/api/referrals/sponsor-node/${walletAddress}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.sponsor_node_id) sponsorNodeId = data.sponsor_node_id;
+          }
+        } catch (e) { /* Use cached value on network error */ }
+      }
+
+      await createNode(sponsorNodeId);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
