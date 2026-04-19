@@ -153,13 +153,13 @@ const ensureSchema = async () => {
 
     // === TASK REWARD RESET ===
     // Set social tasks to 1,000 coins each and Activate Node to 10,000
-    await query(`UPDATE tasks SET reward = 1000  WHERE name = 'Join AIPCore Telegram'`);
-    await query(`UPDATE tasks SET reward = 1000  WHERE name = 'Join AIPCore Chat'`);
-    await query(`UPDATE tasks SET reward = 1000  WHERE name = 'Follow on X/Twitter'`);
-    await query(`UPDATE tasks SET reward = 1000  WHERE name = 'Follow on Twitter'`);
-    await query(`UPDATE tasks SET reward = 10000 WHERE name = 'Activate Node'`);
+    await query(`UPDATE tasks SET reward = 1000  WHERE LOWER(name) LIKE '%telegram%'`);
+    await query(`UPDATE tasks SET reward = 1000  WHERE LOWER(name) LIKE '%chat%'`);
+    await query(`UPDATE tasks SET reward = 1000  WHERE LOWER(name) LIKE '%twitter%' OR LOWER(name) LIKE '%follow%'`);
+    await query(`UPDATE tasks SET reward = 10000 WHERE LOWER(name) LIKE '%activate%node%' OR LOWER(name) = 'activate node'`);
     await query(`UPDATE tasks SET reward = 1000  WHERE type = 'social' AND reward > 10000`);
-    console.log('✅ Task rewards updated to 1K / 10K');
+    await query(`UPDATE tasks SET reward = 1000  WHERE type = 'referral_count' AND reward > 1000000`);
+    console.log('✅ Task rewards updated: social=1K, activate node=10K');
 
     console.log('✅ Schema check complete');
   } catch (err) {
