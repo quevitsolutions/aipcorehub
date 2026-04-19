@@ -337,7 +337,29 @@ export default function ReferralScreen() {
 
             {/* Action */}
             {tgConnected ? (
-              <div style={{ fontSize: 18 }}>✅</div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                <div style={{ fontSize: 20 }}>✅</div>
+                <a
+                  href={`https://t.me/aipcore_bot?start=${walletAddress}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setTimeout(() => {
+                    fetch(`/api/telegram/status/${walletAddress}`)
+                      .then(r => r.json()).then(d => setTgConnected(d.connected)).catch(() => {});
+                  }, 4000)}
+                  style={{
+                    background: 'rgba(79,195,247,0.12)',
+                    color: '#4FC3F7',
+                    border: '1px solid rgba(79,195,247,0.3)',
+                    fontWeight: 800, fontSize: 9,
+                    padding: '5px 10px', borderRadius: 8,
+                    textDecoration: 'none', whiteSpace: 'nowrap',
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  🔄 RECONNECT
+                </a>
+              </div>
             ) : (
               <a
                 href={`https://t.me/aipcore_bot?start=${walletAddress}`}
