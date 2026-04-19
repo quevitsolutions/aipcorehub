@@ -429,38 +429,39 @@ export default function TeamScreen() {
                <div style={{ fontSize: '10px', color: '#666', marginTop: '6px' }}>Share your link to grow your team!</div>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {directMembers.map((m, i) => {
-                const rowNodeId   = Number(m.node_id || 0);
-                const rowActive   = m.node_active === true;
-                const rowTier     = Number(m.node_tier || 0);
-                const isActivated = rowNodeId > 0 || rowActive || rowTier > 0;
-                
-                const joinedAtStr = m.created_at || m.joined_at;
-                const d = joinedAtStr ? new Date(joinedAtStr) : null;
-                const dateStr = d ? `${d.getDate()}/${d.getMonth()+1}/${String(d.getFullYear()).slice(-2)}` : '—';
-                
-                return (
-                  <div key={i} style={{ padding: '12px 16px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isActivated ? '#A3FF12' : '#FF5252', boxShadow: isActivated ? '0 0 6px #A3FF12' : 'none' }} />
-                        <span style={{ fontSize: '12px', fontWeight: 800, color: '#fff', fontFamily: 'monospace' }}>
-                          {shortAddr(m.wallet_address || m.wallet || '')}
-                        </span>
-                      </div>
-                      <span style={{ fontSize: '10px', color: '#888', fontWeight: 700 }}>
-                        {dateStr}
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', gap: '6px' }}>
-                      <TierBadge tier={rowTier} />
-                      {rowNodeId > 0 && <NodeBadge nodeId={rowNodeId} />}
-                      {isActivated && <span style={{ background: 'rgba(163,255,18,0.1)', color: '#A3FF12', border: '1px solid rgba(163,255,18,0.2)', fontSize: '8px', fontWeight: 800, padding: '2px 6px', borderRadius: '4px' }}>ACTIVE</span>}
-                    </div>
-                  </div>
-                );
-              })}
+            <div>
+              {/* Column Headers */}
+              <div style={{
+                display: 'flex', justifyContent: 'space-between',
+                padding: '10px 0 8px',
+                borderBottom: '1px solid rgba(255,255,255,0.05)',
+                marginBottom: '4px'
+              }}>
+                <span style={{ fontSize: '8px', color: '#FFD700', fontWeight: 900, letterSpacing: '1px' }}>OPERATOR</span>
+                <div style={{ display: 'flex', gap: '16px' }}>
+                  <span style={{ fontSize: '8px', color: '#FFD700', fontWeight: 900, width: '45px', textAlign: 'center' }}>DIRECT</span>
+                  <span style={{ fontSize: '8px', color: '#4FC3F7', fontWeight: 900, width: '45px', textAlign: 'center' }}>TEAM</span>
+                </div>
+              </div>
+
+              {directMembers.map((m, i) => (
+                <MemberCard 
+                  key={i} 
+                  m={{
+                    ...m,
+                    is_direct: true, // Force the DIRECT badge
+                    joined_at: m.created_at || m.joined_at, // normalize date field
+                  }} 
+                  index={i} 
+                  total={directMembers.length} 
+                />
+              ))}
+
+              {directMembers.length >= 100 && (
+                <div style={{ padding: '10px 0', textAlign: 'center', fontSize: '9px', color: '#FF5252', fontStyle: 'italic' }}>
+                  Showing latest 100 members
+                </div>
+              )}
             </div>
           )}
         </div>
