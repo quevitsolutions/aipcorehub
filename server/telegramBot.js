@@ -30,22 +30,23 @@ export function initTelegramBot() {
     const firstName = msg.from.first_name || 'Operator';
     const walletArg = match[1] ? match[1].trim() : null;
 
-    // If a wallet was passed as a deep-link param, link it
-    if (walletArg && walletArg.startsWith('0x')) {
+    // If passed as conn_0x... it means the user clicked 'Connect Telegram' in the app
+    if (walletArg && walletArg.startsWith('conn_0x')) {
+      const actualWallet = walletArg.replace('conn_', '');
       try {
         await query(
           `UPDATE users SET telegram_id = $1 WHERE LOWER(wallet_address) = LOWER($2)`,
-          [telegramId, walletArg]
+          [telegramId, actualWallet]
         );
         await bot.sendMessage(chatId,
-          `✅ *Wallet Connected!*\n\nHey ${firstName}! Your wallet \`${walletArg.slice(0,6)}...${walletArg.slice(-4)}\` is now linked to this Telegram account.\n\n🔔 You will receive:\n• Node activation alerts\n• Reward notifications\n• New team member alerts\n• Exclusive promotions\n\nUse the buttons below to explore AIPCore 👇`,
+          `✅ *Wallet Connected!*\n\nHey ${firstName}! Your wallet \`${actualWallet.slice(0,6)}...${actualWallet.slice(-4)}\` is now linked to this Telegram account.\n\n🔔 You will receive:\n• Node activation alerts\n• Reward notifications\n• New team member alerts\n• Exclusive promotions\n\nUse the buttons below to explore AIPCore 👇`,
           {
             parse_mode: 'Markdown',
             reply_markup: {
               inline_keyboard: [
                 [{ text: '🌐 Open App', web_app: { url: APP_URL } }],
-                [{ text: '📊 My Status', callback_data: `status:${walletArg}` }, { text: '👥 My Team', callback_data: `team:${walletArg}` }],
-                [{ text: '🔗 Share Referral', callback_data: `share:${walletArg}` }]
+                [{ text: '📊 My Status', callback_data: `status:${actualWallet}` }, { text: '👥 My Team', callback_data: `team:${actualWallet}` }],
+                [{ text: '🔗 Share Referral', callback_data: `share:${actualWallet}` }]
               ]
             }
           }
@@ -54,7 +55,22 @@ export function initTelegramBot() {
         console.error('Telegram /start wallet link error:', err.message);
         await bot.sendMessage(chatId, '❌ Could not link wallet. Please try again from the app.');
       }
-    } else {
+    } 
+    // If it's just 0x... it means they clicked a referral link sent by a friend
+    else if (walletArg && walletArg.startsWith('0x')) {
+      await bot.sendMessage(chatId,
+        `👋 *Welcome to AIPCore Hub!*\n\nYou've been invited by \`${walletArg.slice(0,6)}...${walletArg.slice(-4)}\` to join the ultimate BNB earnings network.\n\n⚡ Build a global team for free and activate your node to earn 24/7 passive matrix income.\n\nClick the button below to connect your wallet and lock your position in their team 👇`,
+        {
+          parse_mode: 'Markdown',
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: '🚀 Launch App & Join Team', web_app: { url: `${APP_URL}/?ref=${walletArg}` } }]
+            ]
+          }
+        }
+      );
+    } 
+    else {
       // Generic welcome — user opened bot without deep link
       await bot.sendMessage(chatId,
         `👋 *Welcome to AIPCore Hub!*\n\n⚡ The decentralized BNB earnings network where free users build global teams and activate their income stream.\n\nTo connect your wallet and get notifications, visit the app and click *"🔔 Connect Telegram"* on your profile page.`,

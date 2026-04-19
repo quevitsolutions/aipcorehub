@@ -340,7 +340,7 @@ export default function ReferralScreen() {
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                 <div style={{ fontSize: 20 }}>✅</div>
                 <a
-                  href={`https://t.me/aipcore_bot?start=${walletAddress}`}
+                  href={`https://t.me/aipcore_bot?start=conn_${walletAddress}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={() => setTimeout(() => {
@@ -362,7 +362,7 @@ export default function ReferralScreen() {
               </div>
             ) : (
               <a
-                href={`https://t.me/aipcore_bot?start=${walletAddress}`}
+                href={`https://t.me/aipcore_bot?start=conn_${walletAddress}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => setTimeout(() => {
