@@ -300,9 +300,9 @@ export default function TeamScreen() {
   // Max capacity per level in binary matrix: 2^(level)
   const maxCapacity = (level) => Math.pow(2, level);
 
-  // Split directs into activated and free
-  const activatedDirects = directMembers.filter(m => Number(m.node_tier || 0) > 0 || Number(m.node_id || 0) > 0 || m.node_active === true);
-  const freeDirects = directMembers.filter(m => !(Number(m.node_tier || 0) > 0 || Number(m.node_id || 0) > 0 || m.node_active === true));
+  // Split directs into activated and free (t0 = Free)
+  const activatedDirects = directMembers.filter(m => Number(m.node_tier || m.tier || 0) > 0);
+  const freeDirects = directMembers.filter(m => Number(m.node_tier || m.tier || 0) === 0);
 
   const displayList = activeTab === 'direct' ? activatedDirects : freeDirects;
   const listTitle = activeTab === 'direct' ? `MY DIRECT REFERRALS (${activatedDirects.length})` : `FREE USERS (${freeDirects.length})`;
