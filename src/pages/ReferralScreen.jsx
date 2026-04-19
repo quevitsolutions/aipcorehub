@@ -192,6 +192,17 @@ export default function ReferralScreen() {
 
   const [inviteTab, setInviteTab] = useState('activated');
   const [showShareCard, setShowShareCard] = useState(false);
+  const [tgConnected, setTgConnected] = useState(false);
+  const [tgLoading, setTgLoading] = useState(false);
+
+  // Check if user has bot connected
+  useEffect(() => {
+    if (!walletAddress) return;
+    fetch(`/api/telegram/status/${walletAddress}`)
+      .then(r => r.json())
+      .then(d => setTgConnected(d.connected))
+      .catch(() => {});
+  }, [walletAddress]);
 
   const safeReferralList = Array.isArray(referralList) ? referralList : [];
 
@@ -291,6 +302,65 @@ export default function ReferralScreen() {
             <span style={{ fontSize: 16 }}>📋</span>
           </div>
         </div>
+
+        {/* ── Telegram Connect Card ── */}
+        {walletAddress && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 14,
+            background: tgConnected
+              ? 'linear-gradient(135deg, rgba(0,168,255,0.12), rgba(0,168,255,0.04))'
+              : 'linear-gradient(135deg, rgba(41,182,246,0.1), rgba(3,155,229,0.04))',
+            border: `1px solid ${tgConnected ? 'rgba(0,168,255,0.5)' : 'rgba(41,182,246,0.3)'}`,
+            borderRadius: 16, padding: '14px 16px', marginBottom: 12,
+            boxShadow: tgConnected ? '0 0 16px rgba(0,168,255,0.15)' : 'none',
+            transition: 'all 0.3s'
+          }}>
+            {/* Telegram Icon */}
+            <div style={{
+              width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
+              background: tgConnected ? 'rgba(0,168,255,0.2)' : 'rgba(41,182,246,0.12)',
+              border: '1px solid rgba(41,182,246,0.3)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22
+            }}>✈️</div>
+
+            {/* Text */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 10, fontWeight: 900, color: '#4FC3F7', letterSpacing: 1, marginBottom: 2 }}>
+                {tgConnected ? '✅ TELEGRAM CONNECTED' : '🔔 CONNECT TELEGRAM'}
+              </div>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: 600, lineHeight: 1.4 }}>
+                {tgConnected
+                  ? 'Notifications active — you will be alerted for rewards, new team members & promotions'
+                  : 'Get instant alerts for BNB rewards, new referrals, trials expiring & exclusive promotions'}
+              </div>
+            </div>
+
+            {/* Action */}
+            {tgConnected ? (
+              <div style={{ fontSize: 18 }}>✅</div>
+            ) : (
+              <a
+                href={`https://t.me/aipcore_bot?start=${walletAddress}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setTimeout(() => {
+                  fetch(`/api/telegram/status/${walletAddress}`)
+                    .then(r => r.json()).then(d => setTgConnected(d.connected)).catch(() => {});
+                }, 4000)}
+                style={{
+                  background: 'linear-gradient(135deg, #29B6F6, #0288D1)',
+                  color: '#fff', fontWeight: 900, fontSize: 10,
+                  padding: '10px 14px', borderRadius: 12,
+                  textDecoration: 'none', whiteSpace: 'nowrap',
+                  letterSpacing: 0.5, flexShrink: 0,
+                  boxShadow: '0 4px 15px rgba(41,182,246,0.3)'
+                }}
+              >
+                CONNECT
+              </a>
+            )}
+          </div>
+        )}
 
         {/* Share Card Toggle Button */}
         <motion.button
