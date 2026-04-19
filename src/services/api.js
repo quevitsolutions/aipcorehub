@@ -213,6 +213,12 @@ class ApiService {
     return res.json();
   }
 
+  async fetchReferralLevelMembers(walletAddress, level) {
+    const res = await fetch(`${this.baseUrl}/network/referral-level/${walletAddress}/${level}`);
+    if (!res.ok) throw new Error('Failed to fetch referral level members');
+    return res.json();
+  }
+
   async fetchNetworkCounts(walletAddress) {
     const res = await fetch(`${this.baseUrl}/network/counts/${walletAddress}`);
     if (!res.ok) throw new Error('Failed to fetch network counts');

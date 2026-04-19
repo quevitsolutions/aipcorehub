@@ -1331,6 +1331,56 @@ app.get('/api/network/level/:walletAddress/:level', async (req, res) => {
   }
 });
 
+// GET Members at a specific REFERRAL level (1-18)
+app.get('/api/network/referral-level/:walletAddress/:level', async (req, res) => {
+  const { walletAddress, level } = req.params;
+  const targetDepth = parseInt(level); 
+  
+  try {
+    const rootRes = await query('SELECT id FROM users WHERE LOWER(wallet_address) = LOWER($1) ORDER BY id ASC', [walletAddress]);
+    if (rootRes.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    const rootId = rootRes.rows[0].id;
+
+    // Recursive CTE to find members in REFERRAL tree (using referrer_id)
+    const members = await query(`
+      WITH RECURSIVE rt AS (
+        SELECT id, referrer_id, 0 as depth FROM users WHERE id = $1
+        UNION ALL
+        SELECT u.id, u.referrer_id, rt.depth + 1 FROM users u INNER JOIN rt ON u.referrer_id = rt.id WHERE rt.depth < 18
+      )
+      SELECT 
+        u.wallet_address, 
+        u.node_id, 
+        u.node_tier, 
+        u.node_active,
+        u.local_reward,
+        u.created_at as joined_at,
+        -- Trial days remaining
+        GREATEST(0, CEIL(EXTRACT(EPOCH FROM ((COALESCE(u.created_at, NOW()) + INTERVAL '30 days') - NOW())) / 86400)::int) as trial_days_left,
+        (SELECT COUNT(*) FROM users WHERE referrer_id = u.id) as direct_count,
+        (
+          WITH RECURSIVE sub_tree AS (
+            SELECT id, 0 as d FROM users WHERE referrer_id = u.id
+            UNION ALL
+            SELECT s.id, st.d + 1 FROM users s INNER JOIN sub_tree st ON s.referrer_id = st.id WHERE st.d < 18
+          )
+          SELECT COUNT(*) FROM sub_tree
+        ) as sub_referral_team,
+        CASE WHEN u.referrer_id = $1 THEN true ELSE false END as is_direct
+      FROM users u
+      JOIN rt ON u.id = rt.id
+      WHERE rt.depth = $2
+      ORDER BY u.created_at DESC
+      LIMIT 100
+    `, [rootId, targetDepth]);
+
+    res.json(members.rows);
+  } catch (err) {
+    console.error('Referral network level fetch failed:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
 // GET Network Counts for all 18 levels (Offline View Helper)
 app.get('/api/network/counts/:walletAddress', async (req, res) => {
   const { walletAddress } = req.params;
@@ -1606,14 +1656,23 @@ app.get('/api/referrals/stats/:walletAddress', async (req, res) => {
     }
     const parentIds = parentsResult.rows.map(r => r.id);
 
+    // Dynamic recursive lookup for potential/conversion stats across 18 levels
     const stats = await query(`
+      WITH RECURSIVE tree AS (
+        SELECT id, referrer_id, 0 as depth FROM users WHERE id = ANY($1::int[])
+        UNION ALL
+        SELECT u.id, u.referrer_id, tree.depth + 1 FROM users u INNER JOIN tree ON u.referrer_id = tree.id WHERE tree.depth < 18
+      )
       SELECT
         COUNT(*)                                                                              AS total,
         COUNT(*) FILTER (WHERE node_tier > 0)                                                AS activated,
         COUNT(*) FILTER (WHERE node_tier = 0 AND created_at > NOW() - INTERVAL '30 days')   AS in_trial,
-        COUNT(*) FILTER (WHERE node_tier = 0 AND created_at <= NOW() - INTERVAL '30 days')  AS expired
-      FROM users
-      WHERE referrer_id = ANY($1::int[])
+        COUNT(*) FILTER (WHERE node_tier = 0 AND created_at <= NOW() - INTERVAL '30 days')  AS expired,
+        -- Calculation: If each user was Tier 1 (0.05 BNB cost), user missed approx 5% per node (0.0025 BNB)
+        -- This is a FOMO estimate to drive conversion
+        COALESCE(SUM(CASE WHEN node_tier = 0 THEN 0.0025 ELSE 0 END), 0)                    AS potential_bnb
+      FROM users u
+      JOIN tree ON u.id = tree.id
     `, [parentIds]);
 
     const s = stats.rows[0];
@@ -1624,6 +1683,7 @@ app.get('/api/referrals/stats/:walletAddress', async (req, res) => {
       activated,
       in_trial:       parseInt(s.in_trial),
       expired:        parseInt(s.expired),
+      potentialBnb:   parseFloat(s.potential_bnb).toFixed(4),
       conversionRate: total > 0 ? ((activated / total) * 100).toFixed(1) : '0.0'
     });
   } catch (err) {
