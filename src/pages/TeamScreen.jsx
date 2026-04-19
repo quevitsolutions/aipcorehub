@@ -517,6 +517,7 @@ export default function TeamScreen() {
             </div>
           )}
         </div>
+      )}
     </div>
   );
 }
