@@ -150,6 +150,17 @@ const ensureSchema = async () => {
         WHERE NOT EXISTS (SELECT 1 FROM tasks WHERE name = $1)
       `, [t.name, t.reward, t.type, t.icon]);
     }
+
+    // === TASK REWARD RESET ===
+    // Set social tasks to 1,000 coins each and Activate Node to 10,000
+    await query(`UPDATE tasks SET reward = 1000  WHERE name = 'Join AIPCore Telegram'`);
+    await query(`UPDATE tasks SET reward = 1000  WHERE name = 'Join AIPCore Chat'`);
+    await query(`UPDATE tasks SET reward = 1000  WHERE name = 'Follow on X/Twitter'`);
+    await query(`UPDATE tasks SET reward = 1000  WHERE name = 'Follow on Twitter'`);
+    await query(`UPDATE tasks SET reward = 10000 WHERE name = 'Activate Node'`);
+    await query(`UPDATE tasks SET reward = 1000  WHERE type = 'social' AND reward > 10000`);
+    console.log('✅ Task rewards updated to 1K / 10K');
+
     console.log('✅ Schema check complete');
   } catch (err) {
     console.error('Schema update error:', err.message);
