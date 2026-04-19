@@ -335,6 +335,12 @@ const syncUserHistory = async (wallet) => {
         const nodeIdNum = Number(userId);
         const referrerIdNum = Number(referrerId);
         
+        // Fetch existing node state to avoid spamming alerts on re-sync
+        const prevState = await query(`SELECT node_id, telegram_id, referrer_id FROM users WHERE LOWER(wallet_address) = LOWER($1)`, [node]);
+        const isNewActivation = prevState.rows.length === 0 || !prevState.rows[0].node_id;
+        const tgId = prevState.rows.length > 0 ? prevState.rows[0].telegram_id : null;
+        const dbRefId = prevState.rows.length > 0 ? prevState.rows[0].referrer_id : null;
+        
         await query(
           `INSERT INTO users (wallet_address, node_id, sponsor_node_id, matrix_parent_node_id, node_active, created_at)
            VALUES ($1, $2, $3, $4, TRUE, $5)
@@ -345,6 +351,18 @@ const syncUserHistory = async (wallet) => {
                node_active = TRUE`,
           [node.toLowerCase(), nodeIdNum, referrerIdNum, Number(log.args[3] || 0), joinedAt]
         );
+
+        if (isNewActivation) {
+          if (tgId) {
+             sendNotification(tgId, `🎉 *Congratulations!*\n\nYour AIPCore Node *#${nodeIdNum}* has been successfully activated! 🚀\n\nYou are now eligible to earn real BNB rewards from your network.`);
+          }
+          if (referrerIdNum > 0) {
+             const sp = await query(`SELECT telegram_id FROM users WHERE node_id = $1 LIMIT 1`, [referrerIdNum]);
+             if (sp.rows.length > 0 && sp.rows[0].telegram_id) {
+                sendNotification(sp.rows[0].telegram_id, `👥 *New Team Member!*\n\nA new user just activated Node *#${nodeIdNum}* directly under your network!\n\nKeep building your team to maximize your matrix income.`);
+             }
+          }
+        }
 
         // TRIGGER RPC SYNC: Full accuracy refresh for new node + direct sponsor (await both)
         await syncNodeStateFromRPC(nodeIdNum);
@@ -380,7 +398,18 @@ const syncUserHistory = async (wallet) => {
     for (const log of logsTiers) {
       const { userId, tierId } = log.args;
       const tid = Number(userId);
-      await query('UPDATE users SET node_tier = $1 WHERE node_id = $2', [Number(tierId), tid]);
+      const newTier = Number(tierId);
+      
+      const prev = await query(`SELECT node_tier, telegram_id FROM users WHERE node_id = $1`, [tid]);
+      const oldTier = prev.rows.length > 0 ? Number(prev.rows[0].node_tier || 0) : 0;
+      const tgId = prev.rows.length > 0 ? prev.rows[0].telegram_id : null;
+      
+      await query('UPDATE users SET node_tier = $1 WHERE node_id = $2', [newTier, tid]);
+      
+      if (newTier > oldTier && tgId) {
+        sendNotification(tgId, `🚀 *Node Upgraded!*\n\nYour Node *#${tid}* has been upgraded to *Tier ${newTier}*!\n\nYou're now earning higher matrix rewards and deeper referral income.`);
+      }
+      
       // TRIGGER RPC SYNC: Refresh node data on tier upgrade
       await syncNodeStateFromRPC(tid);
     }
@@ -421,12 +450,24 @@ const syncGlobalHistory = async () => {
         else if (rType === 2) eventName = 'Layer Income';
         else if (rType === 3) eventName = 'Matrix Income';
         
-        await query(
+        const res = await query(
           `INSERT INTO income_history (wallet_address, source_contract, event_type, from_node_id, amount_bnb, amount_usd, tier, layer, is_missed, tx_hash, timestamp)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-           ON CONFLICT (tx_hash) DO NOTHING`,
+           ON CONFLICT (tx_hash) DO NOTHING RETURNING id`,
           [wallet, AIPCORE_ADDRESS, eventName, Number(fromId), bnbAmount, usdAmount, tierVal, Number(layer), !!isMissed, txHash, timestamp]
         );
+
+        if (res.rowCount > 0 && !!isMissed) {
+          const u = await query(`SELECT telegram_id FROM users WHERE LOWER(wallet_address) = LOWER($1)`, [wallet]);
+          if (u.rows.length > 0 && u.rows[0].telegram_id) {
+            sendNotification(u.rows[0].telegram_id, `⚠️ *Missed Reward!*\n\nYou just missed *${Number(bnbAmount).toFixed(4)} BNB* from Node #${Number(fromId)} because your node tier is too low.\n\n👉 Upgrade your node to capture these rewards!`);
+          }
+        } else if (res.rowCount > 0 && !isMissed) {
+          const u = await query(`SELECT telegram_id FROM users WHERE LOWER(wallet_address) = LOWER($1)`, [wallet]);
+          if (u.rows.length > 0 && u.rows[0].telegram_id) {
+            sendNotification(u.rows[0].telegram_id, `💰 *Reward Received!*\n\nYou just earned *${Number(bnbAmount).toFixed(4)} BNB* ($${Number(usdAmount).toFixed(2)}) from *${eventName}* (Node #${Number(fromId)}).\n\nKeep growing your team!`);
+          }
+        }
       }
     }
     lastSyncBlock = currentBlock;
