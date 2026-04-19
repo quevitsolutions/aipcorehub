@@ -295,6 +295,11 @@ export default function TeamScreen() {
   const matrixTotal = dualCounts.matrix.reduce((a,b) => a+b, 0);
   const calculatedTotal = matrixTotal || (teamSize || 0);
   
+  // LEVEL DATA: Matrix-only. Priority: DB matrix > Live RPC fallback
+  const levelData = new Array(18).fill(0).map((_, i) => dualCounts.matrix[i] || rpcMatrixCounts[i] || 0);
+  // Max capacity per level in binary matrix: 2^(level)
+  const maxCapacity = (level) => Math.pow(2, level);
+
   // Split directs into activated and free
   const activatedDirects = directMembers.filter(m => Number(m.node_tier || 0) > 0 || Number(m.node_id || 0) > 0 || m.node_active === true);
   const freeDirects = directMembers.filter(m => !(Number(m.node_tier || 0) > 0 || Number(m.node_id || 0) > 0 || m.node_active === true));
@@ -323,17 +328,17 @@ export default function TeamScreen() {
         <button 
           onClick={() => setActiveTab('matrix')}
           style={{ flexShrink: 0, padding: '10px 16px', borderRadius: '8px', background: activeTab === 'matrix' ? 'rgba(79,195,247,0.15)' : 'rgba(255,255,255,0.05)', color: activeTab === 'matrix' ? '#4FC3F7' : '#888', border: `1px solid ${activeTab === 'matrix' ? 'rgba(79,195,247,0.3)' : 'transparent'}`, fontSize: '10px', fontWeight: 800 }}>
-          MATRIX LEVELS
+          MATRIX
         </button>
         <button 
           onClick={() => setActiveTab('direct')}
           style={{ flexShrink: 0, padding: '10px 16px', borderRadius: '8px', background: activeTab === 'direct' ? 'rgba(163,255,18,0.15)' : 'rgba(255,255,255,0.05)', color: activeTab === 'direct' ? '#A3FF12' : '#888', border: `1px solid ${activeTab === 'direct' ? 'rgba(163,255,18,0.3)' : 'transparent'}`, fontSize: '10px', fontWeight: 800 }}>
-          DIRECT TEAM ({activatedDirects.length})
+          DIRECTS ({activatedDirects.length})
         </button>
         <button 
           onClick={() => setActiveTab('free')}
           style={{ flexShrink: 0, padding: '10px 16px', borderRadius: '8px', background: activeTab === 'free' ? 'rgba(255,152,0,0.15)' : 'rgba(255,255,255,0.05)', color: activeTab === 'free' ? '#FF9800' : '#888', border: `1px solid ${activeTab === 'free' ? 'rgba(255,152,0,0.3)' : 'transparent'}`, fontSize: '10px', fontWeight: 800 }}>
-          FREE USERS ({freeDirects.length})
+          FREE ({freeDirects.length})
         </button>
       </div>
 
