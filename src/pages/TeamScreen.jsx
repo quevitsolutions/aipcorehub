@@ -20,6 +20,7 @@ function TierBadge({ tier }) {
 }
 
 function NodeBadge({ nodeId }) {
+  if (!nodeId || Number(nodeId) <= 0) return null;
   return (
     <span style={{
       background: 'rgba(79,195,247,0.15)',
@@ -32,13 +33,26 @@ function NodeBadge({ nodeId }) {
 }
 
 function MemberCard({ m, index, total }) {
-  const joinedAt = m.joined_at || m.joinedAt;
-  const date = joinedAt ? new Date(joinedAt * 1000) : null;
-  const dateStr = date ? `${date.getDate()}/${date.getMonth() + 1}/${String(date.getFullYear()).slice(-2)}` : '—';
+  const rawJoin = m.joined_at || m.joinedAt || m.created_at;
+  let dateStr = '—';
+  if (rawJoin) {
+    let dateObj;
+    if (typeof rawJoin === 'string' && rawJoin.includes('T')) {
+      // standard DB ISO String
+      dateObj = new Date(rawJoin);
+    } else {
+      // raw epoch timestamp from blockchain
+      dateObj = new Date(Number(rawJoin) * 1000);
+    }
+    if (!isNaN(dateObj.getTime())) {
+      dateStr = `${dateObj.getDate()}/${dateObj.getMonth() + 1}/${String(dateObj.getFullYear()).slice(-2)}`;
+    }
+  }
+
   const wallet = m.wallet_address || m.wallet || '';
   const teamSize = Number(m.team_size || 0);
   const directs = Number(m.direct_count || 0);
-  const isActive = m.node_active !== false;
+  const isActive = m.node_active === true;
 
   return (
     <div style={{
@@ -127,7 +141,7 @@ export default function TeamScreen() {
   const [loadingDirect, setLoadingDirect] = useState(false);
 
   useEffect(() => {
-    if (activeTab === 'direct' && walletAddress && directMembers.length === 0) {
+    if ((activeTab === 'direct' || activeTab === 'free') && walletAddress && directMembers.length === 0) {
       setLoadingDirect(true);
       
       const loadDirects = async () => {
@@ -279,12 +293,12 @@ export default function TeamScreen() {
   // Direct sponsor count (from store or referral[0])
   const calculatedDirects = directRefs || dualCounts.referral[0] || 0;
   const matrixTotal = dualCounts.matrix.reduce((a,b) => a+b, 0);
-  const calculatedTotal = matrixTotal || (teamSize || 0);
+  const calculatedTotal = matrixTotal || (teamSize || 0  // Split directs into activated and free
+  const activatedDirects = directMembers.filter(m => Number(m.node_tier || 0) > 0 || Number(m.node_id || 0) > 0 || m.node_active === true);
+  const freeDirects = directMembers.filter(m => !(Number(m.node_tier || 0) > 0 || Number(m.node_id || 0) > 0 || m.node_active === true));
 
-  // LEVEL DATA: Matrix-only. Priority: DB matrix > Live RPC fallback
-  const levelData = new Array(18).fill(0).map((_, i) => dualCounts.matrix[i] || rpcMatrixCounts[i] || 0);
-  // Max capacity per level in binary matrix: 2^(level)
-  const maxCapacity = (level) => Math.pow(2, level);
+  const displayList = activeTab === 'direct' ? activatedDirects : freeDirects;
+  const listTitle = activeTab === 'direct' ? `MY DIRECT REFERRALS (${activatedDirects.length})` : `FREE USERS (${freeDirects.length})`;
 
   return (
     <div className="page page-team" style={{ paddingBottom: '100px' }}>
@@ -303,20 +317,25 @@ export default function TeamScreen() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '8px', padding: '0 16px 20px' }}>
+      <div style={{ display: 'flex', gap: '8px', padding: '0 16px 20px', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
         <button 
           onClick={() => setActiveTab('matrix')}
-          style={{ flex: 1, padding: '10px', borderRadius: '8px', background: activeTab === 'matrix' ? 'rgba(79,195,247,0.15)' : 'rgba(255,255,255,0.05)', color: activeTab === 'matrix' ? '#4FC3F7' : '#888', border: `1px solid ${activeTab === 'matrix' ? 'rgba(79,195,247,0.3)' : 'transparent'}`, fontSize: '12px', fontWeight: 800 }}>
+          style={{ flexShrink: 0, padding: '10px 16px', borderRadius: '8px', background: activeTab === 'matrix' ? 'rgba(79,195,247,0.15)' : 'rgba(255,255,255,0.05)', color: activeTab === 'matrix' ? '#4FC3F7' : '#888', border: `1px solid ${activeTab === 'matrix' ? 'rgba(79,195,247,0.3)' : 'transparent'}`, fontSize: '10px', fontWeight: 800 }}>
           MATRIX LEVELS
         </button>
         <button 
           onClick={() => setActiveTab('direct')}
-          style={{ flex: 1, padding: '10px', borderRadius: '8px', background: activeTab === 'direct' ? 'rgba(163,255,18,0.15)' : 'rgba(255,255,255,0.05)', color: activeTab === 'direct' ? '#A3FF12' : '#888', border: `1px solid ${activeTab === 'direct' ? 'rgba(163,255,18,0.3)' : 'transparent'}`, fontSize: '12px', fontWeight: 800 }}>
-          DIRECT TEAM ({calculatedDirects})
+          style={{ flexShrink: 0, padding: '10px 16px', borderRadius: '8px', background: activeTab === 'direct' ? 'rgba(163,255,18,0.15)' : 'rgba(255,255,255,0.05)', color: activeTab === 'direct' ? '#A3FF12' : '#888', border: `1px solid ${activeTab === 'direct' ? 'rgba(163,255,18,0.3)' : 'transparent'}`, fontSize: '10px', fontWeight: 800 }}>
+          DIRECT TEAM ({activatedDirects.length})
+        </button>
+        <button 
+          onClick={() => setActiveTab('free')}
+          style={{ flexShrink: 0, padding: '10px 16px', borderRadius: '8px', background: activeTab === 'free' ? 'rgba(255,152,0,0.15)' : 'rgba(255,255,255,0.05)', color: activeTab === 'free' ? '#FF9800' : '#888', border: `1px solid ${activeTab === 'free' ? 'rgba(255,152,0,0.3)' : 'transparent'}`, fontSize: '10px', fontWeight: 800 }}>
+          FREE USERS ({freeDirects.length})
         </button>
       </div>
 
-      {activeTab === 'matrix' ? (
+      {activeTab === 'matrix' && (
         <>
           <div style={{ fontSize: '10px', fontWeight: 900, color: '#4FC3F7', marginBottom: '12px', letterSpacing: '1.5px', paddingLeft: '2px', textAlign: 'center' }}>
             BINARY MATRIX LEVELS
@@ -439,19 +458,21 @@ export default function TeamScreen() {
             </div>
           )}
         </>
-      ) : (
+      )}
+
+      {(activeTab === 'direct' || activeTab === 'free') && (
         <div style={{ padding: '0 16px' }}>
-          <div style={{ fontSize: '10px', fontWeight: 900, color: '#A3FF12', marginBottom: '16px', letterSpacing: '1.5px', textAlign: 'center' }}>
-            MY DIRECT REFERRALS ({directMembers.length})
+          <div style={{ fontSize: '10px', fontWeight: 900, color: activeTab === 'direct' ? '#A3FF12' : '#FF9800', marginBottom: '16px', letterSpacing: '1.5px', textAlign: 'center' }}>
+            {listTitle}
           </div>
           {loadingDirect ? (
             <div style={{ textAlign: 'center', padding: '40px', color: '#FFB74D', fontSize: '11px', fontWeight: 700 }}>
-              LOADING DIRECT TEAM...
+              LOADING TEAM...
             </div>
-          ) : directMembers.length === 0 ? (
+          ) : displayList.length === 0 ? (
             <div style={{ padding: '40px 20px', textAlign: 'center' }}>
                <div style={{ fontSize: '32px', marginBottom: '10px' }}>👥</div>
-               <div style={{ fontSize: '12px', color: '#fff', fontWeight: 800 }}>No directs yet</div>
+               <div style={{ fontSize: '12px', color: '#fff', fontWeight: 800 }}>No users yet</div>
                <div style={{ fontSize: '10px', color: '#666', marginTop: '6px' }}>Share your link to grow your team!</div>
             </div>
           ) : (
@@ -470,7 +491,7 @@ export default function TeamScreen() {
                 </div>
               </div>
 
-              {directMembers.map((m, i) => (
+              {displayList.map((m, i) => (
                 <MemberCard 
                   key={i} 
                   m={{
@@ -479,11 +500,11 @@ export default function TeamScreen() {
                     joined_at: m.created_at || m.joined_at, // normalize date field
                   }} 
                   index={i} 
-                  total={directMembers.length} 
+                  total={displayList.length} 
                 />
               ))}
 
-              {directMembers.length >= 100 && (
+              {displayList.length >= 100 && (
                 <div style={{ padding: '10px 0', textAlign: 'center', fontSize: '9px', color: '#FF5252', fontStyle: 'italic' }}>
                   Showing latest 100 members
                 </div>
@@ -491,6 +512,7 @@ export default function TeamScreen() {
             </div>
           )}
         </div>
+      )}v>
       )}
     </div>
   );
