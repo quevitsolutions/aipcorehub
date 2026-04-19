@@ -513,8 +513,6 @@ export default function TeamScreen() {
               )}
             </div>
           )}
-        </div>
-      )}v>
       )}
     </div>
   );
