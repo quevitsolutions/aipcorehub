@@ -163,6 +163,156 @@ function UserManagementAdmin({ adminWallet }) {
   );
 }
 
+// ── Telegram Admin Panel ───────────────────────────────────────────────────────
+function TelegramAdminPanel({ adminWallet }) {
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [message, setMessage] = useState('');
+  const [filter, setFilter] = useState('all');
+  const [imageUrl, setImageUrl] = useState('');
+  const [buttonUrl, setButtonUrl] = useState('');
+  const [buttonLabel, setButtonLabel] = useState('');
+
+  useEffect(() => { loadStats(); }, [adminWallet]);
+
+  const loadStats = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/admin/telegram/stats', {
+        headers: { 'x-admin-wallet': adminWallet }
+      });
+      setStats(await res.json());
+    } catch { toast.error('Failed to load bot stats'); }
+    setLoading(false);
+  };
+
+  const handleBroadcast = async () => {
+    if (!message.trim()) return toast.error('Message cannot be empty');
+    setSending(true);
+    const tid = toast.loading('Sending broadcast...');
+    try {
+      const res = await fetch('/api/admin/telegram/broadcast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-wallet': adminWallet },
+        body: JSON.stringify({ message, filter, imageUrl: imageUrl || null, buttonUrl: buttonUrl || null, buttonLabel: buttonLabel || null })
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(`✅ Sent to ${data.sent} users (${data.failed} failed)`, { id: tid });
+        setMessage(''); setImageUrl(''); setButtonUrl(''); setButtonLabel('');
+        loadStats();
+      } else {
+        toast.error(data.error || 'Broadcast failed', { id: tid });
+      }
+    } catch {
+      toast.error('Network error', { id: tid });
+    }
+    setSending(false);
+  };
+
+  const filterLabels = { all: '📢 All Users', free: '⏳ Free Users Only', activated: '✅ Activated Nodes Only' };
+  const broadcasts = stats?.recent_broadcasts || [];
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      {/* Stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+        <div style={{ background: 'rgba(0,168,255,0.08)', border: '1px solid rgba(0,168,255,0.2)', borderRadius: 16, padding: 16, textAlign: 'center' }}>
+          <div style={{ fontSize: 10, color: '#4FC3F7', fontWeight: 800, marginBottom: 4 }}>BOT CONNECTED</div>
+          <div style={{ fontSize: 24, fontWeight: 900, color: '#fff' }}>{loading ? '...' : (stats?.connected || 0)}</div>
+        </div>
+        <div style={{ background: 'rgba(163,255,18,0.08)', border: '1px solid rgba(163,255,18,0.2)', borderRadius: 16, padding: 16, textAlign: 'center' }}>
+          <div style={{ fontSize: 10, color: '#A3FF12', fontWeight: 800, marginBottom: 4 }}>NODES</div>
+          <div style={{ fontSize: 24, fontWeight: 900, color: '#A3FF12' }}>{loading ? '...' : (stats?.connected_nodes || 0)}</div>
+        </div>
+        <div style={{ background: 'rgba(255,152,0,0.08)', border: '1px solid rgba(255,152,0,0.2)', borderRadius: 16, padding: 16, textAlign: 'center' }}>
+          <div style={{ fontSize: 10, color: '#FF9800', fontWeight: 800, marginBottom: 4 }}>FREE USERS</div>
+          <div style={{ fontSize: 24, fontWeight: 900, color: '#FF9800' }}>{loading ? '...' : (stats?.connected_free || 0)}</div>
+        </div>
+      </div>
+
+      {/* Composer */}
+      <div style={{ background: 'var(--bg-card)', padding: '24px', borderRadius: '24px', border: '1px solid rgba(0,168,255,0.15)' }}>
+        <h3 style={{ fontSize: '13px', fontWeight: 900, marginBottom: '20px', color: '#4FC3F7' }}>📢 BROADCAST COMPOSER</h3>
+        
+        {/* Target Filter */}
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', fontWeight: 800, marginBottom: 8 }}>TARGET AUDIENCE</div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {Object.entries(filterLabels).map(([val, label]) => (
+              <button key={val} onClick={() => setFilter(val)} style={{
+                flex: 1, padding: '8px 4px', borderRadius: 10, border: 'none', fontSize: 9, fontWeight: 900, cursor: 'pointer',
+                background: filter === val ? '#4FC3F7' : 'rgba(255,255,255,0.06)',
+                color: filter === val ? '#000' : '#888'
+              }}>{label}</button>
+            ))}
+          </div>
+        </div>
+
+        {/* Message */}
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', fontWeight: 800, marginBottom: 6 }}>MESSAGE (Markdown supported: *bold*, _italic_)</div>
+          <textarea
+            value={message}
+            onChange={e => setMessage(e.target.value)}
+            placeholder="🚀 *AIPCore Update!*&#10;&#10;New milestone unlocked! Activate your node to start earning BNB rewards today!&#10;&#10;👉 Visit the app now:"
+            rows={6}
+            style={{ ...inputStyle, width: '100%', resize: 'vertical', lineHeight: 1.5 }}
+          />
+        </div>
+
+        {/* Optional extras */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+          <input placeholder="Image URL (optional)" value={imageUrl} onChange={e => setImageUrl(e.target.value)} style={inputStyle} />
+          <input placeholder="Button URL (optional)" value={buttonUrl} onChange={e => setButtonUrl(e.target.value)} style={inputStyle} />
+          <input placeholder="Button Label (default: Open App)" value={buttonLabel} onChange={e => setButtonLabel(e.target.value)} style={{ ...inputStyle, gridColumn: 'span 2' }} />
+        </div>
+
+        {/* Preview */}
+        {message && (
+          <div style={{ background: 'rgba(0,168,255,0.05)', border: '1px solid rgba(0,168,255,0.15)', borderRadius: 12, padding: '12px 16px', marginBottom: 14, fontSize: 12, color: '#ccc', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
+            <div style={{ fontSize: 9, color: '#4FC3F7', fontWeight: 800, marginBottom: 6 }}>PREVIEW</div>
+            {message}
+            {buttonUrl && <div style={{ marginTop: 8, background: '#4FC3F7', color: '#000', padding: '6px 14px', borderRadius: 8, display: 'inline-block', fontWeight: 900, fontSize: 11 }}>{buttonLabel || '🌐 Open App'}</div>}
+          </div>
+        )}
+
+        <button
+          onClick={handleBroadcast}
+          disabled={sending || !message.trim()}
+          style={{
+            background: sending ? 'rgba(79,195,247,0.3)' : '#4FC3F7', color: '#000',
+            fontWeight: 900, padding: '14px', borderRadius: '12px',
+            fontSize: '13px', width: '100%', cursor: 'pointer', letterSpacing: 1
+          }}
+        >
+          {sending ? '⌛ SENDING...' : `📤 SEND TO ${filterLabels[filter].toUpperCase()}`}
+        </button>
+      </div>
+
+      {/* Broadcast History */}
+      {broadcasts.length > 0 && (
+        <div style={{ background: 'var(--bg-card)', padding: '24px', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <h3 style={{ fontSize: '13px', fontWeight: 900, marginBottom: '16px', color: '#FFD700' }}>📋 RECENT BROADCASTS</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {broadcasts.map(b => (
+              <div key={b.id} style={{ background: 'rgba(255,255,255,0.02)', padding: '12px 16px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.04)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <span style={{ fontSize: 9, color: '#4FC3F7', fontWeight: 800, textTransform: 'uppercase' }}>{b.target_filter}</span>
+                  <span style={{ fontSize: 9, color: '#A3FF12', fontWeight: 800 }}>✅ {b.sent_count} sent</span>
+                </div>
+                <div style={{ fontSize: 11, color: '#ccc', whiteSpace: 'pre-wrap', maxHeight: 60, overflow: 'hidden', opacity: 0.8 }}>{b.message}</div>
+                <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.2)', marginTop: 6 }}>{new Date(b.created_at).toLocaleString()}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main Admin Screen ──────────────────────────────────────────────────────────
 export default function AdminScreen() {
   const {
@@ -217,7 +367,7 @@ export default function AdminScreen() {
   const freeCoins = parseFloat(s.coins_free_users || 0);
   const otherCoins = totalCoins - nodeCoins - freeCoins;
 
-  const TABS = ['overview', 'snapshot', 'tasks', 'users', 'logs'];
+  const TABS = ['overview', 'snapshot', 'tasks', 'users', 'logs', 'telegram'];
 
   return (
     <div className="page-content" style={{ padding: '0 20px 60px' }}>
@@ -455,6 +605,9 @@ export default function AdminScreen() {
             )}
           </div>
         </div>
+      )}
+      {activeAdminTab === 'telegram' && (
+        <TelegramAdminPanel adminWallet={walletAddress} />
       )}
     </div>
   );

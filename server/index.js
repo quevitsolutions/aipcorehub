@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import { ethers } from 'ethers';
 import axios from 'axios';
 import { query } from './db.js';
+import { initTelegramBot, sendNotification, broadcastToUsers } from './telegramBot.js';
 
 dotenv.config();
 
@@ -2074,7 +2075,81 @@ async function ensureNodeSync(wallet) {
 
 setInterval(syncGlobalHistory, 2 * 60 * 1000); // Poll every 2 minutes
 
+// ════════════════════════════════════════════════════════════
+// TELEGRAM ADMIN ENDPOINTS
+// ════════════════════════════════════════════════════════════
+
+const ADMIN_WALLET_CHECK = (process.env.VITE_ADMIN_WALLET || '').toLowerCase();
+
+// POST /api/admin/telegram/broadcast — Send campaign to all or filtered users
+app.post('/api/admin/telegram/broadcast', async (req, res) => {
+  const adminWallet = (req.headers['x-admin-wallet'] || '').toLowerCase();
+  if (adminWallet !== ADMIN_WALLET_CHECK) return res.status(403).json({ error: 'Forbidden' });
+
+  const { message, filter = 'all', imageUrl, buttonUrl, buttonLabel } = req.body;
+  if (!message) return res.status(400).json({ error: 'Message required' });
+
+  try {
+    const result = await broadcastToUsers({ filter, message, imageUrl, buttonUrl, buttonLabel });
+    res.json({ success: true, ...result });
+  } catch (err) {
+    console.error('Broadcast error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/admin/telegram/stats — How many users have connected the bot
+app.get('/api/admin/telegram/stats', async (req, res) => {
+  const adminWallet = (req.headers['x-admin-wallet'] || '').toLowerCase();
+  if (adminWallet !== ADMIN_WALLET_CHECK) return res.status(403).json({ error: 'Forbidden' });
+
+  try {
+    const result = await query(`
+      SELECT
+        COUNT(*) FILTER (WHERE telegram_id IS NOT NULL) as connected,
+        COUNT(*) FILTER (WHERE telegram_id IS NOT NULL AND node_tier > 0) as connected_nodes,
+        COUNT(*) FILTER (WHERE telegram_id IS NOT NULL AND node_tier = 0) as connected_free,
+        COUNT(*) as total_users
+      FROM users
+    `);
+    const broadcasts = await query('SELECT * FROM telegram_broadcasts ORDER BY created_at DESC LIMIT 10');
+    res.json({ ...result.rows[0], recent_broadcasts: broadcasts.rows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/telegram/connect — Link telegram_id to wallet (called from app)
+app.post('/api/telegram/connect', async (req, res) => {
+  const { walletAddress, telegramId } = req.body;
+  if (!walletAddress || !telegramId) return res.status(400).json({ error: 'walletAddress and telegramId required' });
+  try {
+    await query(
+      `UPDATE users SET telegram_id = $1 WHERE LOWER(wallet_address) = LOWER($2)`,
+      [telegramId, walletAddress]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/telegram/status/:walletAddress — Check if user has bot connected
+app.get('/api/telegram/status/:walletAddress', async (req, res) => {
+  try {
+    const result = await query(
+      `SELECT telegram_id FROM users WHERE LOWER(wallet_address) = LOWER($1) LIMIT 1`,
+      [req.params.walletAddress]
+    );
+    const connected = result.rows.length > 0 && !!result.rows[0].telegram_id;
+    res.json({ connected, telegramId: connected ? result.rows[0].telegram_id : null });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`AIPCore Backend running on port ${PORT}`);
   syncGlobalHistory(); // Initial fetch
+  initTelegramBot();   // Start Telegram bot
 });

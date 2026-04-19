@@ -104,3 +104,12 @@ CREATE TABLE IF NOT EXISTS income_history (
 
 CREATE INDEX IF NOT EXISTS idx_income_wallet ON income_history(wallet_address);
 CREATE INDEX IF NOT EXISTS idx_income_timestamp ON income_history(timestamp DESC);
+
+-- Telegram broadcast audit log
+CREATE TABLE IF NOT EXISTS telegram_broadcasts (
+    id SERIAL PRIMARY KEY,
+    message TEXT NOT NULL,
+    target_filter VARCHAR(50) DEFAULT 'all',
+    sent_count INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
