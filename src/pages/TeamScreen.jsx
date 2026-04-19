@@ -293,7 +293,9 @@ export default function TeamScreen() {
   // Direct sponsor count (from store or referral[0])
   const calculatedDirects = directRefs || dualCounts.referral[0] || 0;
   const matrixTotal = dualCounts.matrix.reduce((a,b) => a+b, 0);
-  const calculatedTotal = matrixTotal || (teamSize || 0  // Split directs into activated and free
+  const calculatedTotal = matrixTotal || (teamSize || 0);
+  
+  // Split directs into activated and free
   const activatedDirects = directMembers.filter(m => Number(m.node_tier || 0) > 0 || Number(m.node_id || 0) > 0 || m.node_active === true);
   const freeDirects = directMembers.filter(m => !(Number(m.node_tier || 0) > 0 || Number(m.node_id || 0) > 0 || m.node_active === true));
 
