@@ -226,7 +226,8 @@ export const useContract = () => {
     },
     fetchTeamCounts: (nid) => blockchain.getReferralCounts(nid),
     fetchMatrixCounts: (nid) => blockchain.getMatrixLevelCounts(nid),
-    fetchTeamLevelMembers: (nid, layer) => blockchain.getMatrixMembers(nid, layer)
+    fetchTeamLevelMembers: (nid, layer) => blockchain.getMatrixMembers(nid, layer),
+    fetchDirectMembers: (nid) => blockchain.getDirectReferrals(nid)
   }), [setNodeData, updateChainData, setBnbBalance, openConnectModal, disconnect]);
 };
 

@@ -109,7 +109,7 @@ function MemberCard({ m, index, total }) {
 
 export default function TeamScreen() {
   const { isConnected, nodeId, directRefs, teamSize, walletAddress } = useGameStore();
-  const { fetchTeamCounts, fetchMatrixCounts, fetchTeamLevelMembers } = useContract();
+  const { fetchTeamCounts, fetchMatrixCounts, fetchTeamLevelMembers, fetchDirectMembers } = useContract();
 
   const [dualCounts, setDualCounts] = useState({
     referral: new Array(18).fill(0),
@@ -129,19 +129,45 @@ export default function TeamScreen() {
   useEffect(() => {
     if (activeTab === 'direct' && walletAddress && directMembers.length === 0) {
       setLoadingDirect(true);
-      api.fetchReferralList(walletAddress)
-        .then(data => {
-          // If the API nests results (like Phase 2 stats), unwrap it
-          const list = Array.isArray(data) ? data : data.referrals || [];
-          setDirectMembers(list);
+      
+      const loadDirects = async () => {
+        try {
+          // 1. Fetch live directly from Contract
+          let rpcDirects = [];
+          if (nodeId && Number(nodeId) > 0 && fetchDirectMembers) {
+            rpcDirects = await fetchDirectMembers(nodeId).catch(() => []);
+          }
+
+          // 2. Fetch from DB config
+          const dbData = await api.fetchReferralList(walletAddress).catch(() => []);
+          const dbList = Array.isArray(dbData) ? dbData : dbData.referrals || [];
+
+          // 3. Merge: Blockchain overrides DB stats for activated users
+          const merged = [...dbList];
+          
+          rpcDirects.forEach(rpcUser => {
+            const index = merged.findIndex(u => u.wallet_address?.toLowerCase() === rpcUser.wallet_address.toLowerCase());
+            if (index >= 0) {
+              merged[index] = { ...merged[index], ...rpcUser, is_direct: true };
+            } else {
+              merged.push({ ...rpcUser, is_direct: true });
+            }
+          });
+
+          // Deduplicate and mark all direct
+          const finalList = merged.map((m) => ({ ...m, is_direct: true }));
+
+          setDirectMembers(finalList);
           setLoadingDirect(false);
-        })
-        .catch(err => {
-          console.error("Failed to fetch direct team:", err);
+        } catch (err) {
+          console.error("Failed to merge direct team:", err);
           setLoadingDirect(false);
-        });
+        }
+      };
+
+      loadDirects();
     }
-  }, [activeTab, walletAddress]);
+  }, [activeTab, walletAddress, nodeId, fetchDirectMembers]);
 
   useEffect(() => {
     const loadStats = async () => {

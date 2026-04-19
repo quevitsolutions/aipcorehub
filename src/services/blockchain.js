@@ -365,6 +365,28 @@ class BlockchainService {
     }
   }
 
+  async getDirectReferrals(nodeId, num = 100) {
+    try {
+      if (!nodeId || Number(nodeId) === 0) return [];
+      const members = await this.core.getNetworkNodes(nodeId, 0, num);
+      return members.map(m => ({
+        wallet_address: m.wallet,
+        nodeId: Number(m.nodeId), // raw nodeId for MemberCard component mapping
+        node_id: Number(m.nodeId), // db standard mapping
+        node_tier: Number(m.tier),
+        joined_at: Number(m.joinedAt),
+        joinedAt: Number(m.joinedAt),
+        direct_count: Number(m.directNodes),
+        team_size: Number(m.totalMatrixNodes),
+        node_active: true,
+        is_direct: true
+      }));
+    } catch (err) {
+      console.warn("getDirectReferrals failed:", err.message);
+      return [];
+    }
+  }
+
   async getMatrixMembers(nodeId, layer, num = 50) {
     const members = await this.core.getMatrixUsers(nodeId, layer, 0, num);
     const basic = members.map((m) => ({
