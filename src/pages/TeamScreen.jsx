@@ -121,6 +121,28 @@ export default function TeamScreen() {
   const [levelMembers, setLevelMembers] = useState([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
 
+  // --- NEW STATE: Tabs & Direct Team ---
+  const [activeTab, setActiveTab] = useState('matrix');
+  const [directMembers, setDirectMembers] = useState([]);
+  const [loadingDirect, setLoadingDirect] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === 'direct' && walletAddress && directMembers.length === 0) {
+      setLoadingDirect(true);
+      api.fetchReferralList(walletAddress)
+        .then(data => {
+          // If the API nests results (like Phase 2 stats), unwrap it
+          const list = Array.isArray(data) ? data : data.referrals || [];
+          setDirectMembers(list);
+          setLoadingDirect(false);
+        })
+        .catch(err => {
+          console.error("Failed to fetch direct team:", err);
+          setLoadingDirect(false);
+        });
+    }
+  }, [activeTab, walletAddress]);
+
   useEffect(() => {
     const loadStats = async () => {
       if (!walletAddress) return;
@@ -255,124 +277,192 @@ export default function TeamScreen() {
         </div>
       </div>
 
-      <div style={{ fontSize: '10px', fontWeight: 900, color: '#4FC3F7', marginBottom: '12px', letterSpacing: '1.5px', paddingLeft: '2px', textAlign: 'center' }}>
-        BINARY MATRIX LEVELS
+      <div style={{ display: 'flex', gap: '8px', padding: '0 16px 20px' }}>
+        <button 
+          onClick={() => setActiveTab('matrix')}
+          style={{ flex: 1, padding: '10px', borderRadius: '8px', background: activeTab === 'matrix' ? 'rgba(79,195,247,0.15)' : 'rgba(255,255,255,0.05)', color: activeTab === 'matrix' ? '#4FC3F7' : '#888', border: `1px solid ${activeTab === 'matrix' ? 'rgba(79,195,247,0.3)' : 'transparent'}`, fontSize: '12px', fontWeight: 800 }}>
+          MATRIX LEVELS
+        </button>
+        <button 
+          onClick={() => setActiveTab('direct')}
+          style={{ flex: 1, padding: '10px', borderRadius: '8px', background: activeTab === 'direct' ? 'rgba(163,255,18,0.15)' : 'rgba(255,255,255,0.05)', color: activeTab === 'direct' ? '#A3FF12' : '#888', border: `1px solid ${activeTab === 'direct' ? 'rgba(163,255,18,0.3)' : 'transparent'}`, fontSize: '12px', fontWeight: 800 }}>
+          DIRECT TEAM ({calculatedDirects})
+        </button>
       </div>
 
-      {loadingCounts ? (
-        <div style={{ textAlign: 'center', padding: '40px', color: '#FFB74D', fontSize: '11px', fontWeight: 700 }}>
-          LOADING NETWORK DATA...
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18].map((level, index) => {
-            const count = levelData[index] || 0;
-            const maxSlots = maxCapacity(level); // 2, 4, 8, 16...
-            const fillPct = maxSlots > 0 ? Math.min(100, Math.round((count / maxSlots) * 100)) : 0;
-            const isExpanded = expandedLevel === index;
-            const canClick = count > 0 || isExpanded;
+      {activeTab === 'matrix' ? (
+        <>
+          <div style={{ fontSize: '10px', fontWeight: 900, color: '#4FC3F7', marginBottom: '12px', letterSpacing: '1.5px', paddingLeft: '2px', textAlign: 'center' }}>
+            BINARY MATRIX LEVELS
+          </div>
 
-            return (
-              <div key={level} style={{
-                borderRadius: '12px',
-                border: `1px solid ${isExpanded ? 'rgba(163,255,18,0.25)' : count > 0 ? 'rgba(79,195,247,0.1)' : 'rgba(255,255,255,0.04)'}`,
-                background: isExpanded ? 'rgba(163,255,18,0.03)' : 'rgba(255,255,255,0.02)',
-                overflow: 'hidden',
-                transition: 'border-color 0.2s',
-                opacity: count === 0 ? 0.45 : 1
-              }}>
-                {/* Level Header */}
-                <div
-                  onClick={() => canClick && toggleLevel(index)}
-                  style={{
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '12px 16px', cursor: canClick ? 'pointer' : 'default'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{
-                      width: '28px', height: '28px', borderRadius: '8px',
-                      background: count > 0 ? 'rgba(163,255,18,0.15)' : 'rgba(255,255,255,0.05)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: '10px', fontWeight: 900,
-                      color: count > 0 ? '#A3FF12' : '#555'
-                    }}>
-                      {level}
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '12px', fontWeight: 800, color: '#fff' }}>Level {level}</div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
-                        {/* Progress bar */}
-                        <div style={{ width: '60px', height: '3px', background: 'rgba(255,255,255,0.08)', borderRadius: '2px', overflow: 'hidden' }}>
-                          <div style={{ width: `${fillPct}%`, height: '100%', background: fillPct >= 100 ? '#A3FF12' : '#4FC3F7', borderRadius: '2px', transition: 'width 0.4s ease' }} />
-                        </div>
-                        <span style={{ fontSize: '8px', color: '#555', fontWeight: 700 }}>{count}/{maxSlots}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{
-                      fontSize: '16px', fontWeight: 900,
-                      color: count >= maxSlots ? '#A3FF12' : count > 0 ? '#4FC3F7' : '#333'
-                    }}>{count}</span>
-                    {count > 0 && (
-                      <div style={{
-                        width: '20px', height: '20px', borderRadius: '50%',
-                        background: 'rgba(163,255,18,0.1)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        transform: isExpanded ? 'rotate(90deg)' : 'none',
-                        transition: 'transform 0.25s ease'
-                      }}>
-                        <span style={{ fontSize: '10px', color: '#A3FF12' }}>›</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
+          {loadingCounts ? (
+            <div style={{ textAlign: 'center', padding: '40px', color: '#FFB74D', fontSize: '11px', fontWeight: 700 }}>
+              LOADING NETWORK DATA...
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18].map((level, index) => {
+                const count = levelData[index] || 0;
+                const maxSlots = maxCapacity(level); // 2, 4, 8, 16...
+                const fillPct = maxSlots > 0 ? Math.min(100, Math.round((count / maxSlots) * 100)) : 0;
+                const isExpanded = expandedLevel === index;
+                const canClick = count > 0 || isExpanded;
 
-                {/* Expanded Members */}
-                {isExpanded && (
-                  <div style={{ borderTop: '1px solid rgba(255,255,255,0.04)', padding: '0 16px' }}>
-                    {loadingMembers ? (
-                      <div style={{ padding: '24px 0', textAlign: 'center' }}>
-                        <div style={{ fontSize: '10px', color: '#FFB74D', fontWeight: 800, letterSpacing: '1px' }}>FETCHING OPERATORS...</div>
-                      </div>
-                    ) : levelMembers.length === 0 ? (
-                      <div style={{ padding: '24px 0', textAlign: 'center' }}>
-                        <div style={{ fontSize: '10px', color: '#FFD54F', fontWeight: 800, marginBottom: '4px' }}>⏳ SYNCING FROM BLOCKCHAIN</div>
-                        <div style={{ fontSize: '8px', color: '#555', letterSpacing: '1px' }}>FIRST SYNC IN PROGRESS</div>
-                      </div>
-                    ) : (
-                      <div>
-                        {/* Column Headers */}
+                return (
+                  <div key={level} style={{
+                    borderRadius: '12px',
+                    border: `1px solid ${isExpanded ? 'rgba(163,255,18,0.25)' : count > 0 ? 'rgba(79,195,247,0.1)' : 'rgba(255,255,255,0.04)'}`,
+                    background: isExpanded ? 'rgba(163,255,18,0.03)' : 'rgba(255,255,255,0.02)',
+                    overflow: 'hidden',
+                    transition: 'border-color 0.2s',
+                    opacity: count === 0 ? 0.45 : 1
+                  }}>
+                    {/* Level Header */}
+                    <div
+                      onClick={() => canClick && toggleLevel(index)}
+                      style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        padding: '12px 16px', cursor: canClick ? 'pointer' : 'default'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <div style={{
-                          display: 'flex', justifyContent: 'space-between',
-                          padding: '10px 0 8px',
-                          borderBottom: '1px solid rgba(255,255,255,0.05)',
-                          marginBottom: '4px'
+                          width: '28px', height: '28px', borderRadius: '8px',
+                          background: count > 0 ? 'rgba(163,255,18,0.15)' : 'rgba(255,255,255,0.05)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: '10px', fontWeight: 900,
+                          color: count > 0 ? '#A3FF12' : '#555'
                         }}>
-                          <span style={{ fontSize: '8px', color: '#FFD700', fontWeight: 900, letterSpacing: '1px' }}>OPERATOR</span>
-                          <div style={{ display: 'flex', gap: '16px' }}>
-                            <span style={{ fontSize: '8px', color: '#FFD700', fontWeight: 900, width: '45px', textAlign: 'center' }}>DIRECT</span>
-                            <span style={{ fontSize: '8px', color: '#4FC3F7', fontWeight: 900, width: '45px', textAlign: 'center' }}>TEAM</span>
+                          {level}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '12px', fontWeight: 800, color: '#fff' }}>Level {level}</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                            {/* Progress bar */}
+                            <div style={{ width: '60px', height: '3px', background: 'rgba(255,255,255,0.08)', borderRadius: '2px', overflow: 'hidden' }}>
+                              <div style={{ width: `${fillPct}%`, height: '100%', background: fillPct >= 100 ? '#A3FF12' : '#4FC3F7', borderRadius: '2px', transition: 'width 0.4s ease' }} />
+                            </div>
+                            <span style={{ fontSize: '8px', color: '#555', fontWeight: 700 }}>{count}/{maxSlots}</span>
                           </div>
                         </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{
+                          fontSize: '16px', fontWeight: 900,
+                          color: count >= maxSlots ? '#A3FF12' : count > 0 ? '#4FC3F7' : '#333'
+                        }}>{count}</span>
+                        {count > 0 && (
+                          <div style={{
+                            width: '20px', height: '20px', borderRadius: '50%',
+                            background: 'rgba(163,255,18,0.1)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            transform: isExpanded ? 'rotate(90deg)' : 'none',
+                            transition: 'transform 0.25s ease'
+                          }}>
+                            <span style={{ fontSize: '10px', color: '#A3FF12' }}>›</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
 
-                        {levelMembers.map((m, i) => (
-                          <MemberCard key={i} m={m} index={i} total={levelMembers.length} />
-                        ))}
+                    {/* Expanded Members */}
+                    {isExpanded && (
+                      <div style={{ borderTop: '1px solid rgba(255,255,255,0.04)', padding: '0 16px' }}>
+                        {loadingMembers ? (
+                          <div style={{ padding: '24px 0', textAlign: 'center' }}>
+                            <div style={{ fontSize: '10px', color: '#FFB74D', fontWeight: 800, letterSpacing: '1px' }}>FETCHING OPERATORS...</div>
+                          </div>
+                        ) : levelMembers.length === 0 ? (
+                          <div style={{ padding: '24px 0', textAlign: 'center' }}>
+                            <div style={{ fontSize: '10px', color: '#FFD54F', fontWeight: 800, marginBottom: '4px' }}>⏳ SYNCING FROM BLOCKCHAIN</div>
+                            <div style={{ fontSize: '8px', color: '#555', letterSpacing: '1px' }}>FIRST SYNC IN PROGRESS</div>
+                          </div>
+                        ) : (
+                          <div>
+                            {/* Column Headers */}
+                            <div style={{
+                              display: 'flex', justifyContent: 'space-between',
+                              padding: '10px 0 8px',
+                              borderBottom: '1px solid rgba(255,255,255,0.05)',
+                              marginBottom: '4px'
+                            }}>
+                              <span style={{ fontSize: '8px', color: '#FFD700', fontWeight: 900, letterSpacing: '1px' }}>OPERATOR</span>
+                              <div style={{ display: 'flex', gap: '16px' }}>
+                                <span style={{ fontSize: '8px', color: '#FFD700', fontWeight: 900, width: '45px', textAlign: 'center' }}>DIRECT</span>
+                                <span style={{ fontSize: '8px', color: '#4FC3F7', fontWeight: 900, width: '45px', textAlign: 'center' }}>TEAM</span>
+                              </div>
+                            </div>
 
-                        {levelMembers.length >= 100 && (
-                          <div style={{ padding: '10px 0', textAlign: 'center', fontSize: '9px', color: '#FF5252', fontStyle: 'italic' }}>
-                            Showing latest 100 members
+                            {levelMembers.map((m, i) => (
+                              <MemberCard key={i} m={m} index={i} total={levelMembers.length} />
+                            ))}
+
+                            {levelMembers.length >= 100 && (
+                              <div style={{ padding: '10px 0', textAlign: 'center', fontSize: '9px', color: '#FF5252', fontStyle: 'italic' }}>
+                                Showing latest 100 members
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
                     )}
                   </div>
-                )}
-              </div>
-            );
-          })}
+                );
+              })}
+            </div>
+          )}
+        </>
+      ) : (
+        <div style={{ padding: '0 16px' }}>
+          <div style={{ fontSize: '10px', fontWeight: 900, color: '#A3FF12', marginBottom: '16px', letterSpacing: '1.5px', textAlign: 'center' }}>
+            MY DIRECT REFERRALS ({directMembers.length})
+          </div>
+          {loadingDirect ? (
+            <div style={{ textAlign: 'center', padding: '40px', color: '#FFB74D', fontSize: '11px', fontWeight: 700 }}>
+              LOADING DIRECT TEAM...
+            </div>
+          ) : directMembers.length === 0 ? (
+            <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+               <div style={{ fontSize: '32px', marginBottom: '10px' }}>👥</div>
+               <div style={{ fontSize: '12px', color: '#fff', fontWeight: 800 }}>No directs yet</div>
+               <div style={{ fontSize: '10px', color: '#666', marginTop: '6px' }}>Share your link to grow your team!</div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {directMembers.map((m, i) => {
+                const rowNodeId   = Number(m.node_id || 0);
+                const rowActive   = m.node_active === true;
+                const rowTier     = Number(m.node_tier || 0);
+                const isActivated = rowNodeId > 0 || rowActive || rowTier > 0;
+                
+                const joinedAtStr = m.created_at || m.joined_at;
+                const d = joinedAtStr ? new Date(joinedAtStr) : null;
+                const dateStr = d ? `${d.getDate()}/${d.getMonth()+1}/${String(d.getFullYear()).slice(-2)}` : '—';
+                
+                return (
+                  <div key={i} style={{ padding: '12px 16px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isActivated ? '#A3FF12' : '#FF5252', boxShadow: isActivated ? '0 0 6px #A3FF12' : 'none' }} />
+                        <span style={{ fontSize: '12px', fontWeight: 800, color: '#fff', fontFamily: 'monospace' }}>
+                          {shortAddr(m.wallet_address || m.wallet || '')}
+                        </span>
+                      </div>
+                      <span style={{ fontSize: '10px', color: '#888', fontWeight: 700 }}>
+                        {dateStr}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <TierBadge tier={rowTier} />
+                      {rowNodeId > 0 && <NodeBadge nodeId={rowNodeId} />}
+                      {isActivated && <span style={{ background: 'rgba(163,255,18,0.1)', color: '#A3FF12', border: '1px solid rgba(163,255,18,0.2)', fontSize: '8px', fontWeight: 800, padding: '2px 6px', borderRadius: '4px' }}>ACTIVE</span>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
     </div>
