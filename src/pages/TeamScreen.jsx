@@ -147,6 +147,12 @@ export default function TeamScreen() {
   const [referralStats, setReferralStats] = useState({ total: 0, activated: 0, conversionRate: '0.0', potentialBnb: '0.00' });
   const [loadingStats, setLoadingStats] = useState(false);
 
+  // --- Clear sub-lists when switching tabs ---
+  useEffect(() => {
+    setExpandedLevel(null);
+    setLevelMembers([]);
+  }, [activeTab]);
+
   useEffect(() => {
     if ((activeTab === 'direct' || activeTab === 'free') && walletAddress && directMembers.length === 0) {
       setLoadingDirect(true);

@@ -1337,14 +1337,14 @@ app.get('/api/network/referral-level/:walletAddress/:level', async (req, res) =>
   const targetDepth = parseInt(level); 
   
   try {
-    const rootRes = await query('SELECT id FROM users WHERE LOWER(wallet_address) = LOWER($1) ORDER BY id ASC', [walletAddress]);
+    const rootRes = await query('SELECT id FROM users WHERE LOWER(wallet_address) = LOWER($1)', [walletAddress]);
     if (rootRes.rows.length === 0) return res.status(404).json({ error: 'User not found' });
-    const rootId = rootRes.rows[0].id;
+    const parentIds = rootRes.rows.map(r => r.id);
 
     // Recursive CTE to find members in REFERRAL tree (using referrer_id)
     const members = await query(`
       WITH RECURSIVE rt AS (
-        SELECT id, referrer_id, 0 as depth FROM users WHERE id = $1
+        SELECT id, referrer_id, 0 as depth FROM users WHERE id = ANY($1::int[])
         UNION ALL
         SELECT u.id, u.referrer_id, rt.depth + 1 FROM users u INNER JOIN rt ON u.referrer_id = rt.id WHERE rt.depth < 18
       )
@@ -1366,13 +1366,13 @@ app.get('/api/network/referral-level/:walletAddress/:level', async (req, res) =>
           )
           SELECT COUNT(*) FROM sub_tree
         ) as sub_referral_team,
-        CASE WHEN u.referrer_id = $1 THEN true ELSE false END as is_direct
+        CASE WHEN u.referrer_id = ANY($1::int[]) THEN true ELSE false END as is_direct
       FROM users u
       JOIN rt ON u.id = rt.id
       WHERE rt.depth = $2
       ORDER BY u.created_at DESC
       LIMIT 100
-    `, [rootId, targetDepth]);
+    `, [parentIds, targetDepth]);
 
     res.json(members.rows);
   } catch (err) {
@@ -1386,44 +1386,36 @@ app.get('/api/network/counts/:walletAddress', async (req, res) => {
   const { walletAddress } = req.params;
   try {
     const rootRes = await query(`
-      SELECT id, matrix_counts, sponsor_node_id 
-      FROM users 
-      WHERE LOWER(wallet_address) = LOWER($1)
-      ORDER BY id ASC
+      SELECT id FROM users WHERE LOWER(wallet_address) = LOWER($1)
     `, [walletAddress]);
     
     if (rootRes.rows.length === 0) return res.status(404).json({ error: 'User not found' });
-    const user = rootRes.rows[0];
-    const rootId = user.id;
+    const parentIds = rootRes.rows.map(r => r.id);
 
-    // 1. Matrix counts MUST be calculated from the DB's matrix_parent_id links
-    // to ensure they are strictly binary (2, 4, 8...). 
-    // We do NOT use matrix_counts from RPC sync because getTeamSize is referral tree.
     const matrixRes = await query(`
       WITH RECURSIVE matrix_tree AS (
-        SELECT id, 0 as level FROM users WHERE id = $1
+        SELECT id, 0 as level FROM users WHERE id = ANY($1::int[])
         UNION ALL
         SELECT u.id, mt.level + 1 FROM users u INNER JOIN matrix_tree mt ON u.matrix_parent_id = mt.id WHERE mt.level < 18
       )
       SELECT level, COUNT(*) as count FROM matrix_tree WHERE level > 0 GROUP BY level
-    `, [rootId]);
+    `, [parentIds]);
     const matrixCounts = new Array(18).fill(0);
     matrixRes.rows.forEach(r => {
       const level = parseInt(r.level);
       const count = parseInt(r.count);
       const maxSlots = Math.pow(2, level);
-      matrixCounts[level - 1] = Math.min(count, maxSlots); // Enforce binary limit
+      matrixCounts[level - 1] = Math.min(count, maxSlots);
     });
 
-    // 2. Always calculate Referral counts (Directs) via CTE as it's dynamic
     const referralRes = await query(`
       WITH RECURSIVE referral_tree AS (
-        SELECT id, 0 as level FROM users WHERE id = $1
+        SELECT id, 0 as level FROM users WHERE id = ANY($1::int[])
         UNION ALL
         SELECT u.id, rt.level + 1 FROM users u INNER JOIN referral_tree rt ON u.referrer_id = rt.id WHERE rt.level < 18
       )
       SELECT level, COUNT(*) as count FROM referral_tree WHERE level > 0 GROUP BY level
-    `, [rootId]);
+    `, [parentIds]);
 
     const referralCounts = new Array(18).fill(0);
     referralRes.rows.forEach(r => referralCounts[r.level - 1] = parseInt(r.count));
