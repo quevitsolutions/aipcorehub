@@ -125,7 +125,6 @@ function MemberCard({ m, index, total }) {
       </div>
     </div>
   );
-  );
 }
 
 export default function TeamScreen() {
