@@ -86,11 +86,20 @@ export default function LoginScreen({ onConnect }) {
 
   React.useEffect(() => {
     const ua = navigator.userAgent || navigator.vendor || window.opera;
-    // Detect if inside Telegram's embedded browser on mobile
-    if (ua.indexOf('Telegram') > -1 && /android|iphone|ipad|ipod/i.test(ua)) {
+    // Detect if inside Telegram's embedded browser on mobile or Mini App
+    if ((ua.indexOf('Telegram') > -1 && /android|iphone|ipad|ipod/i.test(ua)) || (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData)) {
       setIsTelegramBrowser(true);
     }
   }, []);
+
+  const handleOpenExternal = () => {
+    const url = window.location.href;
+    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) {
+      window.Telegram.WebApp.openLink(url, { try_instant_view: false });
+    } else {
+      window.open(url, '_system');
+    }
+  };
 
   return (
     <div style={{
@@ -228,14 +237,23 @@ export default function LoginScreen({ onConnect }) {
         {isTelegramBrowser && (
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
             style={{ width: '100%', maxWidth: 360, marginBottom: 20 }}>
-            <div style={{ background: 'rgba(255,59,48,0.15)', border: '1px solid rgba(255,59,48,0.4)', borderRadius: 12, padding: '14px 16px', textAlign: 'left', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-              <div style={{ fontSize: 22 }}>⚠️</div>
+            <div style={{ background: 'rgba(255,59,48,0.15)', border: '1px solid rgba(255,59,48,0.4)', borderRadius: 12, padding: '16px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center' }}>
+              <div style={{ fontSize: 28 }}>⚠️</div>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 900, color: '#FF3B30', marginBottom: 4 }}>TELEGRAM BROWSER DETECTED</div>
-                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)', lineHeight: 1.5, fontWeight: 600 }}>
-                  Wallet connection may fail here due to Telegram restrictions. Please tap the <strong>three dots (⋮)</strong> in the top corner and select <strong>"Open in Browser"</strong> to connect your wallet.
+                <div style={{ fontSize: 14, fontWeight: 900, color: '#FF3B30', marginBottom: 6 }}>TELEGRAM MINI APP DETECTED</div>
+                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', lineHeight: 1.5, fontWeight: 600 }}>
+                  WalletConnect requires a native browser. Click the button below to break out of Telegram and connect your wallet!
                 </div>
               </div>
+              <button 
+                onClick={handleOpenExternal}
+                style={{
+                  background: '#FF3B30', color: '#fff', border: 'none', borderRadius: 10,
+                  padding: '10px 16px', fontSize: 13, fontWeight: 900, width: '100%',
+                  cursor: 'pointer', boxShadow: '0 0 15px rgba(255,59,48,0.4)'
+                }}>
+                🌍 OPEN IN EXTERNAL BROWSER
+              </button>
             </div>
           </motion.div>
         )}
