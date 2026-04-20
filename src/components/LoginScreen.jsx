@@ -87,17 +87,23 @@ export default function LoginScreen({ onConnect }) {
   React.useEffect(() => {
     const ua = navigator.userAgent || navigator.vendor || window.opera;
     // Detect if inside Telegram's embedded browser on mobile or Mini App
-    if ((ua.indexOf('Telegram') > -1 && /android|iphone|ipad|ipod/i.test(ua)) || (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData)) {
+    if ((ua.indexOf('Telegram') > -1 && /android|iphone|ipad|ipod/i.test(ua)) || (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.version)) {
       setIsTelegramBrowser(true);
     }
   }, []);
 
   const handleOpenExternal = () => {
     const url = window.location.href;
-    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) {
+    if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.openLink === 'function') {
       window.Telegram.WebApp.openLink(url, { try_instant_view: false });
     } else {
-      window.open(url, '_system');
+      // Fallback for custom embedded webviews
+      const a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
     }
   };
 
@@ -248,9 +254,11 @@ export default function LoginScreen({ onConnect }) {
               <button 
                 onClick={handleOpenExternal}
                 style={{
+                  position: 'relative', zIndex: 9999,
                   background: '#FF3B30', color: '#fff', border: 'none', borderRadius: 10,
                   padding: '10px 16px', fontSize: 13, fontWeight: 900, width: '100%',
-                  cursor: 'pointer', boxShadow: '0 0 15px rgba(255,59,48,0.4)'
+                  cursor: 'pointer', boxShadow: '0 0 15px rgba(255,59,48,0.4)',
+                  pointerEvents: 'auto'
                 }}>
                 🌍 OPEN IN EXTERNAL BROWSER
               </button>
