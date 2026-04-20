@@ -211,22 +211,20 @@ export function initTelegramBot() {
 
     await bot.answerCallbackQuery(callbackQuery.id);
 
+    // Construct a synthetic message object ensuring `msg.from.id` is the querying user, NOT the bot
+    const fakeMsg = {
+      chat: { id: chatId },
+      from: { id: callbackQuery.from.id }
+    };
+
     if (data === 'info') {
-      await bot.sendMessage(chatId,
-        `ℹ️ *About AIPCore Hub*\n\nAIPCore is a decentralized BNB-earning network running on BNB Smart Chain.\n\n🔹 *Free Users* can join and build a team for free (30-day trial)\n🔹 *Node Holders* earn real BNB from their 18-level deep network\n🔹 The more users in your team, the more you earn\n\n🚀 Activate your node and start earning today!`,
-        {
-          parse_mode: 'Markdown',
-          reply_markup: { inline_keyboard: [[{ text: '🚀 Launch App', url: APP_URL }]] }
-        }
-      );
+      await handleInfo(fakeMsg);
     } else if (data.startsWith('share:')) {
-      const wallet = data.split(':')[1];
-      const botLink = `https://t.me/${BOT_USERNAME}?start=${wallet}`;
-      await bot.sendMessage(chatId, `📤 Share this link with your friends:\n\n${botLink}`);
+      await handleRefer(fakeMsg);
     } else if (data.startsWith('status:')) {
-      bot.sendMessage(chatId, 'Use /status to see your full node status.');
+      await handleStatus(fakeMsg);
     } else if (data.startsWith('team:')) {
-      bot.sendMessage(chatId, 'Use /team to see your team analytics.');
+      await handleTeam(fakeMsg);
     }
   });
 
