@@ -84,8 +84,9 @@ export const useGameStore = create(
       lastClaimTime: Date.now(),
       pendingMined: 0,
 
-      // Tasks
+      // Tasks & Events
       tasks: [],
+      events: [],
 
       // Pool Qualification
       poolQual: {
@@ -422,6 +423,36 @@ export const useGameStore = create(
             localReward: Number(res.new_balance || 0),
             tasks: tasks.map((t) =>
               t.id === taskId ? { ...t, is_completed: true } : t,
+            ),
+          });
+          return res;
+        }
+      },
+
+      fetchEventsAction: async () => {
+        const { walletAddress } = get();
+        if (!walletAddress) return;
+        try {
+          const fetchedEvents = await api.fetchEvents(walletAddress);
+          set({ events: fetchedEvents });
+        } catch (err) {
+          console.warn("Events Fetch Failed:", err.message);
+        }
+      },
+
+      bookEventAction: async (eventId) => {
+        const { walletAddress, events } = get();
+        if (!walletAddress) throw new Error("Not connected");
+
+        const res = await api.bookEvent(walletAddress, eventId);
+        if (res?.success) {
+          // Adjust localReward optimistically
+          set({
+            localReward: get().localReward - Number(res.paid || 0),
+            events: events.map((e) =>
+              e.id === eventId
+                ? { ...e, is_booked: true, booked_seats: Number(e.booked_seats) + 1, telegram_link: res.telegram_link }
+                : e
             ),
           });
           return res;

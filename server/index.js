@@ -831,6 +831,73 @@ app.post('/api/tasks/claim', async (req, res) => {
     res.status(500).json({ error: 'Task claim failed' });
   }
 });
+// ── VIP Event Booking System ───────────────────────────────────────────────────
+
+// GET Events
+app.get('/api/events/:walletAddress', async (req, res) => {
+  try {
+    const result = await query(`
+      SELECT e.*, 
+             (SELECT COUNT(*) FROM event_bookings WHERE event_id = e.id) as booked_seats,
+             CASE WHEN eb.id IS NOT NULL THEN true ELSE false END as is_booked
+      FROM events e
+      LEFT JOIN event_bookings eb ON e.id = eb.event_id AND eb.wallet_address = $1
+      WHERE e.is_active = true
+      ORDER BY e.created_at DESC
+    `, [req.params.walletAddress]);
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Events Fetch Error:', err.message);
+    res.status(500).json({ error: 'Failed to fetch events' });
+  }
+});
+
+// POST Book Seat
+app.post('/api/events/book', async (req, res) => {
+  const { walletAddress, eventId } = req.body;
+  if (!walletAddress || !eventId) return res.status(400).json({ error: 'Missing parameters' });
+
+  try {
+    const userRes = await query('SELECT id, local_reward, node_tier FROM users WHERE LOWER(wallet_address) = LOWER($1)', [walletAddress]);
+    if (userRes.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    const user = userRes.rows[0];
+
+    // SECURE: Only Node Holders
+    if (user.node_tier < 1) {
+      return res.status(403).json({ error: 'Node Required! Only Activated Node members can book VIP seats.' });
+    }
+
+    const eventRes = await query('SELECT * FROM events WHERE id = $1 AND is_active = true', [eventId]);
+    if (eventRes.rows.length === 0) return res.status(404).json({ error: 'Event not found or inactive' });
+    const event = eventRes.rows[0];
+
+    const bookedRes = await query('SELECT COUNT(*) FROM event_bookings WHERE event_id = $1', [eventId]);
+    if (parseInt(bookedRes.rows[0].count) >= event.max_seats) {
+      return res.status(400).json({ error: 'Event is fully booked!' });
+    }
+
+    const price = parseFloat(event.price_aip || 0);
+    if (price > 0 && parseFloat(user.local_reward) < price) {
+      return res.status(400).json({ error: `You need ${price} $AIP to book this event.` });
+    }
+
+    await query('BEGIN');
+    await query('INSERT INTO event_bookings (event_id, wallet_address, paid_aip) VALUES ($1, $2, $3)', [eventId, walletAddress, price]);
+    
+    // Deduct price if applicable
+    if (price > 0) {
+      await query('UPDATE users SET local_reward = local_reward - $2 WHERE LOWER(wallet_address) = LOWER($1)', [walletAddress, price]);
+    }
+    await query('COMMIT');
+
+    // Notify users securely via Telegram Bot
+    res.json({ success: true, telegram_link: event.telegram_link, paid: price });
+  } catch (err) {
+    await query('ROLLBACK');
+    if (err.code === '23505') return res.status(400).json({ error: 'You have already booked a seat!' });
+    res.status(500).json({ error: 'Booking failed. Try again later.' });
+  }
+});
 
 // Admin Middleware (Security)
 const checkAdmin = (req, res, next) => {
@@ -842,6 +909,23 @@ const checkAdmin = (req, res, next) => {
   }
   next();
 };
+
+// POST Admin Create Event
+app.post('/api/admin/events', checkAdmin, async (req, res) => {
+  const { title, description, maxSeats, priceAip, telegramLink } = req.body;
+  if (!title) return res.status(400).json({ error: 'Title is required' });
+
+  try {
+    const insertRes = await query(
+      'INSERT INTO events (title, description, max_seats, price_aip, telegram_link) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+      [title, description || '', parseInt(maxSeats) || 100, parseFloat(priceAip) || 0, telegramLink || '']
+    );
+    res.json({ success: true, id: insertRes.rows[0].id });
+  } catch (err) {
+    console.error('Create Event Error:', err.message);
+    res.status(500).json({ error: 'Failed to create event' });
+  }
+});
 
 // POST Claim Milestone (Activated Nodes)
 app.post('/api/milestones/claim', async (req, res) => {

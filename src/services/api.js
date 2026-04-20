@@ -295,6 +295,38 @@ class ApiService {
     return res.json();
   }
 
+  // ── VIP Event Booking API ──────────────────────────────────────────────────
+  async fetchEvents(walletAddress) {
+    const res = await fetch(`${this.baseUrl}/events/${walletAddress}`);
+    if (!res.ok) throw new Error('Failed to fetch events');
+    return res.json();
+  }
+
+  async bookEvent(walletAddress, eventId) {
+    const res = await fetch(`${this.baseUrl}/events/book`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ walletAddress, eventId })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to book event');
+    return data;
+  }
+
+  async createAdminEvent(adminWallet, eventData) {
+    const res = await fetch(`${this.baseUrl}/admin/events`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-admin-wallet': adminWallet
+      },
+      body: JSON.stringify(eventData)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to create event');
+    return data;
+  }
+
   async syncNetworkMembers(members, parentNodeId) {
     try {
       const response = await fetch(`${this.baseUrl}/network/sync`, {

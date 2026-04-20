@@ -93,6 +93,51 @@ function TaskManagementAdmin() {
   );
 }
 
+// ── VIP Events Management ──────────────────────────────────────────────────
+function EventManagementAdmin() {
+  const { walletAddress } = useGameStore();
+  const [loading, setLoading] = useState(false);
+  const [newEvent, setNewEvent] = useState({ title: '', description: '', maxSeats: 100, priceAip: 0, telegramLink: '' });
+
+  const handleCreate = async () => {
+    if (!newEvent.title || !newEvent.telegramLink) return toast.error('Title & Telegram Link required');
+    setLoading(true);
+    try {
+      await api.createAdminEvent(walletAddress, newEvent);
+      toast.success('VIP Seminar Event Created!');
+      setNewEvent({ title: '', description: '', maxSeats: 100, priceAip: 0, telegramLink: '' });
+    } catch { toast.error('Failed to create event'); }
+    setLoading(false);
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {/* Create Event */}
+      <div style={{ background: 'var(--bg-card)', padding: 24, borderRadius: 24, border: '1px solid rgba(163,255,18,0.15)' }}>
+        <h3 style={{ fontSize: 13, fontWeight: 900, marginBottom: 16, color: '#A3FF12', letterSpacing: 1 }}>📅 CREATE VIP SEMINAR</h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <input style={inputStyle} placeholder="Event Title (e.g. Node Strategy AMA)" value={newEvent.title} onChange={e => setNewEvent({ ...newEvent, title: e.target.value })} />
+          <textarea style={{...inputStyle, height: '80px', resize: 'none'}} placeholder="Event Description / Details" value={newEvent.description} onChange={e => setNewEvent({ ...newEvent, description: e.target.value })} />
+          
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <input style={inputStyle} type="number" placeholder="Max Seats Limit" value={newEvent.maxSeats} onChange={e => setNewEvent({ ...newEvent, maxSeats: e.target.value })} />
+            <input style={inputStyle} type="number" placeholder="Cost in $AIP (0 = Free)" value={newEvent.priceAip} onChange={e => setNewEvent({ ...newEvent, priceAip: e.target.value })} />
+          </div>
+          
+          <input style={inputStyle} placeholder="Private Telegram Invite Link" value={newEvent.telegramLink} onChange={e => setNewEvent({ ...newEvent, telegramLink: e.target.value })} />
+          
+          <button onClick={handleCreate} disabled={loading} style={{
+            background: 'var(--neon-lime)', color: '#000', border: 'none', padding: 14, borderRadius: 12,
+            fontSize: 13, fontWeight: 900, cursor: 'pointer', marginTop: 8
+          }}>
+            {loading ? 'Processing...' : 'CREATE EVENT & OPEN BOOKING'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── User Management ────────────────────────────────────────────────────────────
 function UserManagementAdmin({ adminWallet }) {
   const [searchWallet, setSearchWallet] = useState('');
@@ -367,7 +412,7 @@ export default function AdminScreen() {
   const freeCoins = parseFloat(s.coins_free_users || 0);
   const otherCoins = totalCoins - nodeCoins - freeCoins;
 
-  const TABS = ['overview', 'snapshot', 'tasks', 'users', 'logs', 'telegram'];
+  const TABS = ['overview', 'snapshot', 'tasks', 'events', 'users', 'logs', 'telegram'];
 
   return (
     <div className="page-content" style={{ padding: '0 20px 60px' }}>
@@ -578,6 +623,9 @@ export default function AdminScreen() {
 
       {/* ══════════════ TASKS TAB ══════════════ */}
       {activeAdminTab === 'tasks' && <TaskManagementAdmin />}
+
+      {/* ══════════════ EVENTS TAB ══════════════ */}
+      {activeAdminTab === 'events' && <EventManagementAdmin />}
 
       {/* ══════════════ USERS TAB ══════════════ */}
       {activeAdminTab === 'users' && <UserManagementAdmin adminWallet={walletAddress} />}
