@@ -20,6 +20,33 @@ const connectWithRetry = async (retries = 5) => {
     try {
       await pool.query('SELECT 1');
       console.log('✅ Database connected successfully');
+      
+      // Auto-migrate tables that were added later (so they don't crash on existing DBs)
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS events (
+            id SERIAL PRIMARY KEY,
+            title VARCHAR(255) NOT NULL,
+            description TEXT,
+            max_seats INTEGER DEFAULT 100,
+            price_aip NUMERIC(36, 18) DEFAULT 0,
+            telegram_link VARCHAR(500),
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS event_bookings (
+            id SERIAL PRIMARY KEY,
+            event_id INTEGER REFERENCES events(id) ON DELETE CASCADE,
+            wallet_address VARCHAR(42) NOT NULL,
+            paid_aip NUMERIC(36, 18) DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(event_id, wallet_address)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_event_bookings_wallet ON event_bookings(wallet_address);
+      `);
+      console.log('✅ Auto-migrations verified');
+
       return;
     } catch (err) {
       console.log(`❌ Database connection failed. Retries left: ${retries-1}`);
