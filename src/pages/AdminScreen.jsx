@@ -97,7 +97,7 @@ function TaskManagementAdmin() {
 function EventManagementAdmin() {
   const { walletAddress } = useGameStore();
   const [loading, setLoading] = useState(false);
-  const [newEvent, setNewEvent] = useState({ title: '', description: '', maxSeats: 100, priceAip: 0, telegramLink: '' });
+  const [newEvent, setNewEvent] = useState({ title: '', description: '', scheduleTime: '', maxSeats: 100, priceAip: 0, telegramLink: '' });
 
   const handleCreate = async () => {
     if (!newEvent.title || !newEvent.telegramLink) return toast.error('Title & Telegram Link required');
@@ -105,7 +105,7 @@ function EventManagementAdmin() {
     try {
       await api.createAdminEvent(walletAddress, newEvent);
       toast.success('VIP Seminar Event Created!');
-      setNewEvent({ title: '', description: '', maxSeats: 100, priceAip: 0, telegramLink: '' });
+      setNewEvent({ title: '', description: '', scheduleTime: '', maxSeats: 100, priceAip: 0, telegramLink: '' });
     } catch { toast.error('Failed to create event'); }
     setLoading(false);
   };
@@ -118,6 +118,7 @@ function EventManagementAdmin() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <input style={inputStyle} placeholder="Event Title (e.g. Node Strategy AMA)" value={newEvent.title} onChange={e => setNewEvent({ ...newEvent, title: e.target.value })} />
           <textarea style={{...inputStyle, height: '80px', resize: 'none'}} placeholder="Event Description / Details" value={newEvent.description} onChange={e => setNewEvent({ ...newEvent, description: e.target.value })} />
+          <input style={inputStyle} placeholder="Date & Time (e.g. Tomorrow at 8 PM UTC)" value={newEvent.scheduleTime} onChange={e => setNewEvent({ ...newEvent, scheduleTime: e.target.value })} />
           
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <input style={inputStyle} type="number" placeholder="Max Seats Limit" value={newEvent.maxSeats} onChange={e => setNewEvent({ ...newEvent, maxSeats: e.target.value })} />

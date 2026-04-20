@@ -76,6 +76,11 @@ export default function EventsScreen() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                   <div>
                     <h3 style={{ fontSize: 15, fontWeight: 900, color: '#fff', marginBottom: 4 }}>{event.title}</h3>
+                    {event.schedule_time && (
+                      <div style={{ fontSize: 11, color: '#FFD700', fontWeight: 800, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        ⏱️ {event.schedule_time}
+                      </div>
+                    )}
                     <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', lineHeight: 1.4 }}>{event.description}</p>
                   </div>
                 </div>

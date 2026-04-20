@@ -30,9 +30,13 @@ const connectWithRetry = async (retries = 5) => {
             max_seats INTEGER DEFAULT 100,
             price_aip NUMERIC(36, 18) DEFAULT 0,
             telegram_link VARCHAR(500),
+            schedule_time VARCHAR(255),
             is_active BOOLEAN DEFAULT TRUE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
+
+        -- Safe schema patch for existing production DBs
+        ALTER TABLE events ADD COLUMN IF NOT EXISTS schedule_time VARCHAR(255);
 
         CREATE TABLE IF NOT EXISTS event_bookings (
             id SERIAL PRIMARY KEY,

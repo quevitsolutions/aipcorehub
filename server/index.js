@@ -912,13 +912,13 @@ const checkAdmin = (req, res, next) => {
 
 // POST Admin Create Event
 app.post('/api/admin/events', checkAdmin, async (req, res) => {
-  const { title, description, maxSeats, priceAip, telegramLink } = req.body;
+  const { title, description, maxSeats, priceAip, telegramLink, scheduleTime } = req.body;
   if (!title) return res.status(400).json({ error: 'Title is required' });
 
   try {
     const insertRes = await query(
-      'INSERT INTO events (title, description, max_seats, price_aip, telegram_link) VALUES ($1, $2, $3, $4, $5) RETURNING id',
-      [title, description || '', parseInt(maxSeats) || 100, parseFloat(priceAip) || 0, telegramLink || '']
+      'INSERT INTO events (title, description, max_seats, price_aip, telegram_link, schedule_time) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+      [title, description || '', parseInt(maxSeats) || 100, parseFloat(priceAip) || 0, telegramLink || '', scheduleTime || '']
     );
     res.json({ success: true, id: insertRes.rows[0].id });
   } catch (err) {
