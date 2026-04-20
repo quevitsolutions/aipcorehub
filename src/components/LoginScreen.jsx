@@ -82,6 +82,16 @@ function GridCanvas() {
 }
 
 export default function LoginScreen({ onConnect }) {
+  const [isTelegramBrowser, setIsTelegramBrowser] = React.useState(false);
+
+  React.useEffect(() => {
+    const ua = navigator.userAgent || navigator.vendor || window.opera;
+    // Detect if inside Telegram's embedded browser on mobile
+    if (ua.indexOf('Telegram') > -1 && /android|iphone|ipad|ipod/i.test(ua)) {
+      setIsTelegramBrowser(true);
+    }
+  }, []);
+
   return (
     <div style={{
       height: '100vh', width: '100vw',
@@ -213,6 +223,22 @@ export default function LoginScreen({ onConnect }) {
             </div>
           ))}
         </div>
+
+        {/* Telegram Browser Warning */}
+        {isTelegramBrowser && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+            style={{ width: '100%', maxWidth: 360, marginBottom: 20 }}>
+            <div style={{ background: 'rgba(255,59,48,0.15)', border: '1px solid rgba(255,59,48,0.4)', borderRadius: 12, padding: '14px 16px', textAlign: 'left', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+              <div style={{ fontSize: 22 }}>⚠️</div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 900, color: '#FF3B30', marginBottom: 4 }}>TELEGRAM BROWSER DETECTED</div>
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)', lineHeight: 1.5, fontWeight: 600 }}>
+                  Wallet connection may fail here due to Telegram restrictions. Please tap the <strong>three dots (⋮)</strong> in the top corner and select <strong>"Open in Browser"</strong> to connect your wallet.
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         {/* Connect Button */}
         <ConnectButton.Custom>
