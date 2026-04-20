@@ -44,7 +44,7 @@ export function initTelegramBot() {
             parse_mode: 'Markdown',
             reply_markup: {
               inline_keyboard: [
-                [{ text: '🌐 Open App', web_app: { url: APP_URL } }],
+                [{ text: '🌐 Open App', url: APP_URL }],
                 [{ text: '📊 My Status', callback_data: `status:${actualWallet}` }, { text: '👥 My Team', callback_data: `team:${actualWallet}` }],
                 [{ text: '🔗 Share Referral', callback_data: `share:${actualWallet}` }]
               ]
@@ -64,7 +64,7 @@ export function initTelegramBot() {
           parse_mode: 'Markdown',
           reply_markup: {
             inline_keyboard: [
-              [{ text: '🚀 Launch App & Join Team', web_app: { url: `${APP_URL}/?ref=${walletArg}` } }]
+              [{ text: '🚀 Launch App & Join Team', url: `${APP_URL}/?ref=${walletArg}` }]
             ]
           }
         }
@@ -78,7 +78,7 @@ export function initTelegramBot() {
           parse_mode: 'Markdown',
           reply_markup: {
             inline_keyboard: [
-              [{ text: '🚀 Launch App', web_app: { url: APP_URL } }],
+              [{ text: '🚀 Launch App', url: APP_URL }],
               [{ text: '📜 What is AIPCore?', callback_data: 'info' }]
             ]
           }
@@ -112,7 +112,7 @@ export function initTelegramBot() {
         {
           parse_mode: 'Markdown',
           reply_markup: {
-            inline_keyboard: [[{ text: '🌐 View Full Dashboard', web_app: { url: APP_URL } }]]
+            inline_keyboard: [[{ text: '🌐 View Full Dashboard', url: APP_URL }]]
           }
         }
       );
@@ -161,7 +161,7 @@ export function initTelegramBot() {
           parse_mode: 'Markdown',
           reply_markup: {
             inline_keyboard: [
-              [{ text: '👀 View Full Team', web_app: { url: `${APP_URL}` } }]
+              [{ text: '👀 View Full Team', url: `${APP_URL}` }]
             ]
           }
         }
@@ -204,7 +204,7 @@ export function initTelegramBot() {
         `ℹ️ *About AIPCore Hub*\n\nAIPCore is a decentralized BNB-earning network running on BNB Smart Chain.\n\n🔹 *Free Users* can join and build a team for free (30-day trial)\n🔹 *Node Holders* earn real BNB from their 18-level deep network\n🔹 The more users in your team, the more you earn\n\n🚀 Activate your node and start earning today!`,
         {
           parse_mode: 'Markdown',
-          reply_markup: { inline_keyboard: [[{ text: '🚀 Launch App', web_app: { url: APP_URL } }]] }
+          reply_markup: { inline_keyboard: [[{ text: '🚀 Launch App', url: APP_URL }]] }
         }
       );
     } else if (data.startsWith('share:')) {
