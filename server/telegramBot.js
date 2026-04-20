@@ -23,6 +23,17 @@ export function initTelegramBot() {
   bot = new TelegramBot(BOT_TOKEN, { polling: true });
   console.log('🤖 Telegram bot started (@' + BOT_USERNAME + ')');
 
+  const getDashboardKeyboard = () => ({
+    keyboard: [
+      [{ text: '🚀 Launch App', web_app: { url: APP_URL } }],
+      [{ text: '📊 My Status' }, { text: '👥 My Team' }],
+      [{ text: '🔗 Share Referral' }, { text: 'ℹ️ About AIPCore' }]
+    ],
+    resize_keyboard: true,
+    is_persistent: true
+  });
+
+
   // ── /start [walletAddress] ────────────────────────────────────────────────
   bot.onText(/\/start(?: (.+))?/, async (msg, match) => {
     const chatId = msg.chat.id;
@@ -42,13 +53,7 @@ export function initTelegramBot() {
           `✅ *Wallet Connected!*\n\nHey ${firstName}! Your wallet \`${actualWallet.slice(0,6)}...${actualWallet.slice(-4)}\` is now linked to this Telegram account.\n\n🔔 You will receive:\n• Node activation alerts\n• Reward notifications\n• New team member alerts\n• Exclusive promotions\n\nUse the buttons below to explore AIPCore 👇`,
           {
             parse_mode: 'Markdown',
-            reply_markup: {
-              inline_keyboard: [
-                [{ text: '🌐 Open App', url: APP_URL }],
-                [{ text: '📊 My Status', callback_data: `status:${actualWallet}` }, { text: '👥 My Team', callback_data: `team:${actualWallet}` }],
-                [{ text: '🔗 Share Referral', callback_data: `share:${actualWallet}` }]
-              ]
-            }
+            reply_markup: getDashboardKeyboard()
           }
         );
       } catch (err) {
@@ -62,11 +67,7 @@ export function initTelegramBot() {
         `👋 *Welcome to AIPCore Hub!*\n\nYou've been invited by \`${walletArg.slice(0,6)}...${walletArg.slice(-4)}\` to join the ultimate BNB earnings network.\n\n⚡ Build a global team for free and activate your node to earn 24/7 passive matrix income.\n\nClick the button below to connect your wallet and lock your position in their team 👇`,
         {
           parse_mode: 'Markdown',
-          reply_markup: {
-            inline_keyboard: [
-              [{ text: '🚀 Launch App & Join Team', url: `${APP_URL}/?ref=${walletArg}` }]
-            ]
-          }
+          reply_markup: getDashboardKeyboard()
         }
       );
     } 
@@ -76,12 +77,7 @@ export function initTelegramBot() {
         `👋 *Welcome to AIPCore Hub!*\n\n⚡ The decentralized BNB earnings network where free users build global teams and activate their income stream.\n\nTo connect your wallet and get notifications, visit the app and click *"🔔 Connect Telegram"* on your profile page.`,
         {
           parse_mode: 'Markdown',
-          reply_markup: {
-            inline_keyboard: [
-              [{ text: '🚀 Launch App', url: APP_URL }],
-              [{ text: '📜 What is AIPCore?', callback_data: 'info' }]
-            ]
-          }
+          reply_markup: getDashboardKeyboard()
         }
       );
     }
@@ -111,19 +107,18 @@ export function initTelegramBot() {
         `📊 *Your AIPCore Status*\n\n👛 Wallet: \`${wallet}\`\n⬡ Node: ${nodeInfo}\n🏆 Status: ${tier}\n💎 \$AIP Balance: ${Number(aip).toLocaleString()}\n👥 Direct Refs: ${u.directs}\n\n${u.node_tier === 0 ? '⚠️ Activate your node to start earning real BNB!' : '🎉 You are earning BNB from your network!'}`,
         {
           parse_mode: 'Markdown',
-          reply_markup: {
-            inline_keyboard: [[{ text: '🌐 View Full Dashboard', url: APP_URL }]]
-          }
+          reply_markup: getDashboardKeyboard()
         }
       );
     } catch (err) {
       console.error('Telegram /status error:', err.message);
       bot.sendMessage(chatId, '❌ Failed to fetch status. Try again later.');
     }
-  });
+  };
+  bot.onText(/\/status/, handleStatus);
 
   // ── /team ─────────────────────────────────────────────────────────────────
-  bot.onText(/\/team/, async (msg) => {
+  const handleTeam = async (msg) => {
     const chatId = msg.chat.id;
     const telegramId = msg.from.id;
     try {
@@ -159,21 +154,18 @@ export function initTelegramBot() {
         `👥 *Your Team Network*\n\n📏 Total Team (18 levels): ${total}\n👤 Direct Referrals: ${directs}\n✅ Activated Nodes: ${activated}\n⏳ Free Users: ${free}\n📈 Conversion Rate: ${convRate}%\n\n${free > 0 ? `💡 Share your link to convert ${free} free users!` : '🏆 Amazing! Your whole team is activated!'}`,
         {
           parse_mode: 'Markdown',
-          reply_markup: {
-            inline_keyboard: [
-              [{ text: '👀 View Full Team', url: `${APP_URL}` }]
-            ]
-          }
+          reply_markup: getDashboardKeyboard()
         }
       );
     } catch (err) {
       console.error('Telegram /team error:', err.message);
       bot.sendMessage(chatId, '❌ Failed to fetch team data.');
     }
-  });
+  };
+  bot.onText(/\/team/, handleTeam);
 
   // ── /refer ────────────────────────────────────────────────────────────────
-  bot.onText(/\/refer/, async (msg) => {
+  const handleRefer = async (msg) => {
     const chatId = msg.chat.id;
     const telegramId = msg.from.id;
     try {
@@ -184,14 +176,34 @@ export function initTelegramBot() {
       const botLink = `https://t.me/${BOT_USERNAME}?start=${wallet}`;
       await bot.sendMessage(chatId,
         `🔗 *Your Referral Links*\n\n🌐 *App Link:*\n${refLink}\n\n🤖 *Bot Link (share this!):*\n${botLink}\n\n📤 Share these links to grow your free user base. When they activate, you earn BNB!`,
-        { parse_mode: 'Markdown' }
+        { parse_mode: 'Markdown', reply_markup: getDashboardKeyboard() }
       );
     } catch (err) {
       bot.sendMessage(chatId, '❌ Error fetching referral links.');
     }
+  };
+  bot.onText(/\/refer/, handleRefer);
+
+  const handleInfo = async (msg) => {
+    bot.sendMessage(msg.chat.id,
+      `ℹ️ *About AIPCore Hub*\n\nAIPCore is a decentralized BNB-earning network running on BNB Smart Chain.\n\n🔹 *Free Users* can join and build a team for free (30-day trial)\n🔹 *Node Holders* earn real BNB from their 18-level deep network\n🔹 The more users in your team, the more you earn\n\n🚀 Activate your node and start earning today!`,
+      { parse_mode: 'Markdown', reply_markup: getDashboardKeyboard() }
+    );
+  };
+
+  // Plain text message handler for persistent keyboard clicks
+  bot.on('message', async (msg) => {
+    if (!msg.text || msg.text.startsWith('/')) return; // Ignore commands or non-text
+    
+    switch (msg.text) {
+      case '📊 My Status': return handleStatus(msg);
+      case '👥 My Team': return handleTeam(msg);
+      case '🔗 Share Referral': return handleRefer(msg);
+      case 'ℹ️ About AIPCore': return handleInfo(msg);
+    }
   });
 
-  // ── Callback Queries (inline button handlers) ────────────────────────────
+  // ── Callback Queries (inline button handlers fallback) ────────────────────
   bot.on('callback_query', async (callbackQuery) => {
     const msg = callbackQuery.message;
     const data = callbackQuery.data;
