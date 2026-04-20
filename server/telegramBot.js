@@ -282,3 +282,27 @@ export async function broadcastToUsers({ filter = 'all', message, imageUrl = nul
 
   return { sent, failed, total: users.rows.length };
 }
+
+// ── Web3 Task Authentication ──────────────────────────────────────────────
+export async function verifyTelegramMembership(telegramId, channelUrl) {
+  if (!bot) return false;
+  if (!telegramId) return false;
+
+  try {
+    // Extract handle from https://t.me/AIPCore or similar
+    let channelHandle = channelUrl.split('/').pop().split('?')[0];
+    if (!channelHandle.startsWith('@')) channelHandle = '@' + channelHandle;
+
+    const member = await bot.getChatMember(channelHandle, telegramId);
+    return ['creator', 'administrator', 'member', 'restricted'].includes(member.status);
+  } catch (err) {
+    if (err.response && err.response.statusCode === 400) {
+      if (err.response.body && err.response.body.description.includes('user not found')) {
+        return false; // User definitely not in the chat
+      }
+    }
+    console.warn(`Telegram API Verification warning checking ${telegramId} against ${channelUrl}:`, err.message);
+    return false; // Fail safe
+  }
+}
+

@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 import { ethers } from 'ethers';
 import axios from 'axios';
 import { query } from './db.js';
-import { initTelegramBot, sendNotification, broadcastToUsers } from './telegramBot.js';
+import { initTelegramBot, sendNotification, broadcastToUsers, verifyTelegramMembership } from './telegramBot.js';
 
 dotenv.config();
 
@@ -799,6 +799,19 @@ app.post('/api/tasks/claim', async (req, res) => {
       
       if (directCount < targetCount) {
         return res.status(400).json({ error: `Requires ${targetCount} referrals (You have ${directCount})` });
+      }
+    }
+
+    // High Secure Verification: Telegram Groups
+    if (task.type === 'social' && task.url && task.url.includes('t.me')) {
+      if (!user.telegram_id) {
+        return res.status(400).json({ error: 'You must connect your Telegram account first to claim this task. Go to Friends > Connect Telegram.' });
+      }
+
+      // Check if they are actually in the group
+      const isMember = await verifyTelegramMembership(user.telegram_id, task.url);
+      if (!isMember) {
+        return res.status(400).json({ error: 'Not verified. Please join the Telegram channel first to claim this reward.' });
       }
     }
 
