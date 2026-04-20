@@ -84,7 +84,7 @@ export function initTelegramBot() {
   });
 
   // ── /status ───────────────────────────────────────────────────────────────
-  bot.onText(/\/status/, async (msg) => {
+  const handleStatus = async (msg) => {
     const chatId = msg.chat.id;
     const telegramId = msg.from.id;
     try {
