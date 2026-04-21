@@ -83,9 +83,15 @@ function GridCanvas() {
 
 export default function LoginScreen({ onConnect }) {
   const [isTelegramBrowser, setIsTelegramBrowser] = React.useState(false);
+  const [isTokenPocket, setIsTokenPocket] = React.useState(false);
 
   React.useEffect(() => {
     const ua = navigator.userAgent || navigator.vendor || window.opera;
+    // Detect TokenPocket's custom WebView
+    if (/TokenPocket|TPJS|tpwallet/i.test(ua)) {
+      setIsTokenPocket(true);
+      return; // TP users should use TP's own wallet, not external
+    }
     // Detect if inside Telegram's embedded browser on mobile or Mini App
     if ((ua.indexOf('Telegram') > -1 && /android|iphone|ipad|ipod/i.test(ua)) || (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.version)) {
       setIsTelegramBrowser(true);
@@ -238,6 +244,45 @@ export default function LoginScreen({ onConnect }) {
             </div>
           ))}
         </div>
+
+        {/* TokenPocket Browser Wallet Connect Helper */}
+        {isTokenPocket && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+            style={{ width: '100%', maxWidth: 360, marginBottom: 20 }}>
+            <div style={{ background: 'rgba(255,159,10,0.12)', border: '1px solid rgba(255,159,10,0.4)', borderRadius: 12, padding: '16px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center' }}>
+              <div style={{ fontSize: 28 }}>📱</div>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 900, color: '#FF9F0A', marginBottom: 6 }}>TOKENPOCKET DETECTED</div>
+                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', lineHeight: 1.5, fontWeight: 600 }}>
+                  You are inside TokenPocket’s browser. Tap the button below to connect your TP Wallet directly!
+                </div>
+              </div>
+              <button 
+                onClick={() => {
+                  // Open TokenPocket's native DApp URL with WalletConnect
+                  const dappUrl = encodeURIComponent(window.location.href);
+                  window.location.href = `tpoutside://pull.activity?scheme=tpwallet&callback=0&target=dapp&url=${dappUrl}`;
+                }}
+                style={{
+                  background: 'linear-gradient(90deg, #FF9F0A, #FF6B00)',
+                  color: '#fff', border: 'none', borderRadius: 10,
+                  padding: '10px 16px', fontSize: 13, fontWeight: 900, width: '100%',
+                  cursor: 'pointer', boxShadow: '0 0 15px rgba(255,159,10,0.4)'
+                }}>
+                📱 CONNECT WITH TOKENPOCKET
+              </button>
+              <button 
+                onClick={handleOpenExternal}
+                style={{
+                  background: 'transparent',
+                  color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10,
+                  padding: '8px 16px', fontSize: 12, fontWeight: 700, width: '100%', cursor: 'pointer'
+                }}>
+                🌐 Or Open in External Browser
+              </button>
+            </div>
+          </motion.div>
+        )}
 
         {/* Telegram Browser Warning */}
         {isTelegramBrowser && (
