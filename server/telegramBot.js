@@ -23,6 +23,23 @@ export function initTelegramBot() {
   bot = new TelegramBot(BOT_TOKEN, { polling: true });
   console.log('🤖 Telegram bot started (@' + BOT_USERNAME + ')');
 
+  // Set the "🚀 START APP" Menu Button persistently on the bottom left for all users
+  fetch(`https://api.telegram.org/bot${BOT_TOKEN}/setChatMenuButton`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      menu_button: { type: 'web_app', text: '🚀 START APP', web_app: { url: APP_URL } }
+    })
+  }).catch(err => console.warn('Failed to set chat menu button:', err.message));
+
+  // Set default bot commands for the slash menu
+  bot.setMyCommands([
+    { command: 'start', description: 'Open your dashboard' },
+    { command: 'status', description: 'Check your node and balance' },
+    { command: 'team', description: 'View your team network' },
+    { command: 'refer', description: 'Get your referral links' }
+  ]).catch(err => console.warn('Failed to set bot commands:', err.message));
+
   const getDashboardKeyboard = () => ({
     keyboard: [
       [{ text: '🚀 Launch App', web_app: { url: APP_URL } }],
@@ -118,7 +135,9 @@ export function initTelegramBot() {
       const u = result.rows[0];
       const wallet = `${u.wallet_address.slice(0,6)}...${u.wallet_address.slice(-4)}`;
       const tier = u.node_tier > 0 ? `✅ Tier ${u.node_tier} Node` : '⏳ Free User (Not Activated)';
-      const nodeInfo = u.node_id ? `#${u.node_id}` : 'Pending';
+      let nodeInfo = 'Pending';
+      if (u.node_id) nodeInfo = `#${u.node_id}`;
+      else if (u.node_tier > 0) nodeInfo = 'Activated';
       const aip = parseFloat(u.local_reward || 0).toFixed(0);
       
       await bot.sendMessage(chatId,
