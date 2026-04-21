@@ -6,8 +6,13 @@
 import TelegramBot from 'node-telegram-bot-api';
 import { query } from './db.js';
 import { ethers } from 'ethers';
-import { CONTRACTS, RPC_NODES } from '../src/config/constants.js';
-import { REWARDPOOL_ABI } from '../contracts/abi.js';
+
+// Hardcoded for backend Docker context isolation
+const REWARDPOOL_ADDRESS = "0x319429aD1A00cbCD6aed1fFA1106eEC056316465";
+const BSC_RPC = process.env.VITE_RPC_URL || "https://bsc-dataseed.binance.org";
+const REWARDPOOL_ABI = [
+  "function getPoolViewHelper(uint256 nodeId) view returns (uint8, string, uint256, uint256, uint256, uint256, uint256, uint256, uint256, bool, uint8, uint256[3])"
+];
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const BOT_USERNAME = 'aipcore_bot';
@@ -148,8 +153,8 @@ export function initTelegramBot() {
       let showRegisterBtn = false;
       try {
         if (u.node_id) {
-          const provider = new ethers.JsonRpcProvider(RPC_NODES[0]);
-          const poolContract = new ethers.Contract(CONTRACTS.REWARDPOOL, REWARDPOOL_ABI, provider);
+          const provider = new ethers.JsonRpcProvider(BSC_RPC);
+          const poolContract = new ethers.Contract(REWARDPOOL_ADDRESS, REWARDPOOL_ABI, provider);
           const poolData = await poolContract.getPoolViewHelper(u.node_id);
           const currentPoolId = Number(poolData[0]);
           const poolName = String(poolData[1]);
