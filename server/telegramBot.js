@@ -5,6 +5,9 @@
  */
 import TelegramBot from 'node-telegram-bot-api';
 import { query } from './db.js';
+import { ethers } from 'ethers';
+import { CONTRACTS, RPC_NODES } from '../src/config/constants.js';
+import { REWARDPOOL_ABI } from '../contracts/abi.js';
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const BOT_USERNAME = 'aipcore_bot';
@@ -139,14 +142,46 @@ export function initTelegramBot() {
       if (u.node_id) nodeInfo = `#${u.node_id}`;
       else if (u.node_tier > 0) nodeInfo = 'Activated';
       const aip = parseFloat(u.local_reward || 0).toFixed(0);
+
+      // Web3 Pool Qualification Fetching
+      let poolText = '🔒 Pool: Not Qualified';
+      let showRegisterBtn = false;
+      try {
+        if (u.node_id) {
+          const provider = new ethers.JsonRpcProvider(RPC_NODES[0]);
+          const poolContract = new ethers.Contract(CONTRACTS.REWARDPOOL, REWARDPOOL_ABI, provider);
+          const poolData = await poolContract.getPoolViewHelper(u.node_id);
+          const currentPoolId = Number(poolData[0]);
+          const poolName = String(poolData[1]);
+          const isQualForNext = Boolean(poolData[9]);
+          
+          if (currentPoolId > 0) {
+            poolText = `🏆 Pool: Active in ${poolName}`;
+          } else if (isQualForNext) {
+            poolText = `🏆 Pool: QUALIFIED (Ready to Register!)`;
+            showRegisterBtn = true;
+          }
+        }
+      } catch (err) {
+        console.warn('Web3 Pool fetch failed in bot:', err.message);
+      }
       
+      const keyboard = showRegisterBtn ? {
+        inline_keyboard: [
+          [{ text: '🏆 Register Global Pool', web_app: { url: APP_URL } }]
+        ]
+      } : getDashboardKeyboard();
+
       await bot.sendMessage(chatId,
-        `📊 *Your AIPCore Status*\n\n👛 Wallet: \`${wallet}\`\n⬡ Node: ${nodeInfo}\n🏆 Status: ${tier}\n💎 \$AIP Balance: ${Number(aip).toLocaleString()}\n👥 Direct Refs: ${u.directs}\n\n${u.node_tier === 0 ? '⚠️ Activate your node to start earning real BNB!' : '🎉 You are earning BNB from your network!'}`,
+        `📊 *Your AIPCore Status*\n\n👛 Wallet: \`${wallet}\`\n⬡ Node: ${nodeInfo}\n🏆 Status: ${tier}\n💎 \$AIP Balance: ${Number(aip).toLocaleString()}\n👥 Direct Refs: ${u.directs}\n${poolText}\n\n${u.node_tier === 0 ? '⚠️ Activate your node to start earning real BNB!' : '🎉 You are earning BNB from your network!'}`,
         {
           parse_mode: 'Markdown',
-          reply_markup: getDashboardKeyboard()
+          reply_markup: keyboard
         }
       );
+      if (showRegisterBtn) {
+         bot.sendMessage(chatId, '🎛 Menu enabled!', { reply_markup: getDashboardKeyboard() });
+      }
     } catch (err) {
       console.error('Telegram /status error:', err.message);
       bot.sendMessage(chatId, '❌ Failed to fetch status. Try again later.');
