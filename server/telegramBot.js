@@ -9,15 +9,15 @@ import { ethers } from 'ethers';
 
 // Hardcoded for backend Docker context isolation
 const REWARDPOOL_ADDRESS = "0x319429aD1A00cbCD6aed1fFA1106eEC056316465";
-const BSC_RPC = process.env.VITE_RPC_URL || "https://bsc-dataseed.binance.org";
+const BSC_RPC = (process.env.VITE_RPC_URL || "https://bsc-dataseed.binance.org").trim();
 const REWARDPOOL_ABI = [
   "function getPoolViewHelper(uint256 nodeId) view returns (uint8, string, uint256, uint256, uint256, uint256, uint256, uint256, uint256, bool, uint8, uint256[3])"
 ];
 
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const BOT_TOKEN = (process.env.TELEGRAM_BOT_TOKEN || '').trim();
 const BOT_USERNAME = 'aipcore_bot';
-const APP_URL = process.env.APP_URL || 'https://aipcore.online';
-const ADMIN_WALLET = (process.env.VITE_ADMIN_WALLET || '').toLowerCase();
+const APP_URL = (process.env.APP_URL || 'https://aipcore.online').trim();
+const ADMIN_WALLET = (process.env.VITE_ADMIN_WALLET || '').toLowerCase().trim();
 
 let bot = null;
 
