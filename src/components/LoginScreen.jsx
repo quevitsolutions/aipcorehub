@@ -1,6 +1,8 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { useConnect } from 'wagmi';
+import { injected } from 'wagmi/connectors';
 
 // ── Animated perspective grid canvas ──────────────────────────────────────
 function GridCanvas() {
@@ -82,6 +84,9 @@ function GridCanvas() {
 }
 
 export default function LoginScreen({ onConnect }) {
+  const { connect } = useConnect();
+  const hasInjectedProvider = typeof window !== 'undefined' && !!window.ethereum;
+
   return (
     <div style={{
       height: '100vh', width: '100vw',
@@ -219,42 +224,14 @@ export default function LoginScreen({ onConnect }) {
             window.ethereum is injected — connect directly without WalletConnect to avoid broken deep links */}
         <ConnectButton.Custom>
           {({ openConnectModal, mounted }) => {
-            const hasInjectedProvider = typeof window !== 'undefined' && !!window.ethereum;
-
-            const handleConnect = async () => {
+            const handleConnect = () => {
               if (hasInjectedProvider) {
-                // Direct connection via injected provider (TokenPocket, MetaMask Mobile, etc.)
-                try {
-                  await window.ethereum.request({ method: 'eth_requestAccounts' });
-                  // After getting accounts, also request BSC chain
-                  try {
-                    await window.ethereum.request({
-                      method: 'wallet_switchEthereumChain',
-                      params: [{ chainId: '0x38' }], // BSC Mainnet
-                    });
-                  } catch (chainErr) {
-                    // If chain not added, add it
-                    if (chainErr.code === 4902) {
-                      await window.ethereum.request({
-                        method: 'wallet_addEthereumChain',
-                        params: [{
-                          chainId: '0x38',
-                          chainName: 'BNB Smart Chain',
-                          nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
-                          rpcUrls: ['https://bsc-dataseed.binance.org'],
-                          blockExplorerUrls: ['https://bscscan.com'],
-                        }],
-                      });
-                    }
-                  }
-                  // Reload so wagmi/rainbowkit picks up the connected state
-                  window.location.reload();
-                } catch (err) {
-                  console.error('Direct wallet connect failed:', err.message);
-                  openConnectModal(); // Fallback to modal
-                }
+                // Inside TokenPocket / MetaMask Mobile / Trust Wallet DApp browser
+                // — use wagmi's injected connector directly, no WalletConnect needed
+                connect({ connector: injected() });
               } else {
-                openConnectModal(); // No injected provider — show WalletConnect QR modal
+                // Plain mobile browser (Chrome, Safari) — open WalletConnect modal
+                openConnectModal();
               }
             };
 
