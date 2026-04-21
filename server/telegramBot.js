@@ -135,10 +135,16 @@ export function initTelegramBot() {
       }
       const u = result.rows[0];
       const wallet = `${u.wallet_address.slice(0,6)}...${u.wallet_address.slice(-4)}`;
-      const tier = u.node_tier > 0 ? `✅ Tier ${u.node_tier} Node` : '⏳ Free User (Not Activated)';
-      let nodeInfo = 'Pending';
-      if (u.node_id) nodeInfo = `#${u.node_id}`;
-      else if (u.node_tier > 0) nodeInfo = 'Activated';
+      const nodeTier = Number(u.node_tier) || 0;
+      const nodeId   = Number(u.node_id)   || 0;
+      const tier = nodeTier > 0 ? `\u2705 Tier ${nodeTier} Node` : '\u23f3 Free User (Not Activated)';
+      // nodeInfo: show ID if available, else show Activated/Pending based on tier
+      let nodeInfo;
+      if (nodeTier > 0) {
+        nodeInfo = nodeId > 0 ? `#${nodeId}` : 'Activated';
+      } else {
+        nodeInfo = 'Pending Activation';
+      }
       const aip = parseFloat(u.local_reward || 0).toFixed(0);
 
       // Web3 Pool Qualification Fetching
