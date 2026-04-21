@@ -193,8 +193,8 @@ export function initTelegramBot() {
       const refLink = `${APP_URL}?ref=${wallet}`;
       const botLink = `https://t.me/${BOT_USERNAME}?start=${wallet}`;
       await bot.sendMessage(chatId,
-        `🔗 *Your Referral Links*\n\n🌐 *App Link:*\n${refLink}\n\n🤖 *Bot Link (share this!):*\n${botLink}\n\n📤 Share these links to grow your free user base. When they activate, you earn BNB!`,
-        { parse_mode: 'Markdown', reply_markup: getDashboardKeyboard() }
+        `🔗 <b>Your Referral Links</b>\n\n🌐 <b>App Link:</b>\n${refLink}\n\n🤖 <b>Bot Link (share this!):</b>\n${botLink}\n\n📤 Share these links to grow your free user base. When they activate, you earn BNB!`,
+        { parse_mode: 'HTML', reply_markup: getDashboardKeyboard() }
       );
     } catch (err) {
       bot.sendMessage(chatId, '❌ Error fetching referral links.');
