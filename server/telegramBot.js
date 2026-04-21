@@ -53,23 +53,35 @@ export function initTelegramBot() {
           `✅ *Wallet Connected!*\n\nHey ${firstName}! Your wallet \`${actualWallet.slice(0,6)}...${actualWallet.slice(-4)}\` is now linked to this Telegram account.\n\n🔔 You will receive:\n• Node activation alerts\n• Reward notifications\n• New team member alerts\n• Exclusive promotions\n\nUse the buttons below to explore AIPCore 👇`,
           {
             parse_mode: 'Markdown',
-            reply_markup: getDashboardKeyboard()
+            reply_markup: {
+              inline_keyboard: [
+                [{ text: '🌐 Open App', web_app: { url: APP_URL } }],
+                [{ text: '📊 My Status', callback_data: `status:${actualWallet}` }, { text: '👥 My Team', callback_data: `team:${actualWallet}` }],
+                [{ text: '🔗 Share Referral', callback_data: `share:${actualWallet}` }]
+              ]
+            }
           }
         );
+        // Activate persistent keyboard instantly behind the scenes
+        bot.sendMessage(chatId, '🎛 Dashboard Menu enabled!', { reply_markup: getDashboardKeyboard() });
       } catch (err) {
         console.error('Telegram /start wallet link error:', err.message);
         await bot.sendMessage(chatId, '❌ Could not link wallet. Please try again from the app.');
       }
     } 
-    // If it's just 0x... it means they clicked a referral link sent by a friend
     else if (walletArg && walletArg.startsWith('0x')) {
       await bot.sendMessage(chatId,
         `👋 *Welcome to AIPCore Hub!*\n\nYou've been invited by \`${walletArg.slice(0,6)}...${walletArg.slice(-4)}\` to join the ultimate BNB earnings network.\n\n⚡ Build a global team for free and activate your node to earn 24/7 passive matrix income.\n\nClick the button below to connect your wallet and lock your position in their team 👇`,
         {
           parse_mode: 'Markdown',
-          reply_markup: getDashboardKeyboard()
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: '🚀 Launch App & Join Team', web_app: { url: `${APP_URL}/?ref=${walletArg}` } }]
+            ]
+          }
         }
       );
+      bot.sendMessage(chatId, '🎛 Menu enabled!', { reply_markup: getDashboardKeyboard() });
     } 
     else {
       // Generic welcome — user opened bot without deep link
@@ -77,9 +89,15 @@ export function initTelegramBot() {
         `👋 *Welcome to AIPCore Hub!*\n\n⚡ The decentralized BNB earnings network where free users build global teams and activate their income stream.\n\nTo connect your wallet and get notifications, visit the app and click *"🔔 Connect Telegram"* on your profile page.`,
         {
           parse_mode: 'Markdown',
-          reply_markup: getDashboardKeyboard()
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: '🚀 Launch App', web_app: { url: APP_URL } }],
+              [{ text: '📜 What is AIPCore?', callback_data: 'info' }]
+            ]
+          }
         }
       );
+      bot.sendMessage(chatId, '🎛 Menu enabled!', { reply_markup: getDashboardKeyboard() });
     }
   });
 
