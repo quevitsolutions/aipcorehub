@@ -82,37 +82,6 @@ function GridCanvas() {
 }
 
 export default function LoginScreen({ onConnect }) {
-  const [isTelegramBrowser, setIsTelegramBrowser] = React.useState(false);
-  const [isTokenPocket, setIsTokenPocket] = React.useState(false);
-
-  React.useEffect(() => {
-    const ua = navigator.userAgent || navigator.vendor || window.opera;
-    // Detect TokenPocket's custom WebView
-    if (/TokenPocket|TPJS|tpwallet/i.test(ua)) {
-      setIsTokenPocket(true);
-      return; // TP users should use TP's own wallet, not external
-    }
-    // Detect if inside Telegram's embedded browser on mobile or Mini App
-    if ((ua.indexOf('Telegram') > -1 && /android|iphone|ipad|ipod/i.test(ua)) || (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.version)) {
-      setIsTelegramBrowser(true);
-    }
-  }, []);
-
-  const handleOpenExternal = () => {
-    const url = window.location.href;
-    if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.openLink === 'function') {
-      window.Telegram.WebApp.openLink(url, { try_instant_view: false });
-    } else {
-      // Fallback for custom embedded webviews
-      const a = document.createElement('a');
-      a.href = url;
-      a.target = '_blank';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    }
-  };
-
   return (
     <div style={{
       height: '100vh', width: '100vw',
@@ -244,72 +213,6 @@ export default function LoginScreen({ onConnect }) {
             </div>
           ))}
         </div>
-
-        {/* TokenPocket Browser Wallet Connect Helper */}
-        {isTokenPocket && (
-          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
-            style={{ width: '100%', maxWidth: 360, marginBottom: 20 }}>
-            <div style={{ background: 'rgba(255,159,10,0.12)', border: '1px solid rgba(255,159,10,0.4)', borderRadius: 12, padding: '16px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center' }}>
-              <div style={{ fontSize: 28 }}>📱</div>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 900, color: '#FF9F0A', marginBottom: 6 }}>TOKENPOCKET DETECTED</div>
-                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', lineHeight: 1.5, fontWeight: 600 }}>
-                  You are inside TokenPocket’s browser. Tap the button below to connect your TP Wallet directly!
-                </div>
-              </div>
-              <button 
-                onClick={() => {
-                  // Open TokenPocket's native DApp URL with WalletConnect
-                  const dappUrl = encodeURIComponent(window.location.href);
-                  window.location.href = `tpoutside://pull.activity?scheme=tpwallet&callback=0&target=dapp&url=${dappUrl}`;
-                }}
-                style={{
-                  background: 'linear-gradient(90deg, #FF9F0A, #FF6B00)',
-                  color: '#fff', border: 'none', borderRadius: 10,
-                  padding: '10px 16px', fontSize: 13, fontWeight: 900, width: '100%',
-                  cursor: 'pointer', boxShadow: '0 0 15px rgba(255,159,10,0.4)'
-                }}>
-                📱 CONNECT WITH TOKENPOCKET
-              </button>
-              <button 
-                onClick={handleOpenExternal}
-                style={{
-                  background: 'transparent',
-                  color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10,
-                  padding: '8px 16px', fontSize: 12, fontWeight: 700, width: '100%', cursor: 'pointer'
-                }}>
-                🌐 Or Open in External Browser
-              </button>
-            </div>
-          </motion.div>
-        )}
-
-        {/* Telegram Browser Warning */}
-        {isTelegramBrowser && (
-          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
-            style={{ width: '100%', maxWidth: 360, marginBottom: 20 }}>
-            <div style={{ background: 'rgba(255,59,48,0.15)', border: '1px solid rgba(255,59,48,0.4)', borderRadius: 12, padding: '16px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center' }}>
-              <div style={{ fontSize: 28 }}>⚠️</div>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 900, color: '#FF3B30', marginBottom: 6 }}>TELEGRAM MINI APP DETECTED</div>
-                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', lineHeight: 1.5, fontWeight: 600 }}>
-                  WalletConnect requires a native browser. Click the button below to break out of Telegram and connect your wallet!
-                </div>
-              </div>
-              <button 
-                onClick={handleOpenExternal}
-                style={{
-                  position: 'relative', zIndex: 9999,
-                  background: '#FF3B30', color: '#fff', border: 'none', borderRadius: 10,
-                  padding: '10px 16px', fontSize: 13, fontWeight: 900, width: '100%',
-                  cursor: 'pointer', boxShadow: '0 0 15px rgba(255,59,48,0.4)',
-                  pointerEvents: 'auto'
-                }}>
-                🌍 OPEN IN EXTERNAL BROWSER
-              </button>
-            </div>
-          </motion.div>
-        )}
 
         {/* Connect Button */}
         <ConnectButton.Custom>

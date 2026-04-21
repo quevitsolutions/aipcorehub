@@ -31,12 +31,12 @@ export function initTelegramBot() {
   bot = new TelegramBot(BOT_TOKEN, { polling: true });
   console.log('🤖 Telegram bot started (@' + BOT_USERNAME + ')');
 
-  // Set the "🚀 START APP" Menu Button persistently on the bottom left for all users
+  // Set the menu button to show commands (hamburger menu) — app opens externally
   fetch(`https://api.telegram.org/bot${BOT_TOKEN}/setChatMenuButton`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      menu_button: { type: 'web_app', text: '🚀 START APP', web_app: { url: APP_URL } }
+      menu_button: { type: 'commands' }
     })
   }).catch(err => console.warn('Failed to set chat menu button:', err.message));
 
@@ -50,7 +50,7 @@ export function initTelegramBot() {
 
   const getDashboardKeyboard = () => ({
     keyboard: [
-      [{ text: '🚀 Launch App', web_app: { url: APP_URL } }],
+      [{ text: '🚀 Launch App', url: APP_URL }],
       [{ text: '📊 My Status' }, { text: '👥 My Team' }],
       [{ text: '🔗 Share Referral' }, { text: 'ℹ️ About AIPCore' }]
     ],
@@ -80,7 +80,7 @@ export function initTelegramBot() {
             parse_mode: 'Markdown',
             reply_markup: {
               inline_keyboard: [
-                [{ text: '🌐 Open App', web_app: { url: APP_URL } }],
+                [{ text: '🌐 Open App', url: APP_URL }],
                 [{ text: '📊 My Status', callback_data: `status:${actualWallet}` }, { text: '👥 My Team', callback_data: `team:${actualWallet}` }],
                 [{ text: '🔗 Share Referral', callback_data: `share:${actualWallet}` }]
               ]
@@ -101,7 +101,7 @@ export function initTelegramBot() {
           parse_mode: 'Markdown',
           reply_markup: {
             inline_keyboard: [
-              [{ text: '🚀 Launch App & Join Team', web_app: { url: `${APP_URL}/?ref=${walletArg}` } }]
+              [{ text: '🚀 Launch App & Join Team', url: `${APP_URL}/?ref=${walletArg}` }]
             ]
           }
         }
@@ -116,7 +116,7 @@ export function initTelegramBot() {
           parse_mode: 'Markdown',
           reply_markup: {
             inline_keyboard: [
-              [{ text: '🚀 Launch App', web_app: { url: APP_URL } }],
+              [{ text: '🚀 Launch App', url: APP_URL }],
               [{ text: '📜 What is AIPCore?', callback_data: 'info' }]
             ]
           }
