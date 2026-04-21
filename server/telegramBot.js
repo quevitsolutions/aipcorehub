@@ -50,7 +50,6 @@ export function initTelegramBot() {
 
   const getDashboardKeyboard = () => ({
     keyboard: [
-      [{ text: '🚀 Launch App', url: APP_URL }],
       [{ text: '📊 My Status' }, { text: '👥 My Team' }],
       [{ text: '🔗 Share Referral' }, { text: 'ℹ️ About AIPCore' }]
     ],
@@ -80,7 +79,6 @@ export function initTelegramBot() {
             parse_mode: 'Markdown',
             reply_markup: {
               inline_keyboard: [
-                [{ text: '🌐 Open App', url: APP_URL }],
                 [{ text: '📊 My Status', callback_data: `status:${actualWallet}` }, { text: '👥 My Team', callback_data: `team:${actualWallet}` }],
                 [{ text: '🔗 Share Referral', callback_data: `share:${actualWallet}` }]
               ]
@@ -99,11 +97,7 @@ export function initTelegramBot() {
         `👋 *Welcome to AIPCore Hub!*\n\nYou've been invited by \`${walletArg.slice(0,6)}...${walletArg.slice(-4)}\` to join the ultimate BNB earnings network.\n\n⚡ Build a global team for free and activate your node to earn 24/7 passive matrix income.\n\nClick the button below to connect your wallet and lock your position in their team 👇`,
         {
           parse_mode: 'Markdown',
-          reply_markup: {
-            inline_keyboard: [
-              [{ text: '🚀 Launch App & Join Team', url: `${APP_URL}/?ref=${walletArg}` }]
-            ]
-          }
+          reply_markup: getDashboardKeyboard()
         }
       );
       bot.sendMessage(chatId, '🎛 Menu enabled!', { reply_markup: getDashboardKeyboard() });
@@ -116,7 +110,6 @@ export function initTelegramBot() {
           parse_mode: 'Markdown',
           reply_markup: {
             inline_keyboard: [
-              [{ text: '🚀 Launch App', url: APP_URL }],
               [{ text: '📜 What is AIPCore?', callback_data: 'info' }]
             ]
           }
@@ -163,19 +156,14 @@ export function initTelegramBot() {
           if (currentPoolId > 0) {
             poolText = `🏆 Pool: Active in ${poolName}`;
           } else if (isQualForNext) {
-            poolText = `🏆 Pool: QUALIFIED (Ready to Register!)`;
-            showRegisterBtn = true;
+            poolText = `🏆 Pool: QUALIFIED ✅\n\nVisit aipcore.online to register your pool!`;
           }
         }
       } catch (err) {
         console.warn('Web3 Pool fetch failed in bot:', err.message);
       }
       
-      const keyboard = showRegisterBtn ? {
-        inline_keyboard: [
-          [{ text: '🏆 Register Global Pool', web_app: { url: APP_URL } }]
-        ]
-      } : getDashboardKeyboard();
+      const keyboard = getDashboardKeyboard();
 
       await bot.sendMessage(chatId,
         `📊 *Your AIPCore Status*\n\n👛 Wallet: \`${wallet}\`\n⬡ Node: ${nodeInfo}\n🏆 Status: ${tier}\n💎 \$AIP Balance: ${Number(aip).toLocaleString()}\n👥 Direct Refs: ${u.directs}\n${poolText}\n\n${u.node_tier === 0 ? '⚠️ Activate your node to start earning real BNB!' : '🎉 You are earning BNB from your network!'}`,
