@@ -215,58 +215,101 @@ export default function LoginScreen({ onConnect }) {
         </div>
 
         {/* Connect Button */}
+        {/* If user is in a Web3 DApp browser (TokenPocket, MetaMask Mobile, Trust Wallet),
+            window.ethereum is injected — connect directly without WalletConnect to avoid broken deep links */}
         <ConnectButton.Custom>
-          {({ openConnectModal, mounted }) => (
-            <div
-              style={{ width: '100%', maxWidth: 360 }}
-              {...(!mounted && { 'aria-hidden': true, style: { opacity: 0, pointerEvents: 'none' } })}
-            >
-              <motion.button
-                whileHover={{ scale: 1.03, boxShadow: '0 0 60px rgba(155,81,255,0.5), 0 0 30px rgba(0,210,255,0.3)' }}
-                whileTap={{ scale: 0.97 }}
-                onClick={openConnectModal}
-                style={{
-                  width: '100%',
-                  background: 'linear-gradient(90deg, #00D2FF 0%, #9B51FF 55%, #00D2FF 100%)',
-                  backgroundSize: '200% auto',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: 16,
-                  padding: '18px 32px',
-                  fontSize: 16,
-                  fontWeight: 900,
-                  cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                  letterSpacing: '1.5px',
-                  boxShadow: '0 0 35px rgba(155,81,255,0.4), 0 0 15px rgba(0,210,255,0.2)',
-                  fontFamily: 'Outfit, sans-serif',
-                  position: 'relative', overflow: 'hidden',
-                  transition: 'box-shadow 0.3s ease'
-                }}
-              >
-                {/* Shimmer overlay */}
-                <motion.div
-                  animate={{ x: ['-150%', '150%'] }}
-                  transition={{ repeat: Infinity, duration: 2.5, ease: 'linear' }}
-                  style={{
-                    position: 'absolute', top: 0, bottom: 0, width: '50%',
-                    background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent)',
-                    transform: 'skewX(-20deg)', pointerEvents: 'none'
-                  }}
-                />
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="1" y="6" width="22" height="13" rx="2" ry="2" />
-                  <path d="M1 10h22" />
-                </svg>
-                CONNECT WALLET
-              </motion.button>
+          {({ openConnectModal, mounted }) => {
+            const hasInjectedProvider = typeof window !== 'undefined' && !!window.ethereum;
 
-              {/* Supported wallets note */}
-              <div style={{ marginTop: 14, fontSize: 11, color: '#FFFFFF', fontWeight: 600, letterSpacing: 0.5 }}>
-                MetaMask · WalletConnect · Trust Wallet · Coinbase
+            const handleConnect = async () => {
+              if (hasInjectedProvider) {
+                // Direct connection via injected provider (TokenPocket, MetaMask Mobile, etc.)
+                try {
+                  await window.ethereum.request({ method: 'eth_requestAccounts' });
+                  // After getting accounts, also request BSC chain
+                  try {
+                    await window.ethereum.request({
+                      method: 'wallet_switchEthereumChain',
+                      params: [{ chainId: '0x38' }], // BSC Mainnet
+                    });
+                  } catch (chainErr) {
+                    // If chain not added, add it
+                    if (chainErr.code === 4902) {
+                      await window.ethereum.request({
+                        method: 'wallet_addEthereumChain',
+                        params: [{
+                          chainId: '0x38',
+                          chainName: 'BNB Smart Chain',
+                          nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
+                          rpcUrls: ['https://bsc-dataseed.binance.org'],
+                          blockExplorerUrls: ['https://bscscan.com'],
+                        }],
+                      });
+                    }
+                  }
+                  // Reload so wagmi/rainbowkit picks up the connected state
+                  window.location.reload();
+                } catch (err) {
+                  console.error('Direct wallet connect failed:', err.message);
+                  openConnectModal(); // Fallback to modal
+                }
+              } else {
+                openConnectModal(); // No injected provider — show WalletConnect QR modal
+              }
+            };
+
+            return (
+              <div
+                style={{ width: '100%', maxWidth: 360 }}
+                {...(!mounted && { 'aria-hidden': true, style: { opacity: 0, pointerEvents: 'none' } })}
+              >
+                <motion.button
+                  whileHover={{ scale: 1.03, boxShadow: '0 0 60px rgba(155,81,255,0.5), 0 0 30px rgba(0,210,255,0.3)' }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={handleConnect}
+                  style={{
+                    width: '100%',
+                    background: 'linear-gradient(90deg, #00D2FF 0%, #9B51FF 55%, #00D2FF 100%)',
+                    backgroundSize: '200% auto',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 16,
+                    padding: '18px 32px',
+                    fontSize: 16,
+                    fontWeight: 900,
+                    cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                    letterSpacing: '1.5px',
+                    boxShadow: '0 0 35px rgba(155,81,255,0.4), 0 0 15px rgba(0,210,255,0.2)',
+                    fontFamily: 'Outfit, sans-serif',
+                    position: 'relative', overflow: 'hidden',
+                    transition: 'box-shadow 0.3s ease'
+                  }}
+                >
+                  {/* Shimmer overlay */}
+                  <motion.div
+                    animate={{ x: ['-150%', '150%'] }}
+                    transition={{ repeat: Infinity, duration: 2.5, ease: 'linear' }}
+                    style={{
+                      position: 'absolute', top: 0, bottom: 0, width: '50%',
+                      background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent)',
+                      transform: 'skewX(-20deg)', pointerEvents: 'none'
+                    }}
+                  />
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="1" y="6" width="22" height="13" rx="2" ry="2" />
+                    <path d="M1 10h22" />
+                  </svg>
+                  {hasInjectedProvider ? 'CONNECT WALLET' : 'CONNECT WALLET'}
+                </motion.button>
+
+                {/* Supported wallets note */}
+                <div style={{ marginTop: 14, fontSize: 11, color: '#FFFFFF', fontWeight: 600, letterSpacing: 0.5 }}>
+                  TokenPocket · MetaMask · Trust Wallet · WalletConnect
+                </div>
               </div>
-            </div>
-          )}
+            );
+          }}
         </ConnectButton.Custom>
 
         {/* How it works steps */}
