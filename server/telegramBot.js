@@ -8,8 +8,14 @@ import { query } from './db.js';
 import { ethers } from 'ethers';
 
 // Hardcoded for backend Docker context isolation
+const AIPCORE_ADDRESS  = "0xB6CbD70147835D4eA93B4a768D8e101B6E9A420f";
 const REWARDPOOL_ADDRESS = "0x319429aD1A00cbCD6aed1fFA1106eEC056316465";
 const BSC_RPC = (process.env.VITE_RPC_URL || "https://bsc-dataseed.binance.org").trim();
+
+const AIPCORE_ABI = [
+  "function nodeId(address user) view returns (uint256)",
+  "function getNodeStats(uint256 _userId) view returns (uint256 tier, uint256 directCount, uint256 matrixCount, uint256 totalRewards, uint256 totalContribution, uint256 daysActive)"
+];
 const REWARDPOOL_ABI = [
   "function getPoolViewHelper(uint256 nodeId) view returns (uint8, string, uint256, uint256, uint256, uint256, uint256, uint256, uint256, bool, uint8, uint256[3])"
 ];
@@ -124,8 +130,9 @@ export function initTelegramBot() {
     const chatId = msg.chat.id;
     const telegramId = msg.from.id;
     try {
+      // Step 1: get wallet address from DB
       const result = await query(
-        `SELECT wallet_address, node_tier, node_id, local_reward, 
+        `SELECT wallet_address, local_reward,
                 (SELECT COUNT(*) FROM users WHERE referrer_id = u.id) as directs
          FROM users u WHERE telegram_id = $1 ORDER BY node_tier DESC LIMIT 1`,
         [telegramId]
@@ -134,53 +141,55 @@ export function initTelegramBot() {
         return bot.sendMessage(chatId, '❌ No wallet linked. Open the app and click "Connect Telegram" first.');
       }
       const u = result.rows[0];
-      const wallet = `${u.wallet_address.slice(0,6)}...${u.wallet_address.slice(-4)}`;
-      const nodeTier = Number(u.node_tier) || 0;
-      const nodeId   = Number(u.node_id)   || 0;
-      const tier = nodeTier > 0 ? `\u2705 Tier ${nodeTier} Node` : '\u23f3 Free User (Not Activated)';
-      // nodeInfo: show ID if available, else show Activated/Pending based on tier
-      let nodeInfo;
-      if (nodeTier > 0) {
-        nodeInfo = nodeId > 0 ? `#${nodeId}` : 'Activated';
-      } else {
-        nodeInfo = 'Pending Activation';
-      }
+      const walletAddress = u.wallet_address;
+      const walletShort = `${walletAddress.slice(0,6)}...${walletAddress.slice(-4)}`;
       const aip = parseFloat(u.local_reward || 0).toFixed(0);
 
-      // Web3 Pool Qualification Fetching
-      let poolText = '🔒 Pool: Not Qualified';
-      let showRegisterBtn = false;
+      // Step 2: fetch LIVE on-chain data
+      const provider = new ethers.JsonRpcProvider(BSC_RPC);
+      const coreContract = new ethers.Contract(AIPCORE_ADDRESS, AIPCORE_ABI, provider);
+      const poolContract = new ethers.Contract(REWARDPOOL_ADDRESS, REWARDPOOL_ABI, provider);
+
+      let onChainNodeId = 0, onChainTier = 0;
       try {
-        if (u.node_id) {
-          const provider = new ethers.JsonRpcProvider(BSC_RPC);
-          const poolContract = new ethers.Contract(REWARDPOOL_ADDRESS, REWARDPOOL_ABI, provider);
-          const poolData = await poolContract.getPoolViewHelper(u.node_id);
+        const nId = await coreContract.nodeId(walletAddress);
+        onChainNodeId = Number(nId);
+        if (onChainNodeId > 0) {
+          const stats = await coreContract.getNodeStats(onChainNodeId);
+          onChainTier = Number(stats[0]);
+        }
+      } catch (chainErr) {
+        console.warn('On-chain node fetch failed:', chainErr.message);
+      }
+
+      // Step 3: Build status from on-chain data
+      const tier = onChainTier > 0 ? `✅ Tier ${onChainTier} Node` : '⏳ Free User (Not Activated)';
+      const nodeInfo = onChainTier > 0
+        ? (onChainNodeId > 0 ? `#${onChainNodeId}` : 'Activated')
+        : 'Not Activated';
+
+      // Step 4: Pool qualification
+      let poolText = '🔒 Pool: Not Qualified';
+      try {
+        if (onChainNodeId > 0) {
+          const poolData = await poolContract.getPoolViewHelper(onChainNodeId);
           const currentPoolId = Number(poolData[0]);
           const poolName = String(poolData[1]);
           const isQualForNext = Boolean(poolData[9]);
-          
           if (currentPoolId > 0) {
             poolText = `🏆 Pool: Active in ${poolName}`;
           } else if (isQualForNext) {
-            poolText = `🏆 Pool: QUALIFIED ✅\n\nVisit aipcore.online to register your pool!`;
+            poolText = `🏆 Pool: QUALIFIED ✅ — Visit aipcore.online to register!`;
           }
         }
-      } catch (err) {
-        console.warn('Web3 Pool fetch failed in bot:', err.message);
+      } catch (poolErr) {
+        console.warn('Pool check failed:', poolErr.message);
       }
-      
-      const keyboard = getDashboardKeyboard();
 
       await bot.sendMessage(chatId,
-        `📊 *Your AIPCore Status*\n\n👛 Wallet: \`${wallet}\`\n⬡ Node: ${nodeInfo}\n🏆 Status: ${tier}\n💎 \$AIP Balance: ${Number(aip).toLocaleString()}\n👥 Direct Refs: ${u.directs}\n${poolText}\n\n${u.node_tier === 0 ? '⚠️ Activate your node to start earning real BNB!' : '🎉 You are earning BNB from your network!'}`,
-        {
-          parse_mode: 'Markdown',
-          reply_markup: keyboard
-        }
+        `📊 *Your AIPCore Status*\n\n👛 Wallet: \`${walletShort}\`\n⬡ Node: ${nodeInfo}\n🏆 Status: ${tier}\n💎 \$AIP Balance: ${Number(aip).toLocaleString()}\n👥 Direct Refs: ${u.directs}\n${poolText}\n\n${onChainTier === 0 ? '⚠️ Activate your node to start earning real BNB!' : '🎉 You are earning BNB from your network!'}`,
+        { parse_mode: 'Markdown', reply_markup: getDashboardKeyboard() }
       );
-      if (showRegisterBtn) {
-         bot.sendMessage(chatId, '🎛 Menu enabled!', { reply_markup: getDashboardKeyboard() });
-      }
     } catch (err) {
       console.error('Telegram /status error:', err.message);
       bot.sendMessage(chatId, '❌ Failed to fetch status. Try again later.');
