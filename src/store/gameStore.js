@@ -246,21 +246,26 @@ export const useGameStore = create(
       setShowDailyPopup: (v) => set({ showDailyPopup: v }),
       setReferrerId: (id) => set({ referrerId: id }),
 
-      claimStreak: (day) => {
+      claimStreak: async (day) => {
+        // FIX: claimStreak previously only updated local state — rewards never persisted to DB.
+        // Now delegates to the API-backed claimDailyReward which atomically updates local_reward.
         const { hasNode } = get();
-        // Harmonized Economy: Base rewards match the ~10/hr pace.
         const baseRewards = [100, 250, 450, 700, 1000, 1800, 2500];
-        
-        // 10x Multiplier: Elite Nodes receive 10x the daily reward.
         const multiplier = hasNode ? 10 : 1;
         const reward = baseRewards[Math.min(day - 1, 6)] * multiplier;
-        
-        set((s) => ({
-          localReward: s.localReward + reward,
-          streak: day,
-          lastClaimDate: new Date().toDateString(),
-          showDailyPopup: false,
-        }));
+        try {
+          await get().claimDailyReward();
+        } catch {
+          // Fallback: optimistic local update (still better than silent failure)
+          set((s) => ({
+            localReward: s.localReward + reward,
+            streak: day,
+            lastClaimDate: Date.now(),
+            lastBackendSync: Date.now(),
+            showDailyPopup: false,
+          }));
+        }
+        set({ showDailyPopup: false });
         return reward;
       },
 
@@ -289,18 +294,25 @@ export const useGameStore = create(
       syncWithBackend: async () => {
         const state = get();
         if (!state.walletAddress) return;
-
         try {
           await api.syncState({
             walletAddress: state.walletAddress,
             taps: state.taps,
             energy: state.energy,
-            nodeTier: state.nodeTier,
-            localReward: state.localReward,
           });
         } catch (err) {
           console.warn("API Sync Failed:", err.message);
         }
+      },
+
+      // addLocalReward: optimistic local update for quick tasks (social follows, etc.)
+      // Sets lastBackendSync to block the 30s sync from reverting for 30 seconds.
+      // NOTE: This does NOT persist to DB — use claimTaskAction for DB-backed task rewards.
+      addLocalReward: (amount) => {
+        set((s) => ({
+          localReward: s.localReward + Number(amount || 0),
+          lastBackendSync: Date.now(), // block 30s sync overwrite
+        }));
       },
 
       fetchUserData: async (forcedReferrer = null) => {
@@ -431,11 +443,11 @@ export const useGameStore = create(
       claimTaskAction: async (taskId) => {
         const { walletAddress, tasks } = get();
         if (!walletAddress) throw new Error("Not connected");
-
         const res = await api.claimTask(walletAddress, taskId);
         if (res?.success) {
           set({
-            localReward: Number(res.new_balance || 0),
+            localReward: parseFloat(res.new_balance || 0),
+            lastBackendSync: Date.now(), // FIX: block 30s sync overwrite
             tasks: tasks.map((t) =>
               t.id === taskId ? { ...t, is_completed: true } : t,
             ),
@@ -458,12 +470,11 @@ export const useGameStore = create(
       bookEventAction: async (eventId) => {
         const { walletAddress, events } = get();
         if (!walletAddress) throw new Error("Not connected");
-
         const res = await api.bookEvent(walletAddress, eventId);
         if (res?.success) {
-          // Adjust localReward optimistically
           set({
-            localReward: get().localReward - Number(res.paid || 0),
+            localReward: get().localReward - parseFloat(res.paid || 0),
+            lastBackendSync: Date.now(), // FIX: block 30s sync overwrite
             events: events.map((e) =>
               e.id === eventId
                 ? { ...e, is_booked: true, booked_seats: Number(e.booked_seats) + 1, telegram_link: res.telegram_link }
@@ -477,11 +488,12 @@ export const useGameStore = create(
       claimMilestoneAction: async (threshold) => {
         const { walletAddress, claimedMilestones } = get();
         if (!walletAddress) throw new Error("Not connected");
-
         const res = await api.claimMilestone(walletAddress, threshold);
         if (res?.success) {
           set({
-            localReward: Number(get().localReward) + Number(res.reward),
+            // FIX: use authoritative balance from server (res.new_balance) not client-side add
+            localReward: parseFloat(res.new_balance || (get().localReward + Number(res.reward))),
+            lastBackendSync: Date.now(), // FIX: block 30s sync overwrite
             claimedMilestones: res.claimed_milestones || [...claimedMilestones, threshold],
           });
           return res;
@@ -491,11 +503,11 @@ export const useGameStore = create(
       claimFreeMilestoneAction: async (threshold) => {
         const { walletAddress, claimedMilestones } = get();
         if (!walletAddress) throw new Error("Not connected");
-
         const res = await api.claimFreeMilestone(walletAddress, threshold);
         if (res?.success) {
           set({
-            localReward: Number(get().localReward) + Number(res.reward),
+            localReward: parseFloat(res.new_balance || (get().localReward + Number(res.reward))),
+            lastBackendSync: Date.now(), // FIX: block 30s sync overwrite
             claimedMilestones: res.claimed_milestones || [...claimedMilestones, `free_${threshold}`],
           });
           return res;
@@ -505,11 +517,11 @@ export const useGameStore = create(
       claimSignupBonusAction: async () => {
         const { walletAddress, claimedMilestones } = get();
         if (!walletAddress) throw new Error("Not connected");
-
         const res = await api.claimSignupBonus(walletAddress);
         if (res?.success) {
           set({
-            localReward: Number(res.new_balance || (Number(get().localReward) + Number(res.reward))),
+            localReward: parseFloat(res.new_balance || (get().localReward + Number(res.reward))),
+            lastBackendSync: Date.now(), // FIX: block 30s sync overwrite
             claimedMilestones: res.claimed_milestones || [...claimedMilestones, 'signup_bonus'],
           });
           return res;
@@ -519,14 +531,12 @@ export const useGameStore = create(
       claimDailyReward: async () => {
         const { walletAddress } = get();
         if (!walletAddress) throw new Error("Wallet not connected");
-
         const res = await api.claimDailyReward(walletAddress);
         if (res?.success) {
           set({
-            // BUG FIX: parseFloat because Postgres NUMERIC returns a string
             localReward: parseFloat(res.local_reward || 0),
+            lastBackendSync: Date.now(), // FIX: block 30s sync overwrite
             streak: Number(res.daily_streak || 0),
-            // Store as millisecond timestamp for accurate 24h comparison
             lastClaimDate: res.last_daily_claim ? new Date(res.last_daily_claim).getTime() : Date.now(),
           });
           return res;
