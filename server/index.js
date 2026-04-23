@@ -1034,12 +1034,11 @@ app.post('/api/milestones/claim', async (req, res) => {
     if (count < milestoneThreshold) return res.status(400).json({ error: `You need ${milestoneThreshold} activated nodes to claim this` });
 
     claimed.push(Number(milestoneThreshold));
-    await query(
-      'UPDATE users SET local_reward = COALESCE(local_reward, 0) + $1, claimed_milestones = $2 WHERE LOWER(wallet_address) = LOWER($3)',
+    const updateResult = await query(
+      'UPDATE users SET local_reward = COALESCE(local_reward, 0) + $1, claimed_milestones = $2 WHERE LOWER(wallet_address) = LOWER($3) RETURNING local_reward',
       [reward, JSON.stringify(claimed), walletAddress]
     );
-
-    res.json({ success: true, reward, claimed_milestones: claimed });
+    res.json({ success: true, reward, new_balance: updateResult.rows[0]?.local_reward, claimed_milestones: claimed });
   } catch (err) {
     console.error('Milestone claim error:', err.message);
     res.status(500).json({ error: 'Failed to claim milestone' });
@@ -1091,12 +1090,11 @@ app.post('/api/milestones/claim-free', async (req, res) => {
     }
 
     claimed.push(freeKey);
-    await query(
-      'UPDATE users SET local_reward = COALESCE(local_reward, 0) + $1, claimed_milestones = $2 WHERE LOWER(wallet_address) = LOWER($3)',
+    const updateResult = await query(
+      'UPDATE users SET local_reward = COALESCE(local_reward, 0) + $1, claimed_milestones = $2 WHERE LOWER(wallet_address) = LOWER($3) RETURNING local_reward',
       [milestone.reward, JSON.stringify(claimed), walletAddress]
     );
-
-    res.json({ success: true, reward: milestone.reward, label: milestone.label, claimed_milestones: claimed });
+    res.json({ success: true, reward: milestone.reward, new_balance: updateResult.rows[0]?.local_reward, label: milestone.label, claimed_milestones: claimed });
   } catch (err) {
     console.error('Free milestone error:', err.message);
     res.status(500).json({ error: 'Failed to claim free milestone' });
