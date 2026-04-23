@@ -217,10 +217,15 @@ export const useGameStore = create(
           const res = await api.claimMining(walletAddress);
           if (res?.success && res?.user) {
             set({
-              localReward: Number(res.user.local_reward || 0),
+              // BUG FIX: parseFloat — pg driver returns NUMERIC as string
+              localReward: parseFloat(res.user.local_reward || 0),
               lastClaimTime: new Date(res.user.last_claim_time).getTime(),
-              lastSyncTime: Date.now(), // Refresh sync anchor to reset live counter
-              pendingMined: 0,         // Confirmed: keep at 0
+              lastSyncTime: Date.now(),
+              // RACE CONDITION FIX: Block the 30s fetchUserData sync for 30 more seconds.
+              // Without this, a concurrent fetchUserData SELECT (started before our UPDATE)
+              // would complete AFTER us and overwrite localReward with the pre-claim balance.
+              lastBackendSync: Date.now(),
+              pendingMined: 0, // Confirmed: keep at 0
             });
             return true; // Signal success
           }
