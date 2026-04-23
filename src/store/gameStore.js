@@ -331,6 +331,14 @@ export const useGameStore = create(
           catch (e) { claimedMilestones = []; }
           if (!Array.isArray(claimedMilestones)) claimedMilestones = [];
 
+          // Compute miningRate here so EarnScreen always shows the correct rate after any sync
+          // Matches the server-side claim formula exactly: Tier1=100, each tier +20%
+          const hasActivatedNode = backendTier > 0 || !!(data.node_id && data.node_id > 0);
+          const effectiveTier = backendTier > 0 ? backendTier : 1;
+          const newMiningRate = hasActivatedNode
+            ? Math.round(100 * Math.pow(1.2, effectiveTier - 1)) * (data.is_premium ? 2 : 1)
+            : BASE_MINING_RATE; // 10 AIP/hr for free users
+
           set({
             taps: data.taps || 0,
             // BUG FIX: parseFloat for NUMERIC(36,18) — Number() loses precision on large values
@@ -345,6 +353,7 @@ export const useGameStore = create(
             nodeTier: backendTier > currentTier ? backendTier : currentTier,
             isPremium: data.is_premium || false,
             pendingMined: parseFloat(data.pending_mined || 0),
+            miningRate: newMiningRate,  // FIX: Always sync miningRate from server tier
             // BUG FIX: Guard null last_claim_time — new Date(null) = epoch 1970
             lastClaimTime: data.last_claim_time ? new Date(data.last_claim_time).getTime() : now,
             createdAt: data.created_at || null,
@@ -360,6 +369,7 @@ export const useGameStore = create(
             lastSyncTime: Date.now(),
             initialLoaded: true,
           });
+
 
           // PERF FIX: Removed fetchReferralData() from here — it was firing every 30s
           // causing double API calls. Referral list is now fetched on-demand (tab switch).

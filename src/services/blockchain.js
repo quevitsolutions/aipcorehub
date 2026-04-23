@@ -201,29 +201,33 @@ class BlockchainService {
         this._getBnbUsdPrice(),
       ]);
 
-      return historyItems.map((item) => {
-        const rType = Number(item.rewardType);
-        const tierVal = Number(item.tier);
-        let eventName = "Team Reward";
+      // FIX: Filter nullish entries; use index access as primary (more reliable than named in ethers v6)
+      return historyItems
+        .filter(item => item != null)
+        .map((item) => {
+          const rType  = Number(item[5] ?? item.rewardType ?? 0);
+          const tierVal = Number(item[6] ?? item.tier ?? 0);
+          let eventName = "Team Reward";
 
-        if (rType === 1)
-          eventName = tierVal === 0 ? "Referral" : "Direct Upgrade";
-        else if (rType === 2) eventName = "Layer Income";
-        else if (rType === 3) eventName = "Matrix Income";
+          if (rType === 1)
+            eventName = tierVal === 0 ? "Referral" : "Direct Upgrade";
+          else if (rType === 2) eventName = "Layer Income";
+          else if (rType === 3) eventName = "Matrix Income";
 
-        const bnbAmount = ethers.formatEther(item.amount);
+          const bnbAmount = ethers.formatEther(item[2] ?? item.amount ?? 0n);
 
-        return {
-          from_node_id: Number(item.id),
-          event_type: eventName,
-          amount_bnb: bnbAmount,
-          amount_usd: (parseFloat(bnbAmount) * bnbPrice).toFixed(2),
-          timestamp: new Date(Number(item.time) * 1000).toISOString(),
-          is_missed: item.isMissed,
-          layer: Number(item.layer),
-          tier: tierVal,
-        };
-      });
+          return {
+            // FIX: Use index [0] as primary fallback — named .id can be undefined in some ethers builds
+            from_node_id: Number(item[0] ?? item.id ?? 0),
+            event_type: eventName,
+            amount_bnb: bnbAmount,
+            amount_usd: (parseFloat(bnbAmount) * bnbPrice).toFixed(2),
+            timestamp: new Date(Number(item[3] ?? item.time ?? 0) * 1000).toISOString(),
+            is_missed: Boolean(item[4] ?? item.isMissed ?? false),
+            layer: Number(item[1] ?? item.layer ?? 0),
+            tier: tierVal,
+          };
+        });
     } catch (err) {
       console.warn(
         "fetchTeamHistoryOnChain failed (AIPCore contract might not support getIncome if very old):",
@@ -239,26 +243,38 @@ class BlockchainService {
     const signer = await getEthersSigner(config);
     if (!signer) throw new Error("Wallet not connected");
     const core = new ethers.Contract(CONTRACTS.AIPCORE, AIPCORE_ABI, signer);
+    // FIX: Index 0 = Tier 1 cost (was wrongly using index 1 = Tier 2 price)
     const cost = await core
-      .getTierCost(1)
-      .catch(() => ethers.parseEther("0.05"));
+      .getTierCost(0)
+      .catch(() => ethers.parseEther("0.008"));
     const tx = await core.createNode(sponsorId, { value: cost });
     const receipt = await tx.wait();
 
+    // FIX: Parse NodeCreated event properly via ABI interface instead of raw topics
+    let nid = 0;
     try {
-      const pool = new ethers.Contract(
-        CONTRACTS.REWARDPOOL,
-        REWARDPOOL_ABI,
-        signer,
-      );
-      const nodeLog = receipt.logs[0];
-      const nid = nodeLog ? Number(nodeLog.topics[1]) : 0;
-      if (nid > 0) {
-        await (await pool.registerNode(nid)).wait();
-        return nid;
+      const iface = new ethers.Interface(AIPCORE_ABI);
+      for (const log of receipt.logs) {
+        try {
+          const parsed = iface.parseLog({ topics: [...log.topics], data: log.data });
+          if (parsed?.name === 'NodeCreated') {
+            nid = Number(parsed.args[1]); // userId (second indexed param)
+            break;
+          }
+        } catch { /* not this event */ }
       }
     } catch (e) {
-      console.warn("Pool registration skipped:", e.message);
+      console.warn("Event parse failed:", e.message);
+    }
+
+    if (nid > 0) {
+      try {
+        const pool = new ethers.Contract(CONTRACTS.REWARDPOOL, REWARDPOOL_ABI, signer);
+        await (await pool.registerNode(nid)).wait();
+      } catch (e) {
+        console.warn("Pool registration skipped:", e.message);
+      }
+      return nid;
     }
     return 1;
   }

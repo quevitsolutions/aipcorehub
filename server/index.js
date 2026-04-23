@@ -485,6 +485,30 @@ app.use(express.json());
 // Health Check
 app.get('/health', (req, res) => res.send('API is healthy'));
 
+// POST /api/sync — Persist tap/energy state (called every 10 taps from the frontend)
+// IMPORTANT: Does NOT update local_reward — balance is only updated via /api/mining/claim,
+// /api/tasks/claim, /api/milestones/claim etc. to prevent client-side tampering.
+app.post('/api/sync', async (req, res) => {
+  const { walletAddress, taps, energy } = req.body;
+  if (!walletAddress) return res.status(400).json({ error: 'Wallet required' });
+  try {
+    const result = await query(
+      `UPDATE users
+         SET taps       = GREATEST(COALESCE(taps, 0), $2),
+             energy     = $3,
+             updated_at = CURRENT_TIMESTAMP
+       WHERE LOWER(wallet_address) = LOWER($1)
+       RETURNING id`,
+      [walletAddress, taps || 0, energy ?? 500]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Sync error:', err.message);
+    res.status(500).json({ error: 'Sync failed' });
+  }
+});
+
 // Fetch or create user data via wallet address
 app.get('/api/user/:walletAddress', async (req, res) => {
   const { walletAddress } = req.params;
@@ -739,6 +763,52 @@ app.post('/api/mining/upgrade', async (req, res) => {
   } catch (err) {
     console.error('Upgrade error:', err.message);
     res.status(500).json({ error: 'Upgrade failed' });
+  }
+});
+
+// ── Internal Chain Sync ────────────────────────────────────────────────────
+// Called by the Telegram bot (or any internal service) when DB data may be
+// stale. Reads live nodeId/tier from chain and writes them back to DB so
+// subsequent DB-only reads (e.g. bot /status) return accurate data.
+app.post('/api/internal/chain-sync', async (req, res) => {
+  const { walletAddress } = req.body;
+  if (!walletAddress) return res.status(400).json({ error: 'Wallet required' });
+  try {
+    // 1. Query chain for nodeId
+    const onChainIdRaw = await aipcoreContract.addressToNodeId(walletAddress).catch(() => 0n);
+    const onChainNodeId = Number(onChainIdRaw);
+
+    let onChainTier = 0;
+    if (onChainNodeId > 0) {
+      const stats = await aipcoreContract.getNodeStats(onChainNodeId).catch(() => null);
+      if (stats) onChainTier = Number(stats[0]);
+    }
+
+    // 2. Write back to DB if activated on chain
+    if (onChainNodeId > 0) {
+      await query(
+        `UPDATE users
+           SET node_id     = $2,
+               node_tier   = GREATEST(COALESCE(node_tier, 0), $3),
+               node_active = TRUE,
+               updated_at  = CURRENT_TIMESTAMP
+         WHERE LOWER(wallet_address) = LOWER($1)`,
+        [walletAddress, onChainNodeId, onChainTier]
+      );
+      console.log(`🔗 chain-sync: ${walletAddress} → nodeId=${onChainNodeId} tier=${onChainTier}`);
+    }
+
+    // 3. Return fresh DB row
+    const fresh = await query(
+      `SELECT wallet_address, node_id, node_tier, local_reward,
+              (SELECT COUNT(*) FROM users WHERE referrer_id = u.id) as directs
+       FROM users u WHERE LOWER(wallet_address) = LOWER($1) LIMIT 1`,
+      [walletAddress]
+    );
+    res.json({ synced: onChainNodeId > 0, nodeId: onChainNodeId, tier: onChainTier, user: fresh.rows[0] || null });
+  } catch (err) {
+    console.error('chain-sync error:', err.message);
+    res.status(500).json({ error: err.message });
   }
 });
 
