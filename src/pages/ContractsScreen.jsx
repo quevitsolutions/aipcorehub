@@ -49,27 +49,69 @@ export default function ContractsScreen() {
       if (!signer) { toast.error('Please connect your wallet first'); setRegistering(false); return; }
 
       const contract = new ethers.Contract(CONTRACTS.AIPCORE, AIPCORE_ABI, signer);
+
+      // Resolve sponsor node ID from referrerId (may be a wallet address or already a node ID)
       let sponsorNodeId = 1n;
       if (referrerId) {
         try {
-          const refId = await contract.nodeId(referrerId);
-          if (refId && Number(refId) > 0) sponsorNodeId = refId;
-        } catch {}
+          // referrerId stored as wallet address → look up their node ID
+          if (typeof referrerId === 'string' && referrerId.startsWith('0x') && referrerId.length === 42) {
+            const refId = await contract.nodeId(referrerId);
+            if (refId && Number(refId) > 0) sponsorNodeId = BigInt(refId);
+          } else if (Number(referrerId) > 0) {
+            // Already a numeric node ID
+            sponsorNodeId = BigInt(referrerId);
+          }
+        } catch { /* keep default sponsor = 1 */ }
       }
 
-      const tierCost = await contract.getTierCost(0);
+      // FIX: Always fallback if getTierCost reverts (prevents value:undefined → 0 BNB tx)
+      const tierCost = await contract.getTierCost(0).catch(() => ethers.parseEther('0.008'));
+      if (!tierCost || tierCost === 0n) {
+        toast.error('Could not fetch tier cost. Please try again.', { id: 'register' });
+        setRegistering(false);
+        return;
+      }
+
       toast.loading('Confirm transaction in your wallet...', { id: 'register' });
       const tx = await contract.createNode(sponsorNodeId, { value: tierCost });
-      toast.loading(`Transaction sent: ${tx.hash.slice(0,10)}...`, { id: 'register' });
-      await tx.wait();
-      toast.success('Node registered! Welcome to AIPCore.', { id: 'register', duration: 5000 });
+      toast.loading(`Transaction sent: ${tx.hash.slice(0, 10)}...`, { id: 'register' });
+      const receipt = await tx.wait();
+
+      // Parse NodeCreated event to get the new node ID
+      let newNodeId = 0;
+      try {
+        const iface = new ethers.Interface(AIPCORE_ABI);
+        for (const log of receipt.logs) {
+          try {
+            const parsed = iface.parseLog({ topics: [...log.topics], data: log.data });
+            if (parsed?.name === 'NodeCreated') {
+              newNodeId = Number(parsed.args[1]); // userId (second indexed param)
+              break;
+            }
+          } catch { /* not this event */ }
+        }
+      } catch { /* event parse failed, proceed without nodeId */ }
+
+      // Auto-register in the Reward Pool (same as blockchain.js createNode)
+      if (newNodeId > 0) {
+        try {
+          const { REWARDPOOL_ABI: rpAbi } = await import('../../contracts/abi.js');
+          const pool = new ethers.Contract(CONTRACTS.REWARDPOOL, rpAbi, signer);
+          await (await pool.registerNode(newNodeId)).wait();
+        } catch (e) {
+          console.warn('Pool auto-registration skipped:', e.message);
+        }
+      }
+
+      toast.success('🚀 Node registered! Welcome to AIPCore.', { id: 'register', duration: 5000 });
       window.location.reload(); // Hard reload to hydrate node states
     } catch (err) {
       console.error(err);
-      let errMsg = err?.reason || err?.message || 'Transaction failed';
+      let errMsg = err?.reason || err?.shortMessage || err?.message || 'Transaction failed';
       if (errMsg.toLowerCase().includes('insufficient funds')) {
         errMsg = 'Insufficient BNB balance for transaction & gas.';
-      } else if (errMsg.includes('user rejected')) {
+      } else if (errMsg.toLowerCase().includes('user rejected') || err?.code === 4001) {
         errMsg = 'Transaction rejected by user.';
       } else {
         errMsg = errMsg.slice(0, 80);
