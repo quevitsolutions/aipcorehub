@@ -908,7 +908,9 @@ app.get('/api/referrals/free-levels/:walletAddress', async (req, res) => {
          level,
          GREATEST(0, 30 - EXTRACT(DAY FROM (NOW() - created_at))::int) AS trial_days_left
        FROM downline
-       WHERE (node_id IS NULL AND (node_tier IS NULL OR node_tier = 0))
+       WHERE node_id IS NULL
+         AND (node_tier IS NULL OR node_tier = 0)
+         AND (node_active IS NULL OR node_active = FALSE)
        ORDER BY level ASC, created_at DESC`,
       [user.rows[0].id]
     );
