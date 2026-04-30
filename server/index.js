@@ -657,10 +657,10 @@ app.get('/api/user/:walletAddress', async (req, res) => {
     const user = userResult.rows[0];
 
     // If existing user has NO sponsor yet and a ref is provided — set it now (one-time, never overwrite)
-    if (!user.referrer_id && req.query.ref) {
-      const sponsor = await findSponsorByRef(req.query.ref);
+    const refToken = req.query.ref || user.referred_by_memo; // ← RECOVERY: use memo if no ?ref= in request
+    if (!user.referrer_id && refToken) {
+      const sponsor = await findSponsorByRef(refToken);
       if (sponsor && sponsor.wallet_address.toLowerCase() !== walletAddress.toLowerCase()) {
-        // Perform the update and ensure we don't overwrite if it was set in a parallel request
         const updateRes = await query(`
           UPDATE users 
           SET referrer_id = $1, 
@@ -668,17 +668,17 @@ app.get('/api/user/:walletAddress', async (req, res) => {
           WHERE LOWER(wallet_address) = LOWER($2) 
           AND referrer_id IS NULL 
           RETURNING referrer_id
-        `, [sponsor.id, walletAddress, req.query.ref]);
+        `, [sponsor.id, walletAddress, refToken]);
         
         if (updateRes.rows.length > 0) {
           user.referrer_id = sponsor.id;
           user.sponsor_wallet = sponsor.wallet_address;
-          console.log(`🔗 Linked User ${walletAddress} to Sponsor ${sponsor.wallet_address}`);
+          console.log(`🔗 Linked ${walletAddress} → Sponsor ${sponsor.wallet_address} (via ${req.query.ref ? 'URL ?ref' : 'memo recovery'})`);
         }
       } else if (req.query.ref) {
-          // Store memo even if sponsor not found yet or is self
-          await query(`UPDATE users SET referred_by_memo = $1 WHERE LOWER(wallet_address) = LOWER($2) AND referred_by_memo IS NULL`, 
-            [req.query.ref, walletAddress]);
+        // Store memo even if sponsor not found yet or is self
+        await query(`UPDATE users SET referred_by_memo = $1 WHERE LOWER(wallet_address) = LOWER($2) AND referred_by_memo IS NULL`, 
+          [req.query.ref, walletAddress]);
       }
     }
 

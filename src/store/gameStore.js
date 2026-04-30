@@ -334,7 +334,13 @@ export const useGameStore = create(
         // BUG FIX: Use a SEPARATE flag so referral fetches aren't blocked by user fetch
         if (get().isFetchingUser) return;
 
-        const finalReferrer = forcedReferrer || referrerId;
+        // Read ref from Zustand first, then fall back to localStorage 'aipcore_ref' cookie.
+        // This fixes the race condition: Wagmi reconnects (firing fetchUserData) BEFORE
+        // App.jsx useEffect reads the ?ref= URL param and calls setReferrerId().
+        // localStorage survives MetaMask redirect + page reload, guaranteeing correct attribution.
+        const lsRef = (() => { try { return localStorage.getItem('aipcore_ref'); } catch(e) { return null; } })();
+        const finalReferrer = forcedReferrer || referrerId || lsRef;
+
 
         // Skip if synced in the last 30 seconds
         const now = Date.now();
@@ -410,8 +416,12 @@ export const useGameStore = create(
             api.trackReferral(walletAddress, finalReferrer).then(result => {
               if (result?.linked) {
                 console.log(`✅ Referral confirmed: ${walletAddress} → ${result.sponsor_wallet}`);
+                // Clear ref cookie — prevents this device's ref from leaking to a different user
+                try { localStorage.removeItem('aipcore_ref'); } catch(e) {}
+                set({ referrerId: null });
               }
             }).catch(() => { });
+
           }
         } catch (err) {
           console.warn('fetchUserData failed:', err.message);

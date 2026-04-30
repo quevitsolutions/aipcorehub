@@ -86,8 +86,12 @@ export default function App() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const ref = params.get('ref');
-    // BUG FIX: Accept BOTH wallet addresses AND numeric Node IDs as referral tokens
-    if (ref && /^(0x[a-fA-F0-9]{40}|\d+)$/i.test(ref)) setReferrerId(ref);
+    // Accept both wallet addresses AND numeric Node IDs as referral tokens
+    if (ref && /^(0x[a-fA-F0-9]{40}|\d+)$/i.test(ref)) {
+      setReferrerId(ref);
+      // Persist to localStorage immediately — survives MetaMask redirect & page reload
+      try { localStorage.setItem('aipcore_ref', ref); } catch(e) {}
+    }
   }, [setReferrerId]);
 
   // Show "Referred by" banner once on first connect
