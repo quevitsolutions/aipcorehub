@@ -912,7 +912,6 @@ app.get('/api/referrals/free-levels/:walletAddress', async (req, res) => {
          GREATEST(0, 30 - EXTRACT(DAY FROM (NOW() - created_at))::int) AS trial_days_left
        FROM downline
        WHERE (node_tier IS NULL OR node_tier = 0)
-         AND (node_active IS NULL OR node_active = FALSE)
        ORDER BY level ASC, created_at DESC`,
       [user.rows[0].id]
     );
@@ -2055,6 +2054,8 @@ app.get('/api/referrals/stats/:walletAddress', async (req, res) => {
     const parentIds = parentsResult.rows.map(r => r.id);
 
     // Dynamic recursive lookup for potential/conversion stats across 18 levels
+    // node_tier is the SINGLE source of truth: tier>0 = activated, tier=0/null = free
+    // node_active is intentionally excluded — it gets set TRUE during RPC sync even for tier=0 users
     const stats = await query(`
       WITH RECURSIVE tree AS (
         SELECT id, referrer_id, 0 as depth FROM users WHERE id = ANY($1::int[])
@@ -2062,11 +2063,11 @@ app.get('/api/referrals/stats/:walletAddress', async (req, res) => {
         SELECT u.id, u.referrer_id, tree.depth + 1 FROM users u INNER JOIN tree ON u.referrer_id = tree.id WHERE tree.depth < 18
       )
       SELECT
-        COUNT(*)                                                                                                       AS total,
-        COUNT(*) FILTER (WHERE node_tier > 0 OR node_active = TRUE)                                                   AS activated,
-        COUNT(*) FILTER (WHERE (node_tier IS NULL OR node_tier = 0) AND (node_active IS NULL OR node_active = FALSE) AND created_at > NOW() - INTERVAL '30 days')  AS in_trial,
-        COUNT(*) FILTER (WHERE (node_tier IS NULL OR node_tier = 0) AND (node_active IS NULL OR node_active = FALSE) AND created_at <= NOW() - INTERVAL '30 days') AS expired,
-        COALESCE(SUM(CASE WHEN (node_tier IS NULL OR node_tier = 0) AND (node_active IS NULL OR node_active = FALSE) THEN 0.0025 ELSE 0 END), 0) AS potential_bnb
+        COUNT(*)                                                                              AS total,
+        COUNT(*) FILTER (WHERE node_tier > 0)                                                AS activated,
+        COUNT(*) FILTER (WHERE (node_tier IS NULL OR node_tier = 0) AND created_at > NOW() - INTERVAL '30 days')  AS in_trial,
+        COUNT(*) FILTER (WHERE (node_tier IS NULL OR node_tier = 0) AND created_at <= NOW() - INTERVAL '30 days') AS expired,
+        COALESCE(SUM(CASE WHEN (node_tier IS NULL OR node_tier = 0) THEN 0.0025 ELSE 0 END), 0) AS potential_bnb
       FROM users u
       JOIN tree ON u.id = tree.id
       WHERE tree.depth > 0
