@@ -894,15 +894,18 @@ app.get('/api/referrals/free-levels/:walletAddress', async (req, res) => {
 
     const result = await query(
       `WITH RECURSIVE downline AS (
-         SELECT id, wallet_address, node_id, node_tier, node_active, created_at, referrer_id, 1 AS level
+         SELECT id, wallet_address, node_id, node_tier, node_active, created_at, referrer_id,
+                1 AS level, ARRAY[id] AS visited
          FROM users WHERE referrer_id = $1
          UNION ALL
-         SELECT u.id, u.wallet_address, u.node_id, u.node_tier, u.node_active, u.created_at, u.referrer_id, d.level + 1
+         SELECT u.id, u.wallet_address, u.node_id, u.node_tier, u.node_active, u.created_at, u.referrer_id,
+                d.level + 1, d.visited || u.id
          FROM users u
          INNER JOIN downline d ON u.referrer_id = d.id
          WHERE d.level < 18
+           AND NOT (u.id = ANY(d.visited))
        )
-       SELECT
+       SELECT DISTINCT ON (wallet_address)
          wallet_address,
          node_id,
          node_tier,
@@ -912,7 +915,7 @@ app.get('/api/referrals/free-levels/:walletAddress', async (req, res) => {
          GREATEST(0, 30 - EXTRACT(DAY FROM (NOW() - created_at))::int) AS trial_days_left
        FROM downline
        WHERE (node_tier IS NULL OR node_tier = 0)
-       ORDER BY level ASC, created_at DESC`,
+       ORDER BY wallet_address, level ASC`,
       [user.rows[0].id]
     );
 
@@ -2055,23 +2058,32 @@ app.get('/api/referrals/stats/:walletAddress', async (req, res) => {
 
     // Dynamic recursive lookup for potential/conversion stats across 18 levels
     // node_tier is the SINGLE source of truth: tier>0 = activated, tier=0/null = free
-    // node_active is intentionally excluded — it gets set TRUE during RPC sync even for tier=0 users
+    // Cycle detection via visited[] prevents circular referrer_id chains from inflating counts
     const stats = await query(`
       WITH RECURSIVE tree AS (
-        SELECT id, referrer_id, 0 as depth FROM users WHERE id = ANY($1::int[])
+        SELECT id, referrer_id, 0 as depth, ARRAY[id] AS visited
+        FROM users WHERE id = ANY($1::int[])
         UNION ALL
-        SELECT u.id, u.referrer_id, tree.depth + 1 FROM users u INNER JOIN tree ON u.referrer_id = tree.id WHERE tree.depth < 18
+        SELECT u.id, u.referrer_id, tree.depth + 1, tree.visited || u.id
+        FROM users u
+        INNER JOIN tree ON u.referrer_id = tree.id
+        WHERE tree.depth < 18
+          AND NOT (u.id = ANY(tree.visited))
       )
       SELECT
-        COUNT(*)                                                                              AS total,
-        COUNT(*) FILTER (WHERE node_tier > 0)                                                AS activated,
-        COUNT(*) FILTER (WHERE (node_tier IS NULL OR node_tier = 0) AND created_at > NOW() - INTERVAL '30 days')  AS in_trial,
-        COUNT(*) FILTER (WHERE (node_tier IS NULL OR node_tier = 0) AND created_at <= NOW() - INTERVAL '30 days') AS expired,
-        COALESCE(SUM(CASE WHEN (node_tier IS NULL OR node_tier = 0) THEN 0.0025 ELSE 0 END), 0) AS potential_bnb
+        COUNT(DISTINCT u.id)                                                                   AS total,
+        COUNT(DISTINCT u.id) FILTER (WHERE u.node_tier > 0)                                   AS activated,
+        COUNT(DISTINCT u.id) FILTER (WHERE (u.node_tier IS NULL OR u.node_tier = 0) AND u.created_at > NOW() - INTERVAL '30 days')  AS in_trial,
+        COUNT(DISTINCT u.id) FILTER (WHERE (u.node_tier IS NULL OR u.node_tier = 0) AND u.created_at <= NOW() - INTERVAL '30 days') AS expired,
+        (SELECT COUNT(*) * 0.0025 FROM (SELECT DISTINCT uid FROM (
+          SELECT u2.id AS uid FROM users u2 JOIN tree t2 ON u2.id = t2.id
+          WHERE t2.depth > 0 AND (u2.node_tier IS NULL OR u2.node_tier = 0)
+        ) x) y)                                                                                AS potential_bnb
       FROM users u
       JOIN tree ON u.id = tree.id
       WHERE tree.depth > 0
     `, [parentIds]);
+
 
     const s = stats.rows[0];
     const total     = parseInt(s.total);
