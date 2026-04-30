@@ -587,7 +587,7 @@ export default function ReferralScreen() {
               if (users.length === 0) return null;
 
               const isExpanded    = expandedLevel === lvl;
-              const levelColors   = ['#4FC3F7','#A3FF12','#FFD700','#FF9800','#FF5252','#AB47BC','#7E57C2','#42A5F5','#26C6DA','#66BB6A'];
+              const levelColors   = ['#4FC3F7','#A3FF12','#FFD700','#FF9800','#FF5252','#AB47BC','#7E57C2','#42A5F5','#26C6DA','#66BB6A','#E91E63','#00BCD4','#8BC34A','#FF7043','#9C27B0','#03A9F4','#CDDC39','#F44336'];
               const color         = levelColors[(lvl - 1) % levelColors.length];
               const activeCount   = users.filter(u => u.trial_days_left > 7).length;
               const expiringCount = users.filter(u => u.trial_days_left > 0 && u.trial_days_left <= 7).length;

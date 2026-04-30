@@ -900,7 +900,7 @@ app.get('/api/referrals/free-levels/:walletAddress', async (req, res) => {
          SELECT u.id, u.wallet_address, u.node_id, u.node_tier, u.created_at, u.referrer_id, d.level + 1
          FROM users u
          INNER JOIN downline d ON u.referrer_id = d.id
-         WHERE d.level < 10
+         WHERE d.level < 18
        )
        SELECT
          wallet_address,
