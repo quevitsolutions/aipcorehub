@@ -12,6 +12,10 @@ dotenv.config();
 // Entries are added before the DB UPDATE and deleted in finally{} so they never get stuck.
 const claimLocks = new Set();
 
+// Per-wallet RPC sync cooldown: Only call ensureNodeSync once per 5 minutes per wallet.
+// Prevents hammering the BSC RPC on every 30-second poll while still catching tier upgrades quickly.
+const nodeSyncCooldown = new Map(); // wallet.toLowerCase() -> lastSyncTimestamp
+
 
 // AIPCore & RewardPool Contract Constants
 const AIPCORE_ADDRESS = '0xB6CbD70147835D4eA93B4a768D8e101B6E9A420f';
@@ -605,10 +609,15 @@ app.get('/api/user/:walletAddress', async (req, res) => {
       }
     }
 
-    // PERF FIX: ensureNodeSync is a BLOCKCHAIN RPC call (1-3s on BSC).
-    // Fire it in the background — NEVER await it in the response path.
-    // If the user just activated a node, the NEXT fetch (30s later) will get the updated data.
-    if (!user.node_id || user.node_id === 0) {
+    // BACKGROUND RPC SYNC: Fire ensureNodeSync for every user, but throttled to once per 5 minutes
+    // per wallet via nodeSyncCooldown map. This ensures tier upgrades (e.g., Tier 1 → Tier 2)
+    // are reflected in the DB within one 30s poll cycle even if the user never calls backfill.
+    // Previously only fired when node_id was missing — that meant existing node holders with
+    // stale tier data were NEVER re-synced, causing mining rate to stay at 10 AIP/hr forever.
+    const syncCooldownKey = walletAddress.toLowerCase();
+    const lastNodeSync = nodeSyncCooldown.get(syncCooldownKey) || 0;
+    if (Date.now() - lastNodeSync > 5 * 60 * 1000) { // 5-minute cooldown
+      nodeSyncCooldown.set(syncCooldownKey, Date.now());
       ensureNodeSync(walletAddress).catch(() => {});
     }
 
@@ -656,6 +665,13 @@ app.get('/api/user/:walletAddress', async (req, res) => {
       pending_mined = cappedHours * 10;
     }
 
+    // Compute authoritative mining_rate here so frontend always shows the correct value.
+    // Matches the claim formula: Free=10, Node Tier1=100, each +20% (1.2^(tier-1))
+    const tier = Number(user.node_tier || 0);
+    const computedMiningRate = tier >= 1
+      ? Math.round(100 * Math.pow(1.2, tier - 1)) * (user.is_premium ? 2 : 1)
+      : (isFreeMember ? 10 : 0);
+
     res.json({
       ...user,
       local_reward:   parseFloat(user.local_reward || 0),
@@ -663,6 +679,7 @@ app.get('/api/user/:walletAddress', async (req, res) => {
       activated_refs: parseInt(user.activated_refs || 0),
       team_size:      parseInt(user.team_size      || 0),
       pending_mined:  parseFloat(pending_mined.toFixed(4)),
+      mining_rate:    computedMiningRate,   // FIX: authoritative rate from server tier
       sponsor_wallet: sponsorWallet,
       sponsor_node_id: sponsorNodeId
     });

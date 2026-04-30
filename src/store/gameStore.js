@@ -360,13 +360,15 @@ export const useGameStore = create(
           catch (e) { claimedMilestones = []; }
           if (!Array.isArray(claimedMilestones)) claimedMilestones = [];
 
-          // Compute miningRate here so EarnScreen always shows the correct rate after any sync
-          // Matches the server-side claim formula exactly: Tier1=100, each tier +20%
+          // Compute miningRate — prefer the server's authoritative value when provided,
+          // fall back to client-side calculation for backwards compatibility.
+          const serverMiningRate = data.mining_rate ? Number(data.mining_rate) : null;
           const hasActivatedNode = backendTier > 0 || !!(data.node_id && data.node_id > 0);
           const effectiveTier = backendTier > 0 ? backendTier : 1;
-          const newMiningRate = hasActivatedNode
+          const clientMiningRate = hasActivatedNode
             ? Math.round(100 * Math.pow(1.2, effectiveTier - 1)) * (data.is_premium ? 2 : 1)
             : BASE_MINING_RATE; // 10 AIP/hr for free users
+          const newMiningRate = serverMiningRate ?? clientMiningRate;
 
           set({
             taps: data.taps || 0,
