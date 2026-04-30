@@ -8,6 +8,11 @@ import { initTelegramBot, sendNotification, broadcastToUsers, verifyTelegramMemb
 
 dotenv.config();
 
+// In-memory per-wallet claim lock — prevents concurrent double-credit on mining claim.
+// Entries are added before the DB UPDATE and deleted in finally{} so they never get stuck.
+const claimLocks = new Set();
+
+
 // AIPCore & RewardPool Contract Constants
 const AIPCORE_ADDRESS = '0xB6CbD70147835D4eA93B4a768D8e101B6E9A420f';
 const REWARDPOOL_ADDRESS = '0x319429aD1A00cbCD6aed1fFA1106eEC056316465';
@@ -718,31 +723,41 @@ app.post('/api/mining/claim', async (req, res) => {
       return res.status(400).json({ error: 'Nothing to claim yet. Come back later!' });
     }
 
-    // Atomic update — wallet address lookup, never ID.
-    // RACE GUARD: Only update if last_claim_time hasn't changed since our SELECT above
-    // (prevents double-credit from concurrent claim requests).
-    const update = await query(
-      `UPDATE users
-       SET local_reward     = COALESCE(local_reward, 0) + $2,
-           last_claim_time  = CURRENT_TIMESTAMP,
-           updated_at       = CURRENT_TIMESTAMP
-       WHERE LOWER(wallet_address) = LOWER($1)
-         AND last_claim_time = $3
-       RETURNING id, wallet_address, local_reward, last_claim_time, node_tier, is_premium, claimed_milestones`,
-      [walletAddress, reward, user.last_claim_time || lastClaim]
-    );
-
-    if (update.rows.length === 0) {
-      // Two simultaneous claims — the second one hit the race guard. Return the current state.
-      console.warn(`Mining Claim: Race condition detected for ${walletAddress} — second request rejected.`);
-      return res.status(409).json({ error: 'Claim already in progress. Please wait a moment and try again.' });
+    // IN-MEMORY RACE GUARD: Prevent double-credit from concurrent claim requests.
+    // Uses a wallet-keyed lock Set. Released in finally{} so it never deadlocks.
+    // (The previous approach of AND last_claim_time=$3 broke because PG TIMESTAMP
+    //  has microsecond precision but JS Date loses it, so the comparison always failed.)
+    const lockKey = walletAddress.toLowerCase();
+    if (claimLocks.has(lockKey)) {
+      console.warn(`Mining Claim: Concurrent request blocked for ${walletAddress}`);
+      return res.status(409).json({ error: 'Claim already in progress. Please wait a moment.' });
     }
+    claimLocks.add(lockKey);
 
-    console.log(`✅ Mined: ${walletAddress} claimed ${reward.toFixed(4)} $AIP`);
-    res.json({ success: true, reward, user: update.rows[0] });
+    try {
+      const update = await query(
+        `UPDATE users
+         SET local_reward     = COALESCE(local_reward, 0) + $2,
+             last_claim_time  = CURRENT_TIMESTAMP,
+             updated_at       = CURRENT_TIMESTAMP
+         WHERE LOWER(wallet_address) = LOWER($1)
+         RETURNING id, wallet_address, local_reward, last_claim_time, node_tier, is_premium, claimed_milestones`,
+        [walletAddress, reward]
+      );
+
+      if (update.rows.length === 0) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      console.log(`✅ Mined: ${walletAddress} claimed ${reward.toFixed(4)} $AIP`);
+      res.json({ success: true, reward, user: update.rows[0] });
+    } finally {
+      claimLocks.delete(lockKey); // Always release the lock
+    }
   } catch (err) {
     console.error(`Mining Claim Error [${walletAddress}]:`, err.message);
     res.status(500).json({ error: `Claim failed: ${err.message}` });
+
   }
 });
 
