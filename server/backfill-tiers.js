@@ -1,10 +1,9 @@
 /**
- * AIPCore Tier Backfill Script
- * Reads every wallet from the DB, queries BSC for their node ID + tier,
- * and updates the DB rows. Run once to repair all stale node_tier=0 rows.
+ * AIPCore Tier Backfill — eth_call Sequential Scan (Correct ABI)
+ * Scans nodeIds sequentially using contract.nodes(id) and nodeId(wallet).
+ * Pure eth_call — NOT affected by eth_getLogs rate limits.
  *
- * Usage (inside the VPS container or via `node backfill-tiers.js`):
- *   node server/backfill-tiers.js
+ * Usage: docker exec aipcore-api node backfill-tiers.js
  */
 import { ethers } from 'ethers';
 import pg from 'pg';
@@ -13,115 +12,218 @@ dotenv.config();
 
 const { Pool } = pg;
 
-const BSC_RPC = (process.env.VITE_RPC_URL || 'https://bsc-dataseed1.defibit.io').trim();
+const pool = new Pool({
+  host:     process.env.DB_HOST     || 'db',
+  user:     process.env.DB_USER     || 'postgres',
+  password: process.env.DB_PASSWORD || 'aipcore_pass',
+  database: process.env.DB_NAME     || 'aipcore_game',
+  port:     Number(process.env.DB_PORT || 5432),
+});
+
 const AIPCORE_ADDRESS = '0xB6CbD70147835D4eA93B4a768D8e101B6E9A420f';
+
+// CORRECT ABI from frontend abi.js:
+// nodes(nodeId) returns (address wallet, uint88 nodeId_, uint256 sponsor,
+//   uint256 matrixParent, uint40 joinedAt, uint256 tier, ...)
+// nodeId(address user) returns (uint256)
 const AIPCORE_ABI = [
-  'function addressToNodeId(address _wallet) view returns (uint256)',
-  'function nodes(uint256 _nodeId) view returns (uint64 nodeId, address wallet, uint64 sponsor, uint64 matrixParent, uint40 joinedAt, uint8 tier, uint256 totalContribution, uint256 totalEarned, uint32 directNodes)',
+  'function nodes(uint256 nodeId) view returns (address wallet, uint88 nodeId_, uint256 sponsor, uint256 matrixParent, uint40 joinedAt, uint256 tier, uint256 directNodes, uint256 totalMatrixNodes, uint256 totalContribution)',
+  'function nodeId(address user) view returns (uint256)',
   'function getNodeStats(uint256 _userId) view returns (uint256 tier, uint256 directCount, uint256 matrixCount, uint256 totalRewards, uint256 totalContribution, uint256 daysActive)'
 ];
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,
-});
+const RPC_LIST = [
+  'https://bsc-dataseed1.defibit.io',
+  'https://bsc-dataseed2.defibit.io',
+  'https://bsc-dataseed1.ninicoin.io',
+  'https://rpc.ankr.com/bsc',
+  'https://bsc-dataseed.binance.org',
+  process.env.VITE_BSC_MAINNET_RPC,
+].filter(r => r && r.trim() !== '');
 
+// NodeId ranges to scan — all nodes appear to be in the 36999+ range
+// 36999 = genesis. New nodes increment from there.
+// Scan 36999..37100 covers current deployment. Extend if needed.
+const SCAN_RANGES = [
+  { from: 36999, to: 37200 }
+];
+
+const ZERO = '0x0000000000000000000000000000000000000000';
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-async function run() {
-  const provider = new ethers.JsonRpcProvider(BSC_RPC);
-  const contract = new ethers.Contract(AIPCORE_ADDRESS, AIPCORE_ABI, provider);
+async function getProvider() {
+  for (const rpc of RPC_LIST) {
+    try {
+      const p = new ethers.JsonRpcProvider(rpc.trim());
+      await p.getBlockNumber();
+      console.log(`✅ RPC: ${rpc.trim()}`);
+      return p;
+    } catch {
+      console.log(`  skip ${rpc.trim()}`);
+    }
+  }
+  throw new Error('All RPCs failed');
+}
 
-  const client = await pool.connect();
+async function run() {
+  console.log('\n🔧 AIPCore Tier Backfill (correct ABI)\n' + '─'.repeat(55));
+
+  const provider = await getProvider();
+  const contract = new ethers.Contract(AIPCORE_ADDRESS, AIPCORE_ABI, provider);
+  const client   = await pool.connect();
+  console.log('✅ DB connected\n');
+
+  // Load all wallets in DB
+  const { rows: dbUsers } = await client.query(
+    `SELECT id, wallet_address, node_id, node_tier FROM users ORDER BY id`
+  );
+  console.log(`📋 ${dbUsers.length} wallets in DB\n`);
+
+  // Build lookup maps
+  const walletToDbRow = new Map();
+  for (const u of dbUsers) walletToDbRow.set(u.wallet_address.toLowerCase(), u);
+
+  const discovered = []; // { nodeId, wallet, tier }
 
   try {
-    // Get all wallets from DB
-    const { rows: users } = await client.query(
-      `SELECT id, wallet_address, node_id, node_tier FROM users ORDER BY id ASC`
-    );
+    // ── Phase 1: Scan nodeIds sequentially ──────────────────────────────────
+    for (const range of SCAN_RANGES) {
+      console.log(`🔍 Scanning node IDs ${range.from}–${range.to}...`);
+      let emptyStreak = 0;
 
-    console.log(`\n🔍 Found ${users.length} wallets to check against BSC\n`);
-    console.log(`RPC: ${BSC_RPC}\n`);
+      for (let nid = range.from; nid <= range.to; nid++) {
+        try {
+          const info   = await contract.nodes(nid);
+          const wallet = info[0].toLowerCase(); // address wallet (field 0)
+          const tier   = Number(info[5]);       // uint256 tier (field 5)
 
-    let updated = 0, skipped = 0, failed = 0, notFound = 0;
+          if (wallet === ZERO) {
+            process.stdout.write('_');
+            emptyStreak++;
+            if (emptyStreak > 30) {
+              process.stdout.write(' [end of range]\n');
+              break;
+            }
+            await sleep(100);
+            continue;
+          }
 
-    for (let i = 0; i < users.length; i++) {
-      const u = users[i];
-      const wallet = u.wallet_address;
-      process.stdout.write(`[${i + 1}/${users.length}] ${wallet.slice(0,10)}... `);
+          emptyStreak = 0;
+          discovered.push({ nodeId: nid, wallet, tier: Math.max(tier, 1) });
+          process.stdout.write(`[#${nid} T${tier}]`);
+          await sleep(200);
+
+        } catch {
+          process.stdout.write('·');
+          emptyStreak++;
+          if (emptyStreak > 30) {
+            process.stdout.write(' [end]\n');
+            break;
+          }
+          await sleep(150);
+        }
+      }
+      console.log('');
+    }
+
+    // ── Phase 2: For each DB wallet missing a node, query nodeId() directly ─
+    console.log('\n🔍 Checking DB wallets missing node_id via nodeId(wallet)...');
+    const missing = dbUsers.filter(u => !u.node_id);
+    console.log(`   ${missing.length} wallets to check\n`);
+
+    for (const u of missing) {
+      const wallet = u.wallet_address.toLowerCase();
+      // Skip if already found in Phase 1
+      if (discovered.some(d => d.wallet === wallet)) continue;
 
       try {
-        // Step 1: get nodeId from contract
-        const rawNodeId = await contract.addressToNodeId(wallet);
-        const nodeId = Number(rawNodeId);
-
-        if (nodeId === 0) {
-          process.stdout.write(`→ No node on chain\n`);
-          notFound++;
+        const rawId = await contract.nodeId(wallet);
+        const nid = Number(rawId);
+        if (nid > 0) {
+          // Get tier from getNodeStats
+          try {
+            const stats = await contract.getNodeStats(nid);
+            const tier = Math.max(Number(stats[0]), 1);
+            discovered.push({ nodeId: nid, wallet, tier });
+            console.log(`  Found: ${wallet.slice(0,14)}... Node #${nid} Tier ${tier}`);
+          } catch {
+            discovered.push({ nodeId: nid, wallet, tier: 1 });
+            console.log(`  Found (tier=1 fallback): ${wallet.slice(0,14)}... Node #${nid}`);
+          }
           await sleep(300);
-          continue;
+        } else {
+          process.stdout.write('·'); // No node
         }
-
-        // Step 2: get node stats (tier etc)
-        const stats = await contract.getNodeStats(nodeId);
-        const tier = Number(stats[0]);
-
-        if (tier === 0) {
-          process.stdout.write(`→ NodeId ${nodeId} but tier=0 on chain\n`);
-          notFound++;
-          await sleep(300);
-          continue;
-        }
-
-        // Step 3: check if DB already matches
-        if (Number(u.node_id) === nodeId && Number(u.node_tier) === tier) {
-          process.stdout.write(`→ Already correct (Node #${nodeId}, Tier ${tier})\n`);
-          skipped++;
-          await sleep(200);
-          continue;
-        }
-
-        // Step 4: update DB
-        await client.query(
-          `UPDATE users
-           SET node_id       = $2,
-               node_tier     = $3,
-               node_active   = TRUE,
-               last_rpc_sync = CURRENT_TIMESTAMP,
-               updated_at    = CURRENT_TIMESTAMP
-           WHERE id = $1`,
-          [u.id, nodeId, tier]
-        );
-
-        process.stdout.write(`→ ✅ UPDATED Node #${nodeId}, Tier ${tier} (was tier=${u.node_tier})\n`);
-        updated++;
+      } catch {
+        process.stdout.write('x');
         await sleep(300);
-
-      } catch (err) {
-        process.stdout.write(`→ ⚠️  RPC error: ${err.message.slice(0,60)}\n`);
-        failed++;
-        await sleep(800); // longer backoff on error
       }
     }
+    console.log('\n');
 
-    console.log(`\n${'─'.repeat(55)}`);
-    console.log(`✅ Updated : ${updated}`);
-    console.log(`⏭  Skipped : ${skipped} (already correct)`);
-    console.log(`❌ No node : ${notFound}`);
-    console.log(`⚠️  Errors  : ${failed}`);
-    console.log(`${'─'.repeat(55)}\n`);
+    // ── Phase 3: Update DB ───────────────────────────────────────────────────
+    console.log(`📡 Found ${discovered.length} nodes total. Updating DB...\n`);
 
-    if (updated > 0) {
-      // Show what we changed
-      const { rows: fixed } = await client.query(
-        `SELECT wallet_address, node_id, node_tier
-         FROM users WHERE node_id IS NOT NULL ORDER BY node_tier DESC LIMIT 20`
+    let updated = 0, skipped = 0, inserted = 0;
+
+    for (const { nodeId, wallet, tier } of discovered) {
+      const dbRow = walletToDbRow.get(wallet);
+
+      if (!dbRow) {
+        await client.query(
+          `INSERT INTO users (wallet_address, node_id, node_tier, node_active, created_at, last_claim_time, last_rpc_sync)
+           VALUES ($1, $2, $3, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+           ON CONFLICT (LOWER(wallet_address)) DO UPDATE
+             SET node_id = EXCLUDED.node_id,
+                 node_tier = GREATEST(users.node_tier, EXCLUDED.node_tier),
+                 node_active = TRUE,
+                 last_rpc_sync = CURRENT_TIMESTAMP`,
+          [wallet, nodeId, tier]
+        );
+        console.log(`  ➕ INSERTED  ${wallet.slice(0,16)}... Node #${nodeId} Tier ${tier}`);
+        inserted++;
+        continue;
+      }
+
+      if (Number(dbRow.node_id) === nodeId && Number(dbRow.node_tier) === tier) {
+        process.stdout.write('·');
+        skipped++;
+        continue;
+      }
+
+      // Only upgrade tier — never downgrade (use GREATEST)
+      await client.query(
+        `UPDATE users
+         SET node_id       = $2,
+             node_tier     = GREATEST(node_tier, $3),
+             node_active   = TRUE,
+             last_rpc_sync = CURRENT_TIMESTAMP,
+             updated_at    = CURRENT_TIMESTAMP
+         WHERE id = $1`,
+        [dbRow.id, nodeId, tier]
       );
-      console.log('📊 Updated nodes in DB:');
-      fixed.forEach(r => {
-        console.log(`  ${r.wallet_address.slice(0,14)}... → Node #${r.node_id}, Tier ${r.node_tier}`);
-      });
+      console.log(`\n  ✅ UPDATED  ${wallet.slice(0,16)}... Node #${nodeId} Tier ${tier}  (was node_id=${dbRow.node_id} tier=${dbRow.node_tier})`);
+      updated++;
     }
+
+    if (skipped > 0) console.log(`\n  (${skipped} already correct)\n`);
+
+    // ── Summary ──────────────────────────────────────────────────────────────
+    console.log(`\n${'─'.repeat(55)}`);
+    console.log(`✅ Updated   : ${updated}`);
+    console.log(`➕ Inserted  : ${inserted}`);
+    console.log(`⏭  Skipped   : ${skipped}`);
+    console.log(`${'─'.repeat(55)}`);
+
+    const { rows: final } = await client.query(
+      `SELECT wallet_address, node_id, node_tier
+       FROM users WHERE node_id IS NOT NULL ORDER BY node_tier DESC, node_id ASC`
+    );
+    console.log(`\n📊 All nodes in DB (${final.length}):`);
+    final.forEach(r =>
+      console.log(`  ${r.wallet_address}  Node #${r.node_id}  Tier ${r.node_tier}`)
+    );
+    console.log('\n🏁 Done!\n');
 
   } finally {
     client.release();
@@ -130,6 +232,6 @@ async function run() {
 }
 
 run().catch(err => {
-  console.error('Fatal:', err.message);
+  console.error('\nFatal:', err.message);
   process.exit(1);
 });
