@@ -146,6 +146,9 @@ export default function TeamScreen() {
   const [loadingDirect, setLoadingDirect] = useState(false);
   const [referralStats, setReferralStats] = useState({ total: 0, activated: 0, conversionRate: '0.0', potentialBnb: '0.00' });
   const [loadingStats, setLoadingStats] = useState(false);
+  // Free-level counts fetched from /api/referrals/free-levels (excludes activated)
+  const [freeLevelCounts, setFreeLevelCounts] = useState(new Array(18).fill(0));
+  const [freeTotalCount, setFreeTotalCount] = useState(0);
 
   // --- Clear sub-lists when switching tabs ---
   useEffect(() => {
@@ -241,6 +244,21 @@ export default function TeamScreen() {
     }
   }, [isConnected, walletAddress, nodeId]);
 
+  // Fetch strict free-only level counts from recursive CTE endpoint
+  useEffect(() => {
+    if (!walletAddress) return;
+    api.fetchFreeUserLevels(walletAddress).then(data => {
+      if (!data || !data.levels) return;
+      const counts = new Array(18).fill(0);
+      Object.entries(data.levels).forEach(([lvl, users]) => {
+        const idx = Number(lvl) - 1;
+        if (idx >= 0 && idx < 18) counts[idx] = users.length;
+      });
+      setFreeLevelCounts(counts);
+      setFreeTotalCount(data.total || 0);
+    }).catch(() => {});
+  }, [walletAddress]);
+
   const toggleLevel = async (levelIndex) => {
     if (expandedLevel === levelIndex) {
       setExpandedLevel(null);
@@ -278,9 +296,12 @@ export default function TeamScreen() {
             }
           }
         } else if (activeTab === 'free_tree' || activeTab === 'free') {
-          // Referral Mode: Use API recursive fetch
+          // Referral Mode: fetch level members then filter to FREE ONLY (no node)
           const members = await api.fetchReferralLevelMembers(walletAddress, levelIndex + 1);
-          setLevelMembers(members);
+          const freeOnly = (members || []).filter(m =>
+            !m.node_id && (!m.node_tier || Number(m.node_tier) === 0) && !m.node_active
+          );
+          setLevelMembers(freeOnly);
           setLoadingMembers(false);
         }
       } catch (err) {
@@ -343,7 +364,7 @@ export default function TeamScreen() {
         <button 
           onClick={() => setActiveTab('free')}
           style={{ flexShrink: 0, padding: '10px 16px', borderRadius: '8px', background: activeTab === 'free' ? 'rgba(255,152,0,0.15)' : 'rgba(255,255,255,0.05)', color: activeTab === 'free' ? '#FF9800' : '#888', border: `1px solid ${activeTab === 'free' ? 'rgba(255,152,0,0.3)' : 'transparent'}`, fontSize: '10px', fontWeight: 800 }}>
-          FREE ({referralStats.total || 0})
+          FREE ({freeTotalCount})
         </button>
         <button 
           onClick={() => setActiveTab('direct')}
@@ -404,7 +425,9 @@ export default function TeamScreen() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18].map((level, index) => {
-                const count = activeTab === 'matrix' ? (levelData[index] || 0) : (dualCounts.referral[index] || 0);
+                const count = activeTab === 'matrix'
+                  ? (levelData[index] || 0)
+                  : (freeLevelCounts[index] || 0);  // FREE tab: strict free-only counts
                 const maxSlots = activeTab === 'matrix' ? maxCapacity(level) : '∞';
                 const fillPct = activeTab === 'matrix' ? (maxSlots > 0 ? Math.min(100, Math.round((count / maxSlots) * 100)) : 0) : 0;
                 const isExpanded = expandedLevel === index;
