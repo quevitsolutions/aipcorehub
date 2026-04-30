@@ -8,22 +8,21 @@ import { query } from './db.js';
 import { ethers } from 'ethers';
 
 // Hardcoded for backend Docker context isolation
-const AIPCORE_ADDRESS  = "0xB6CbD70147835D4eA93B4a768D8e101B6E9A420f";
-const REWARDPOOL_ADDRESS = "0x319429aD1A00cbCD6aed1fFA1106eEC056316465";
-const BSC_RPC = (process.env.VITE_RPC_URL || "https://bsc-dataseed.binance.org").trim();
+const AIPCORE_ADDRESS   = '0xB6CbD70147835D4eA93B4a768D8e101B6E9A420f';
+const REWARDPOOL_ADDRESS = '0x319429aD1A00cbCD6aed1fFA1106eEC056316465';
+const BSC_RPC = (process.env.VITE_RPC_URL || 'https://bsc-dataseed.binance.org').trim();
 
 const AIPCORE_ABI = [
-  "function nodeId(address user) view returns (uint256)",
-  "function getNodeStats(uint256 _userId) view returns (uint256 tier, uint256 directCount, uint256 matrixCount, uint256 totalRewards, uint256 totalContribution, uint256 daysActive)"
+  'function nodeId(address user) view returns (uint256)',
+  'function getNodeStats(uint256 _userId) view returns (uint256 tier, uint256 directCount, uint256 matrixCount, uint256 totalRewards, uint256 totalContribution, uint256 daysActive)'
 ];
 const REWARDPOOL_ABI = [
-  "function getPoolViewHelper(uint256 nodeId) view returns (uint8, string, uint256, uint256, uint256, uint256, uint256, uint256, uint256, bool, uint8, uint256[3])"
+  'function getPoolViewHelper(uint256 nodeId) view returns (uint8, string, uint256, uint256, uint256, uint256, uint256, uint256, uint256, bool, uint8, uint256[3])'
 ];
 
-const BOT_TOKEN = (process.env.TELEGRAM_BOT_TOKEN || '').trim();
+const BOT_TOKEN    = (process.env.TELEGRAM_BOT_TOKEN || '').trim();
 const BOT_USERNAME = 'aipcore_bot';
-const APP_URL = (process.env.APP_URL || 'https://aipcore.online').trim();
-const ADMIN_WALLET = (process.env.VITE_ADMIN_WALLET || '').toLowerCase().trim();
+const APP_URL      = (process.env.APP_URL || 'https://aipcore.online').trim();
 
 let bot = null;
 
@@ -37,21 +36,19 @@ export function initTelegramBot() {
   bot = new TelegramBot(BOT_TOKEN, { polling: true });
   console.log('🤖 Telegram bot started (@' + BOT_USERNAME + ')');
 
-  // Set the menu button to show commands (hamburger menu) — app opens externally
+  // Set the menu button to show commands (hamburger menu)
   fetch(`https://api.telegram.org/bot${BOT_TOKEN}/setChatMenuButton`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      menu_button: { type: 'commands' }
-    })
+    body: JSON.stringify({ menu_button: { type: 'commands' } })
   }).catch(err => console.warn('Failed to set chat menu button:', err.message));
 
-  // Set default bot commands for the slash menu
+  // Set default bot commands
   bot.setMyCommands([
-    { command: 'start', description: 'Open your dashboard' },
+    { command: 'start',  description: 'Open your dashboard' },
     { command: 'status', description: 'Check your node and balance' },
-    { command: 'team', description: 'View your team network' },
-    { command: 'refer', description: 'Get your referral links' }
+    { command: 'team',   description: 'View your team network' },
+    { command: 'refer',  description: 'Get your referral links' }
   ]).catch(err => console.warn('Failed to set bot commands:', err.message));
 
   const getDashboardKeyboard = () => ({
@@ -63,15 +60,14 @@ export function initTelegramBot() {
     is_persistent: true
   });
 
-
-  // ── /start [walletAddress] ────────────────────────────────────────────────
+  // ── /start [walletAddress] ─────────────────────────────────────────────────
   bot.onText(/\/start(?: (.+))?/, async (msg, match) => {
-    const chatId = msg.chat.id;
+    const chatId     = msg.chat.id;
     const telegramId = msg.from.id;
-    const firstName = msg.from.first_name || 'Operator';
-    const walletArg = match[1] ? match[1].trim() : null;
+    const firstName  = msg.from.first_name || 'Operator';
+    const walletArg  = match[1] ? match[1].trim() : null;
 
-    // If passed as conn_0x... it means the user clicked 'Connect Telegram' in the app
+    // conn_0x... means user clicked "Connect Telegram" in the app
     if (walletArg && walletArg.startsWith('conn_0x')) {
       const actualWallet = walletArg.replace('conn_', '');
       try {
@@ -91,103 +87,111 @@ export function initTelegramBot() {
             }
           }
         );
-        // Activate persistent keyboard instantly behind the scenes
         bot.sendMessage(chatId, '🎛 Dashboard Menu enabled!', { reply_markup: getDashboardKeyboard() });
       } catch (err) {
         console.error('Telegram /start wallet link error:', err.message);
         await bot.sendMessage(chatId, '❌ Could not link wallet. Please try again from the app.');
       }
-    } 
-    else if (walletArg && walletArg.startsWith('0x')) {
+    } else if (walletArg && walletArg.startsWith('0x')) {
+      // Referral deep link
       await bot.sendMessage(chatId,
         `👋 *Welcome to AIPCore Hub!*\n\nYou've been invited by \`${walletArg.slice(0,6)}...${walletArg.slice(-4)}\` to join the ultimate BNB earnings network.\n\n⚡ Build a global team for free and activate your node to earn 24/7 passive matrix income.\n\nClick the button below to connect your wallet and lock your position in their team 👇`,
-        {
-          parse_mode: 'Markdown',
-          reply_markup: getDashboardKeyboard()
-        }
+        { parse_mode: 'Markdown', reply_markup: getDashboardKeyboard() }
       );
-      bot.sendMessage(chatId, '🎛 Menu enabled!', { reply_markup: getDashboardKeyboard() });
-    } 
-    else {
-      // Generic welcome — user opened bot without deep link
+    } else {
+      // Generic welcome — no deep link
       await bot.sendMessage(chatId,
         `👋 *Welcome to AIPCore Hub!*\n\n⚡ The decentralized BNB earnings network where free users build global teams and activate their income stream.\n\nTo connect your wallet and get notifications, visit the app and click *"🔔 Connect Telegram"* on your profile page.`,
-        {
-          parse_mode: 'Markdown',
-          reply_markup: {
-            inline_keyboard: [
-              [{ text: '📜 What is AIPCore?', callback_data: 'info' }]
-            ]
-          }
-        }
+        { parse_mode: 'Markdown', reply_markup: getDashboardKeyboard() }
       );
-      bot.sendMessage(chatId, '🎛 Menu enabled!', { reply_markup: getDashboardKeyboard() });
     }
   });
 
-  // ── /status ───────────────────────────────────────────────────────────────
+  // ── /status ────────────────────────────────────────────────────────────────
   const handleStatus = async (msg) => {
-    const chatId = msg.chat.id;
+    const chatId     = msg.chat.id;
     const telegramId = msg.from.id;
     try {
-      // Step 1: get wallet address from DB
+      // Step 1: read from DB (fast — no chain call)
       const result = await query(
-        `SELECT wallet_address, local_reward,
+        `SELECT wallet_address, node_id, node_tier, local_reward,
                 (SELECT COUNT(*) FROM users WHERE referrer_id = u.id) as directs
          FROM users u WHERE telegram_id = $1 ORDER BY node_tier DESC LIMIT 1`,
         [telegramId]
       );
       if (result.rows.length === 0) {
-        return bot.sendMessage(chatId, '❌ No wallet linked. Open the app and click "Connect Telegram" first.');
+        return bot.sendMessage(chatId, '❌ No wallet linked. Open the app and click "Connect Telegram" on your profile page first.');
       }
-      const u = result.rows[0];
-      const walletAddress = u.wallet_address;
-      const walletShort = `${walletAddress.slice(0,6)}...${walletAddress.slice(-4)}`;
-      const aip = parseFloat(u.local_reward || 0).toFixed(0);
 
-      // Step 2: fetch LIVE on-chain data
-      const provider = new ethers.JsonRpcProvider(BSC_RPC);
-      const coreContract = new ethers.Contract(AIPCORE_ADDRESS, AIPCORE_ABI, provider);
-      const poolContract = new ethers.Contract(REWARDPOOL_ADDRESS, REWARDPOOL_ABI, provider);
+      let u = result.rows[0];
 
-      let onChainNodeId = 0, onChainTier = 0;
-      try {
-        const nId = await coreContract.nodeId(walletAddress);
-        onChainNodeId = Number(nId);
-        if (onChainNodeId > 0) {
-          const stats = await coreContract.getNodeStats(onChainNodeId);
-          onChainTier = Number(stats[0]);
+      // Step 2: if DB shows node_tier=0, request a background chain-sync then re-read
+      if (Number(u.node_tier) === 0) {
+        try {
+          const INTERNAL_API = (process.env.API_INTERNAL_URL || 'http://localhost:3001').trim();
+          const syncRes = await fetch(`${INTERNAL_API}/api/internal/chain-sync`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ walletAddress: u.wallet_address })
+          });
+          if (syncRes.ok) {
+            const syncData = await syncRes.json();
+            if (syncData.synced) {
+              const refreshed = await query(
+                `SELECT wallet_address, node_id, node_tier, local_reward,
+                        (SELECT COUNT(*) FROM users WHERE referrer_id = u.id) as directs
+                 FROM users u WHERE telegram_id = $1 ORDER BY node_tier DESC LIMIT 1`,
+                [telegramId]
+              );
+              if (refreshed.rows.length > 0) u = refreshed.rows[0];
+            }
+          }
+        } catch (syncErr) {
+          console.warn('Auto chain-sync failed (non-critical):', syncErr.message);
         }
-      } catch (chainErr) {
-        console.warn('On-chain node fetch failed:', chainErr.message);
       }
 
-      // Step 3: Build status from on-chain data
-      const tier = onChainTier > 0 ? `✅ Tier ${onChainTier} Node` : '⏳ Free User (Not Activated)';
-      const nodeInfo = onChainTier > 0
-        ? (onChainNodeId > 0 ? `#${onChainNodeId}` : 'Activated')
-        : 'Not Activated';
+      // Step 3: Build message from DB
+      const nodeTier    = Number(u.node_tier) || 0;
+      const nodeId      = Number(u.node_id)   || 0;
+      const walletShort = `${u.wallet_address.slice(0,6)}...${u.wallet_address.slice(-4)}`;
+      const aip         = parseFloat(u.local_reward || 0).toFixed(0);
+      const directs     = Number(u.directs) || 0;
+      const tierLabel   = nodeTier > 0 ? `✅ Tier ${nodeTier} Node` : '⏳ Free User (Not Activated)';
+      const nodeLabel   = nodeTier > 0 ? (nodeId > 0 ? `#${nodeId}` : 'Activated') : 'Not Activated';
 
-      // Step 4: Pool qualification
+      // Step 4: Pool check — only if user has a node (avoid wasting RPC for free users)
       let poolText = '🔒 Pool: Not Qualified';
-      try {
-        if (onChainNodeId > 0) {
-          const poolData = await poolContract.getPoolViewHelper(onChainNodeId);
+      if (nodeId > 0) {
+        try {
+          const provider    = new ethers.JsonRpcProvider(BSC_RPC);
+          const poolContract = new ethers.Contract(REWARDPOOL_ADDRESS, REWARDPOOL_ABI, provider);
+          const poolData    = await poolContract.getPoolViewHelper(nodeId);
           const currentPoolId = Number(poolData[0]);
-          const poolName = String(poolData[1]);
-          const isQualForNext = Boolean(poolData[9]);
+          const poolName      = String(poolData[1]);
+          const isQualified   = Boolean(poolData[9]);
           if (currentPoolId > 0) {
             poolText = `🏆 Pool: Active in ${poolName}`;
-          } else if (isQualForNext) {
+          } else if (isQualified) {
             poolText = `🏆 Pool: QUALIFIED ✅ — Visit aipcore.online to register!`;
           }
+        } catch (poolErr) {
+          console.warn('Pool check failed (non-critical):', poolErr.message);
         }
-      } catch (poolErr) {
-        console.warn('Pool check failed:', poolErr.message);
       }
 
+      const footer = nodeTier === 0
+        ? '⚠️ Activate your node to start earning real BNB!'
+        : '🎉 You are earning BNB from your network!';
+
       await bot.sendMessage(chatId,
-        `📊 *Your AIPCore Status*\n\n👛 Wallet: \`${walletShort}\`\n⬡ Node: ${nodeInfo}\n🏆 Status: ${tier}\n💎 \$AIP Balance: ${Number(aip).toLocaleString()}\n👥 Direct Refs: ${u.directs}\n${poolText}\n\n${onChainTier === 0 ? '⚠️ Activate your node to start earning real BNB!' : '🎉 You are earning BNB from your network!'}`,
+        `📊 *Your AIPCore Status*\n\n` +
+        `👛 Wallet: \`${walletShort}\`\n` +
+        `⬡ Node: ${nodeLabel}\n` +
+        `🏆 Status: ${tierLabel}\n` +
+        `💎 $AIP Balance: ${Number(aip).toLocaleString()}\n` +
+        `👥 Direct Refs: ${directs}\n` +
+        `${poolText}\n\n${footer}`,
         { parse_mode: 'Markdown', reply_markup: getDashboardKeyboard() }
       );
     } catch (err) {
@@ -197,9 +201,9 @@ export function initTelegramBot() {
   };
   bot.onText(/\/status/, handleStatus);
 
-  // ── /team ─────────────────────────────────────────────────────────────────
+  // ── /team ──────────────────────────────────────────────────────────────────
   const handleTeam = async (msg) => {
-    const chatId = msg.chat.id;
+    const chatId     = msg.chat.id;
     const telegramId = msg.from.id;
     try {
       const userRes = await query(
@@ -216,26 +220,23 @@ export function initTelegramBot() {
           UNION ALL
           SELECT u.id, t.level + 1 FROM users u INNER JOIN tree t ON u.referrer_id = t.id WHERE t.level < 18
         )
-        SELECT 
+        SELECT
           COUNT(*) FILTER (WHERE level > 0) as total_team,
           COUNT(*) FILTER (WHERE level = 1) as directs,
           COUNT(*) FILTER (WHERE node_tier > 0 AND level > 0) as activated
         FROM tree t JOIN users u ON u.id = t.id
       `, [userId]);
-      
-      const c = countRes.rows[0];
-      const total = parseInt(c.total_team || 0);
-      const directs = parseInt(c.directs || 0);
+
+      const c        = countRes.rows[0];
+      const total    = parseInt(c.total_team || 0);
+      const directs  = parseInt(c.directs    || 0);
       const activated = parseInt(c.activated || 0);
-      const free = total - activated;
+      const free     = total - activated;
       const convRate = total > 0 ? ((activated / total) * 100).toFixed(1) : '0.0';
-      
+
       await bot.sendMessage(chatId,
         `👥 *Your Team Network*\n\n📏 Total Team (18 levels): ${total}\n👤 Direct Referrals: ${directs}\n✅ Activated Nodes: ${activated}\n⏳ Free Users: ${free}\n📈 Conversion Rate: ${convRate}%\n\n${free > 0 ? `💡 Share your link to convert ${free} free users!` : '🏆 Amazing! Your whole team is activated!'}`,
-        {
-          parse_mode: 'Markdown',
-          reply_markup: getDashboardKeyboard()
-        }
+        { parse_mode: 'Markdown', reply_markup: getDashboardKeyboard() }
       );
     } catch (err) {
       console.error('Telegram /team error:', err.message);
@@ -246,12 +247,12 @@ export function initTelegramBot() {
 
   // ── /refer ────────────────────────────────────────────────────────────────
   const handleRefer = async (msg) => {
-    const chatId = msg.chat.id;
+    const chatId     = msg.chat.id;
     const telegramId = msg.from.id;
     try {
       const result = await query('SELECT wallet_address FROM users WHERE telegram_id = $1 LIMIT 1', [telegramId]);
       if (result.rows.length === 0) return bot.sendMessage(chatId, '❌ No wallet linked.');
-      const wallet = result.rows[0].wallet_address;
+      const wallet  = result.rows[0].wallet_address;
       const refLink = `${APP_URL}?ref=${wallet}`;
       const botLink = `https://t.me/${BOT_USERNAME}?start=${wallet}`;
       await bot.sendMessage(chatId,
@@ -264,6 +265,7 @@ export function initTelegramBot() {
   };
   bot.onText(/\/refer/, handleRefer);
 
+  // ── /info / About ──────────────────────────────────────────────────────────
   const handleInfo = async (msg) => {
     bot.sendMessage(msg.chat.id,
       `ℹ️ *About AIPCore Hub*\n\nAIPCore is a decentralized BNB-earning network running on BNB Smart Chain.\n\n🔹 *Free Users* can join and build a team for free (30-day trial)\n🔹 *Node Holders* earn real BNB from their 18-level deep network\n🔹 The more users in your team, the more you earn\n\n🚀 Activate your node and start earning today!`,
@@ -271,44 +273,37 @@ export function initTelegramBot() {
     );
   };
 
-  // Plain text message handler for persistent keyboard clicks
+  // ── Persistent keyboard text handler ──────────────────────────────────────
   bot.on('message', async (msg) => {
-    if (!msg.text || msg.text.startsWith('/')) return; // Ignore commands or non-text
-    
+    if (!msg.text || msg.text.startsWith('/')) return;
     switch (msg.text) {
-      case '📊 My Status': return handleStatus(msg);
-      case '👥 My Team': return handleTeam(msg);
+      case '📊 My Status':    return handleStatus(msg);
+      case '👥 My Team':      return handleTeam(msg);
       case '🔗 Share Referral': return handleRefer(msg);
       case 'ℹ️ About AIPCore': return handleInfo(msg);
     }
   });
 
-  // ── Callback Queries (inline button handlers fallback) ────────────────────
+  // ── Callback Queries (inline buttons) ─────────────────────────────────────
   bot.on('callback_query', async (callbackQuery) => {
-    const msg = callbackQuery.message;
-    const data = callbackQuery.data;
+    const msg    = callbackQuery.message;
+    const data   = callbackQuery.data;
     const chatId = msg.chat.id;
 
     await bot.answerCallbackQuery(callbackQuery.id);
 
-    // Construct a synthetic message object ensuring `msg.from.id` is the querying user, NOT the bot
     const fakeMsg = {
       chat: { id: chatId },
       from: { id: callbackQuery.from.id }
     };
 
-    if (data === 'info') {
-      await handleInfo(fakeMsg);
-    } else if (data.startsWith('share:')) {
-      await handleRefer(fakeMsg);
-    } else if (data.startsWith('status:')) {
-      await handleStatus(fakeMsg);
-    } else if (data.startsWith('team:')) {
-      await handleTeam(fakeMsg);
-    }
+    if (data === 'info')                  await handleInfo(fakeMsg);
+    else if (data.startsWith('share:'))   await handleRefer(fakeMsg);
+    else if (data.startsWith('status:'))  await handleStatus(fakeMsg);
+    else if (data.startsWith('team:'))    await handleTeam(fakeMsg);
   });
 
-  // ── Polling error handler ─────────────────────────────────────────────────
+  // ── Polling error handler ──────────────────────────────────────────────────
   bot.on('polling_error', (err) => {
     console.error('Telegram polling error:', err.message);
   });
@@ -322,7 +317,6 @@ export async function sendNotification(telegramId, message, options = {}) {
   try {
     await bot.sendMessage(telegramId, message, { parse_mode: 'Markdown', ...options });
   } catch (err) {
-    // Silently fail if user blocked the bot
     if (!err.message.includes('blocked') && !err.message.includes('not found')) {
       console.error('Telegram send error:', err.message);
     }
@@ -334,12 +328,11 @@ export async function broadcastToUsers({ filter = 'all', message, imageUrl = nul
   if (!bot || !message) throw new Error('Bot not initialised or no message');
 
   let sqlFilter = 'telegram_id IS NOT NULL';
-  if (filter === 'free') sqlFilter += ' AND node_tier = 0';
+  if (filter === 'free')      sqlFilter += ' AND node_tier = 0';
   if (filter === 'activated') sqlFilter += ' AND node_tier > 0';
 
   const users = await query(`SELECT telegram_id FROM users WHERE ${sqlFilter}`);
-  let sent = 0;
-  let failed = 0;
+  let sent = 0, failed = 0;
 
   const replyMarkup = buttonUrl ? {
     reply_markup: {
@@ -355,14 +348,12 @@ export async function broadcastToUsers({ filter = 'all', message, imageUrl = nul
         await bot.sendMessage(u.telegram_id, message, { parse_mode: 'Markdown', ...replyMarkup });
       }
       sent++;
-      // Rate-limit: 30 messages per second (Telegram API limit)
-      await new Promise(r => setTimeout(r, 35));
+      await new Promise(r => setTimeout(r, 35)); // 30 msg/sec Telegram rate limit
     } catch {
       failed++;
     }
   }
 
-  // Log the broadcast
   try {
     await query(
       `INSERT INTO telegram_broadcasts (message, target_filter, sent_count) VALUES ($1, $2, $3)`,
@@ -373,26 +364,19 @@ export async function broadcastToUsers({ filter = 'all', message, imageUrl = nul
   return { sent, failed, total: users.rows.length };
 }
 
-// ── Web3 Task Authentication ──────────────────────────────────────────────
+// ── Web3 Task Authentication ───────────────────────────────────────────────
 export async function verifyTelegramMembership(telegramId, channelUrl) {
-  if (!bot) return false;
-  if (!telegramId) return false;
-
+  if (!bot || !telegramId) return false;
   try {
-    // Extract handle from https://t.me/AIPCore or similar
     let channelHandle = channelUrl.split('/').pop().split('?')[0];
     if (!channelHandle.startsWith('@')) channelHandle = '@' + channelHandle;
-
     const member = await bot.getChatMember(channelHandle, telegramId);
     return ['creator', 'administrator', 'member', 'restricted'].includes(member.status);
   } catch (err) {
     if (err.response && err.response.statusCode === 400) {
-      if (err.response.body && err.response.body.description.includes('user not found')) {
-        return false; // User definitely not in the chat
-      }
+      if (err.response.body && err.response.body.description.includes('user not found')) return false;
     }
-    console.warn(`Telegram API Verification warning checking ${telegramId} against ${channelUrl}:`, err.message);
-    return false; // Fail safe
+    console.warn(`Telegram verify warning for ${telegramId} in ${channelUrl}:`, err.message);
+    return false;
   }
 }
-
