@@ -894,22 +894,24 @@ app.get('/api/referrals/free-levels/:walletAddress', async (req, res) => {
 
     const result = await query(
       `WITH RECURSIVE downline AS (
-         SELECT id, wallet_address, node_id, node_tier, created_at, referrer_id, 1 AS level
+         SELECT id, wallet_address, node_id, node_tier, node_active, created_at, referrer_id, 1 AS level
          FROM users WHERE referrer_id = $1
          UNION ALL
-         SELECT u.id, u.wallet_address, u.node_id, u.node_tier, u.created_at, u.referrer_id, d.level + 1
+         SELECT u.id, u.wallet_address, u.node_id, u.node_tier, u.node_active, u.created_at, u.referrer_id, d.level + 1
          FROM users u
          INNER JOIN downline d ON u.referrer_id = d.id
          WHERE d.level < 18
        )
        SELECT
          wallet_address,
+         node_id,
+         node_tier,
+         node_active,
          created_at,
          level,
          GREATEST(0, 30 - EXTRACT(DAY FROM (NOW() - created_at))::int) AS trial_days_left
        FROM downline
-       WHERE node_id IS NULL
-         AND (node_tier IS NULL OR node_tier = 0)
+       WHERE (node_tier IS NULL OR node_tier = 0)
          AND (node_active IS NULL OR node_active = FALSE)
        ORDER BY level ASC, created_at DESC`,
       [user.rows[0].id]
@@ -921,6 +923,9 @@ app.get('/api/referrals/free-levels/:walletAddress', async (req, res) => {
       if (!levels[lvl]) levels[lvl] = [];
       levels[lvl].push({
         wallet_address: row.wallet_address,
+        node_id: row.node_id,
+        node_tier: Number(row.node_tier || 0),
+        node_active: row.node_active,
         trial_days_left: Number(row.trial_days_left || 0),
         created_at: row.created_at,
         level: row.level
@@ -2057,15 +2062,14 @@ app.get('/api/referrals/stats/:walletAddress', async (req, res) => {
         SELECT u.id, u.referrer_id, tree.depth + 1 FROM users u INNER JOIN tree ON u.referrer_id = tree.id WHERE tree.depth < 18
       )
       SELECT
-        COUNT(*)                                                                              AS total,
-        COUNT(*) FILTER (WHERE node_tier > 0)                                                AS activated,
-        COUNT(*) FILTER (WHERE node_tier = 0 AND created_at > NOW() - INTERVAL '30 days')   AS in_trial,
-        COUNT(*) FILTER (WHERE node_tier = 0 AND created_at <= NOW() - INTERVAL '30 days')  AS expired,
-        -- Calculation: If each user was Tier 1 (0.05 BNB cost), user missed approx 5% per node (0.0025 BNB)
-        -- This is a FOMO estimate to drive conversion
-        COALESCE(SUM(CASE WHEN node_tier = 0 THEN 0.0025 ELSE 0 END), 0)                    AS potential_bnb
+        COUNT(*)                                                                                                       AS total,
+        COUNT(*) FILTER (WHERE node_tier > 0 OR node_active = TRUE)                                                   AS activated,
+        COUNT(*) FILTER (WHERE (node_tier IS NULL OR node_tier = 0) AND (node_active IS NULL OR node_active = FALSE) AND created_at > NOW() - INTERVAL '30 days')  AS in_trial,
+        COUNT(*) FILTER (WHERE (node_tier IS NULL OR node_tier = 0) AND (node_active IS NULL OR node_active = FALSE) AND created_at <= NOW() - INTERVAL '30 days') AS expired,
+        COALESCE(SUM(CASE WHEN (node_tier IS NULL OR node_tier = 0) AND (node_active IS NULL OR node_active = FALSE) THEN 0.0025 ELSE 0 END), 0) AS potential_bnb
       FROM users u
       JOIN tree ON u.id = tree.id
+      WHERE tree.depth > 0
     `, [parentIds]);
 
     const s = stats.rows[0];
