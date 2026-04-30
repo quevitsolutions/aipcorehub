@@ -5,6 +5,7 @@ import { getEthersSigner } from '../utils/ethers-adapter.js';
 import { ethers } from 'ethers';
 import { config } from '../config/wagmi.js';
 import { AIPCORE_ABI } from '../../contracts/abi.js';
+import { api } from '../services/api.js';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -32,7 +33,7 @@ const CONTRACTS_LIST = [
 ];
 
 export default function ContractsScreen() {
-  const { walletAddress, hasNode, referrerId } = useGameStore();
+  const { walletAddress, hasNode, referrerId, fetchUserData } = useGameStore();
   const [registering, setRegistering] = useState(false);
 
   // ── LOGIC ───────────────────────────────────────────────────────────
@@ -93,7 +94,7 @@ export default function ContractsScreen() {
         }
       } catch { /* event parse failed, proceed without nodeId */ }
 
-      // Auto-register in the Reward Pool (same as blockchain.js createNode)
+      // Auto-register in the Reward Pool
       if (newNodeId > 0) {
         try {
           const { REWARDPOOL_ABI: rpAbi } = await import('../../contracts/abi.js');
@@ -102,10 +103,18 @@ export default function ContractsScreen() {
         } catch (e) {
           console.warn('Pool auto-registration skipped:', e.message);
         }
+
+        // ✅ INSTANT DB UPDATE — zero RPC on server, no page reload
+        await api.confirmNode(walletAddress, newNodeId, 1, receipt.hash);
       }
 
       toast.success('🚀 Node registered! Welcome to AIPCore.', { id: 'register', duration: 5000 });
-      window.location.reload(); // Hard reload to hydrate node states
+
+      // Refresh store from updated DB — fast, no reload
+      useGameStore.setState({ lastBackendSync: null });
+      await fetchUserData().catch(() => {});
+      // Trigger a soft background reload for full hydration
+      setTimeout(() => window.location.reload(), 1500);
     } catch (err) {
       console.error(err);
       let errMsg = err?.reason || err?.shortMessage || err?.message || 'Transaction failed';

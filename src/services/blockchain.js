@@ -5,6 +5,7 @@ import {
   AIPVIEW_ABI,
   REWARDPOOL_ABI,
 } from "../../contracts/abi.js";
+import { api } from "./api.js"; // zero-RPC post-tx DB confirm
 
 const MULTICALL_ABI = [
   "function aggregate(tuple(address target, bytes callData)[] calls) view returns (uint256 blockNumber, bytes[] returnData)"
@@ -242,15 +243,17 @@ class BlockchainService {
   async createNode(sponsorId = 1) {
     const signer = await getEthersSigner(config);
     if (!signer) throw new Error("Wallet not connected");
+    const walletAddress = await signer.getAddress();
     const core = new ethers.Contract(CONTRACTS.AIPCORE, AIPCORE_ABI, signer);
-    // FIX: Index 0 = Tier 1 cost (was wrongly using index 1 = Tier 2 price)
+
+    // FIX: Index 0 = Tier 1 cost
     const cost = await core
       .getTierCost(0)
       .catch(() => ethers.parseEther("0.008"));
     const tx = await core.createNode(sponsorId, { value: cost });
     const receipt = await tx.wait();
 
-    // FIX: Parse NodeCreated event properly via ABI interface instead of raw topics
+    // Parse NodeCreated event to get the assigned nodeId
     let nid = 0;
     try {
       const iface = new ethers.Interface(AIPCORE_ABI);
@@ -258,22 +261,28 @@ class BlockchainService {
         try {
           const parsed = iface.parseLog({ topics: [...log.topics], data: log.data });
           if (parsed?.name === 'NodeCreated') {
-            nid = Number(parsed.args[1]); // userId (second indexed param)
+            nid = Number(parsed.args[1]); // userId = second indexed param
             break;
           }
         } catch { /* not this event */ }
       }
     } catch (e) {
-      console.warn("Event parse failed:", e.message);
+      console.warn("NodeCreated event parse failed:", e.message);
     }
 
     if (nid > 0) {
+      // Auto-register in Reward Pool
       try {
         const pool = new ethers.Contract(CONTRACTS.REWARDPOOL, REWARDPOOL_ABI, signer);
         await (await pool.registerNode(nid)).wait();
       } catch (e) {
         console.warn("Pool registration skipped:", e.message);
       }
+
+      // ✅ INSTANT DB UPDATE — zero RPC on server side
+      // Tier 1 is always the result of createNode()
+      await api.confirmNode(walletAddress, nid, 1, receipt.hash).catch(() => {});
+
       return nid;
     }
     return 1;
@@ -318,9 +327,35 @@ class BlockchainService {
   async unlockTier(nodeId, toTier) {
     const signer = await getEthersSigner(config);
     if (!signer) throw new Error("Wallet not connected");
+    const walletAddress = await signer.getAddress();
     const core = new ethers.Contract(CONTRACTS.AIPCORE, AIPCORE_ABI, signer);
     const cost = await core.getTierCost(toTier - 1);
-    return (await core.unlockTier(nodeId, toTier, { value: cost })).wait();
+    const tx = await core.unlockTier(nodeId, toTier, { value: cost });
+    const receipt = await tx.wait();
+
+    // Parse TierUnlocked event to get the confirmed tier
+    // event TierUnlocked(address indexed node, uint256 indexed userId, uint256 packageId)
+    // packageId = the new tier index (1-based)
+    let confirmedTier = toTier; // fallback to what we requested
+    try {
+      const iface = new ethers.Interface(AIPCORE_ABI);
+      for (const log of receipt.logs) {
+        try {
+          const parsed = iface.parseLog({ topics: [...log.topics], data: log.data });
+          if (parsed?.name === 'TierUnlocked') {
+            confirmedTier = Number(parsed.args[2]); // packageId = new tier
+            break;
+          }
+        } catch { /* not this event */ }
+      }
+    } catch (e) {
+      console.warn("TierUnlocked event parse failed:", e.message);
+    }
+
+    // ✅ INSTANT DB UPDATE — zero RPC on server side
+    await api.confirmNode(walletAddress, nodeId, confirmedTier, receipt.hash).catch(() => {});
+
+    return receipt;
   }
 
   // ── REPORTING ─────────────────────────────────────────────────────────────

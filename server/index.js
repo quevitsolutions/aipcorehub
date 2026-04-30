@@ -497,6 +497,79 @@ app.use(express.json());
 // Health Check
 app.get('/health', (req, res) => res.send('API is healthy'));
 
+// POST /api/node/confirm — Called by frontend immediately after a tx confirms on-chain.
+// Parses nodeId + tier from the event receipt (client-side) and writes to DB instantly.
+// This is the PRIMARY path for node registration and tier upgrades.
+// NO RPC CALL — server just writes what the frontend confirmed from the signed tx receipt.
+// Security: walletAddress must already exist in DB (created on first /api/user GET).
+//           nodeId uniqueness is enforced by DB constraint.
+//           tier is validated to be 1–18 and only ever increases (GREATEST guard).
+app.post('/api/node/confirm', async (req, res) => {
+  const { walletAddress, nodeId, tier, txHash } = req.body;
+  if (!walletAddress || !nodeId || !tier) {
+    return res.status(400).json({ error: 'walletAddress, nodeId and tier are required' });
+  }
+  const nid  = parseInt(nodeId, 10);
+  const ntier = parseInt(tier, 10);
+  if (isNaN(nid) || nid <= 0)         return res.status(400).json({ error: 'Invalid nodeId' });
+  if (isNaN(ntier) || ntier < 1 || ntier > 18) return res.status(400).json({ error: 'Invalid tier (1-18)' });
+
+  try {
+    // Upsert: if wallet exists update it; if node_id conflicts treat as tier upgrade for same wallet
+    const result = await query(
+      `UPDATE users
+          SET node_id       = $2,
+              node_tier     = GREATEST(COALESCE(node_tier, 0), $3),
+              node_active   = TRUE,
+              last_rpc_sync = CURRENT_TIMESTAMP,
+              updated_at    = CURRENT_TIMESTAMP
+        WHERE LOWER(wallet_address) = LOWER($1)
+        RETURNING id, node_id, node_tier, telegram_id`,
+      [walletAddress, nid, ntier]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Wallet not found — connect wallet first' });
+    }
+
+    const row = result.rows[0];
+    console.log(`✅ Node confirmed: wallet=${walletAddress.slice(0,10)} nodeId=${nid} tier=${row.node_tier} tx=${txHash?.slice(0,10) || 'n/a'}`);
+
+    // Send Telegram notification if wallet has linked their account
+    if (row.telegram_id) {
+      const isNew = ntier === 1;
+      const msg = isNew
+        ? `🎉 *Node Activated!*\n\nYour AIPCore Node *#${nid}* is now live on BSC! You're earning *100 $AIP/hr* and are eligible for real BNB rewards.`
+        : `🚀 *Node Upgraded!*\n\nYour Node *#${nid}* has been upgraded to *Tier ${ntier}*! Mining rate: *${Math.round(100 * Math.pow(1.2, ntier - 1))} $AIP/hr*.`;
+      sendNotification(row.telegram_id, msg).catch(() => {});
+    }
+
+    // Compute the authoritative mining_rate to return immediately
+    const computedRate = Math.round(100 * Math.pow(1.2, row.node_tier - 1));
+    res.json({ success: true, nodeId: nid, tier: row.node_tier, mining_rate: computedRate });
+
+  } catch (err) {
+    // node_id unique constraint violation means another wallet already has this nodeId
+    if (err.code === '23505' && err.constraint === 'users_node_id_key') {
+      // Try to reassign if it was a bad row (e.g. old zero-address ghost)
+      console.warn(`node_id ${nid} constraint conflict — attempting reassign for ${walletAddress}`);
+      try {
+        await query(`DELETE FROM users WHERE node_id = $1 AND wallet_address ~ '^0x0{20,}'`, [nid]);
+        const retry = await query(
+          `UPDATE users SET node_id=$2, node_tier=GREATEST(COALESCE(node_tier,0),$3), node_active=TRUE, last_rpc_sync=CURRENT_TIMESTAMP WHERE LOWER(wallet_address)=LOWER($1) RETURNING node_tier`,
+          [walletAddress, nid, ntier]
+        );
+        if (retry.rows.length > 0) {
+          return res.json({ success: true, nodeId: nid, tier: retry.rows[0].node_tier });
+        }
+      } catch (retryErr) { /* fall through */ }
+      return res.status(409).json({ error: `nodeId ${nid} is already assigned to another wallet` });
+    }
+    console.error('/api/node/confirm error:', err.message);
+    res.status(500).json({ error: 'DB update failed' });
+  }
+});
+
 // POST /api/sync — Persist tap/energy state (called every 10 taps from the frontend)
 // IMPORTANT: Does NOT update local_reward — balance is only updated via /api/mining/claim,
 // /api/tasks/claim, /api/milestones/claim etc. to prevent client-side tampering.

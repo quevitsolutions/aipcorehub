@@ -80,32 +80,24 @@ export const useContract = () => {
       const tid = toast.loading("Activating Node...");
       setProcessing(true, "Activating Node...");
       try {
+        // blockchain.createNode() now calls api.confirmNode() internally
+        // DB is updated before this line returns — no extra fetch needed
         const nid = await blockchain.createNode(sponsorId);
 
-        // ✅ SUCCESS: Immediately sync DB so user doesn't wait 30s
         const walletAddress = useGameStore.getState().walletAddress;
         if (walletAddress && nid > 0) {
-          // Write new tier to DB right now (don't wait for ensureNodeSync)
-          await fetch(`${import.meta.env.VITE_API_URL || ''}/api/mining/upgrade`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ walletAddress, tier: 1, nodeId: nid })
-          }).catch(() => {});
-
-          // Force tree-link repair so direct/team counts show instantly on Team screen
+          // Force-repair tree links (sponsor counts etc)
           fetch(`${import.meta.env.VITE_API_URL || ''}/api/network/force-repair`, {
             method: 'POST'
           }).catch(() => {});
 
-          // Force-reload all user state immediately (bypass 30s throttle)
+          // DB already has correct nodeId+tier — refresh store immediately (no delay)
           useGameStore.setState({ lastBackendSync: null });
-          setTimeout(() => {
-            Promise.all([
-              useGameStore.getState().fetchUserData(),
-              loadNodeData(walletAddress),
-              fetchBnbBalance(walletAddress),  // Balance changed — update it
-            ]).catch(() => {});
-          }, 2000); // Wait 2s for chain to propagate before re-reading
+          Promise.all([
+            useGameStore.getState().fetchUserData(),
+            loadNodeData(walletAddress),
+            fetchBnbBalance(walletAddress),
+          ]).catch(() => {});
         }
 
         toast.success("🚀 Node Activated! Welcome to the Protocol.", { id: tid, duration: 5000 });
@@ -129,7 +121,6 @@ export const useContract = () => {
         }
         setProcessing(false);
         return false;
-
       }
     },
     claimRewards: async () => {
@@ -184,32 +175,25 @@ export const useContract = () => {
     },
     unlockTier: async (nodeId, toTier) => {
       if (!nodeId) return toast.error('Node ID missing — reconnect wallet') && false;
-      const tid = toast.loading(`Upgrading to Level ${toTier}...`);
-      setProcessing(true, `Upgrading to Level ${toTier}...`);
+      const tid = toast.loading(`Upgrading to Tier ${toTier}...`);
+      setProcessing(true, `Upgrading to Tier ${toTier}...`);
       try {
+        // blockchain.unlockTier() calls api.confirmNode() internally
+        // DB has the new tier by the time this await resolves
         await blockchain.unlockTier(nodeId, toTier);
 
-        // ✅ Immediately sync DB (same pattern as createNode)
         const walletAddress = useGameStore.getState().walletAddress;
         if (walletAddress) {
-          await fetch(`${import.meta.env.VITE_API_URL || ''}/api/mining/upgrade`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ walletAddress, tier: toTier })
-          }).catch(() => {});
-
-          // Force-reload all state immediately after chain propagation
+          // DB already updated — reset sync timestamp so fetchUserData re-reads fresh
           useGameStore.setState({ lastBackendSync: null });
-          setTimeout(() => {
-            Promise.all([
-              useGameStore.getState().fetchUserData(),
-              loadNodeData(walletAddress),
-              fetchBnbBalance(walletAddress),
-            ]).catch(() => {});
-          }, 2000);
+          Promise.all([
+            useGameStore.getState().fetchUserData(),
+            loadNodeData(walletAddress),
+            fetchBnbBalance(walletAddress),
+          ]).catch(() => {});
         }
 
-        toast.success(`🚀 Level ${toTier} Unlocked!`, { id: tid, duration: 5000 });
+        toast.success(`🚀 Tier ${toTier} Unlocked! Mining rate updated.`, { id: tid, duration: 5000 });
         setProcessing(false);
         return true;
       } catch (e) {

@@ -26,6 +26,28 @@ class ApiService {
     return res.json();
   }
 
+  // Called immediately after createNode() or unlockTier() tx confirms.
+  // Sends the nodeId + tier parsed from the tx receipt event logs to the server.
+  // Server updates DB instantly — zero RPC calls on the backend.
+  async confirmNode(walletAddress, nodeId, tier, txHash = null) {
+    try {
+      const res = await fetch(`${this.baseUrl}/node/confirm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress, nodeId, tier, txHash })
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        console.warn('confirmNode failed:', err.error);
+        return null;
+      }
+      return res.json(); // { success, nodeId, tier, mining_rate }
+    } catch (err) {
+      console.warn('confirmNode network error:', err.message);
+      return null;
+    }
+  }
+
   async fetchLeaderboard() {
     const res = await fetch(`${this.baseUrl}/leaderboard`);
     if (!res.ok) throw new Error('Failed to fetch leaderboard');
