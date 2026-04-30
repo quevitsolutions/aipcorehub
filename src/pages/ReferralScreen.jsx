@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../store/gameStore.js';
 import { formatNumber, shortAddr } from '../utils/format.js';
+import { api } from '../services/api.js';
 import toast from 'react-hot-toast';
 
 // ── Milestone config ──────────────────────────────────────────────────────────
@@ -197,6 +198,9 @@ export default function ReferralScreen() {
   const [showShareCard, setShowShareCard] = useState(false);
   const [tgConnected, setTgConnected] = useState(false);
   const [tgLoading, setTgLoading] = useState(false);
+  const [freeLevels, setFreeLevels] = useState({ levels: {}, total: 0, maxLevel: 0 });
+  const [freeLevelsLoading, setFreeLevelsLoading] = useState(false);
+  const [expandedLevel, setExpandedLevel] = useState(null);
 
   // Check if user has bot connected
   useEffect(() => {
@@ -230,6 +234,16 @@ export default function ReferralScreen() {
     if (fetchLeaderboardData) fetchLeaderboardData();
     if (walletAddress && fetchReferralData) fetchReferralData();
   }, [walletAddress, fetchLeaderboardData, fetchReferralData]);
+
+  // Fetch free user level pyramid
+  useEffect(() => {
+    if (!walletAddress) return;
+    setFreeLevelsLoading(true);
+    api.fetchFreeUserLevels(walletAddress)
+      .then(data => setFreeLevels(data || { levels: {}, total: 0, maxLevel: 0 }))
+      .catch(() => {})
+      .finally(() => setFreeLevelsLoading(false));
+  }, [walletAddress]);
 
   const refToken   = nodeId || walletAddress;
   const inviteLink = walletAddress ? `${window.location.origin}/?ref=${refToken}` : 'Connect wallet to get link';
@@ -524,6 +538,129 @@ export default function ReferralScreen() {
             );
           });
         })()}
+      </div>
+
+      {/* ── FREE USERS BY LEVEL PYRAMID ── */}
+      <div style={{ marginBottom: 32 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <h3 style={{ fontSize: 12, fontWeight: 900, color: '#4FC3F7', margin: 0, letterSpacing: 1 }}>
+            🏛️ FREE USERS BY LEVEL
+          </h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {freeLevels.total > 0 && (
+              <span style={{ fontSize: 10, fontWeight: 800, color: '#FFD700', background: 'rgba(255,215,0,0.1)', padding: '3px 10px', borderRadius: 12, border: '1px solid rgba(255,215,0,0.25)' }}>
+                {freeLevels.total} total
+              </span>
+            )}
+            <button
+              onClick={() => {
+                setFreeLevelsLoading(true);
+                api.fetchFreeUserLevels(walletAddress)
+                  .then(d => setFreeLevels(d || { levels: {}, total: 0, maxLevel: 0 }))
+                  .finally(() => setFreeLevelsLoading(false));
+              }}
+              style={{ background: 'rgba(79,195,247,0.1)', border: '1px solid rgba(79,195,247,0.3)', borderRadius: 20, color: '#4FC3F7', fontSize: 11, fontWeight: 800, padding: '5px 12px', cursor: 'pointer' }}
+            >
+              {freeLevelsLoading ? '⏳' : '🔄'}
+            </button>
+          </div>
+        </div>
+
+        {freeLevelsLoading && freeLevels.total === 0 ? (
+          <div style={{ textAlign: 'center', padding: '24px', background: 'rgba(79,195,247,0.04)', borderRadius: 16, border: '1px solid rgba(79,195,247,0.1)', fontSize: 11, color: 'rgba(255,255,255,0.35)', fontWeight: 700 }}>
+            Loading level data...
+          </div>
+        ) : freeLevels.total === 0 ? (
+          <div style={{ textAlign: 'center', padding: '24px', background: 'rgba(79,195,247,0.04)', borderRadius: 16, border: '1px solid rgba(79,195,247,0.1)' }}>
+            <div style={{ fontSize: 24, marginBottom: 8 }}>🌱</div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.4)' }}>No free users in your downline yet.</div>
+            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', marginTop: 4, fontWeight: 600 }}>Share your link to grow your tree!</div>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {Array.from({ length: freeLevels.maxLevel }, (_, i) => i + 1).map(lvl => {
+              const users = freeLevels.levels[String(lvl)] || [];
+              if (users.length === 0) return null;
+              const isExpanded = expandedLevel === lvl;
+              const levelColors = ['#4FC3F7','#A3FF12','#FFD700','#FF9800','#FF5252','#AB47BC','#7E57C2','#42A5F5','#26C6DA','#66BB6A'];
+              const color = levelColors[(lvl - 1) % levelColors.length];
+              const maxTrialLeft = Math.max(...users.map(u => u.trial_days_left || 0));
+
+              return (
+                <motion.div key={lvl} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: (lvl - 1) * 0.05 }}>
+                  {/* Level Header Row */}
+                  <button
+                    onClick={() => setExpandedLevel(isExpanded ? null : lvl)}
+                    style={{ width: '100%', background: `${color}0d`, border: `1px solid ${color}35`, borderRadius: isExpanded ? '14px 14px 0 0' : 14, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', textAlign: 'left' }}
+                  >
+                    {/* Level badge */}
+                    <div style={{ width: 36, height: 36, borderRadius: 10, background: `${color}20`, border: `1.5px solid ${color}60`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <span style={{ fontSize: 11, fontWeight: 900, color, lineHeight: 1 }}>L{lvl}</span>
+                    </div>
+
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                        <span style={{ fontSize: 12, fontWeight: 900, color: '#fff' }}>Level {lvl} Free Users</span>
+                        <span style={{ fontSize: 13, fontWeight: 900, color }}>{users.length}</span>
+                      </div>
+                      {/* Mini progress bar showing % with trial days left */}
+                      <div style={{ display: 'flex', gap: 2 }}>
+                        {users.slice(0, 20).map((u, i) => (
+                          <div key={i} style={{ flex: 1, height: 4, borderRadius: 2, background: u.trial_days_left > 7 ? color : u.trial_days_left > 0 ? '#FF9800' : '#FF5252', opacity: 0.7 }} />
+                        ))}
+                        {users.length > 20 && <div style={{ width: 8, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.2)' }} />}
+                      </div>
+                    </div>
+                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', flexShrink: 0 }}>{isExpanded ? '▲' : '▼'}</span>
+                  </button>
+
+                  {/* Expanded user list */}
+                  <AnimatePresence>
+                    {isExpanded && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        style={{ overflow: 'hidden', background: `${color}05`, border: `1px solid ${color}25`, borderTop: 'none', borderRadius: '0 0 14px 14px' }}
+                      >
+                        <div style={{ padding: '8px 12px', maxHeight: 280, overflowY: 'auto' }}>
+                          {/* Summary pills */}
+                          <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
+                            {[{ label: `✅ Active (>7d)`, count: users.filter(u => u.trial_days_left > 7).length, c: color },
+                              { label: `⚠️ Expiring`, count: users.filter(u => u.trial_days_left > 0 && u.trial_days_left <= 7).length, c: '#FF9800' },
+                              { label: `⏰ Expired`, count: users.filter(u => u.trial_days_left <= 0).length, c: '#FF5252' }
+                            ].map((p, pi) => p.count > 0 && (
+                              <span key={pi} style={{ fontSize: 9, fontWeight: 800, color: p.c, background: `${p.c}15`, border: `1px solid ${p.c}30`, padding: '2px 8px', borderRadius: 10 }}>
+                                {p.label}: {p.count}
+                              </span>
+                            ))}
+                          </div>
+
+                          {users.map((u, i) => {
+                            const dLeft = Number(u.trial_days_left || 0);
+                            const uColor = dLeft > 7 ? color : dLeft > 0 ? '#FF9800' : '#FF5252';
+                            const uIcon = dLeft > 7 ? '👤' : dLeft > 0 ? '⚠️' : '⏰';
+                            return (
+                              <div key={i} style={{ display: 'flex', alignItems: 'center', padding: '8px 0', borderBottom: i < users.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
+                                <span style={{ fontSize: 13, marginRight: 8, flexShrink: 0 }}>{uIcon}</span>
+                                <span style={{ flex: 1, fontSize: 12, fontWeight: 800, color: '#fff', fontFamily: 'monospace' }}>
+                                  {shortAddr(u.wallet_address)}
+                                </span>
+                                <span style={{ fontSize: 9, fontWeight: 800, color: uColor, background: `${uColor}15`, border: `1px solid ${uColor}30`, padding: '2px 8px', borderRadius: 8, flexShrink: 0 }}>
+                                  {dLeft > 0 ? `${dLeft}d left` : 'Expired'}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* ── Free Referral Milestones ── */}

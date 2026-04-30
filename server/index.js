@@ -851,7 +851,89 @@ app.post('/api/mining/claim', async (req, res) => {
   }
 });
 
-// POST Upgrade Mining Tier (Simulated for Tier 2)
+// ── GET Referrals List (direct refs with trial info) ─────────────────────────
+app.get('/api/referrals/:walletAddress', async (req, res) => {
+  try {
+    const user = await query(
+      `SELECT id FROM users WHERE LOWER(wallet_address) = LOWER($1) ORDER BY id ASC LIMIT 1`,
+      [req.params.walletAddress]
+    );
+    if (user.rows.length === 0) return res.json([]);
+
+    const refs = await query(
+      `SELECT
+         u.wallet_address,
+         u.node_id,
+         u.node_tier,
+         u.node_active,
+         u.created_at,
+         GREATEST(0, 30 - EXTRACT(DAY FROM (NOW() - u.created_at))::int) AS trial_days_left,
+         1 AS level
+       FROM users u
+       WHERE u.referrer_id = $1
+       ORDER BY u.created_at DESC`,
+      [user.rows[0].id]
+    );
+    res.json(refs.rows);
+  } catch (err) {
+    console.error('Referrals fetch error:', err.message);
+    res.status(500).json({ error: 'Failed to fetch referrals' });
+  }
+});
+
+// ── GET Free Users by Level ───────────────────────────────────────────────────
+// Recursive CTE walks the entire downline up to 10 levels deep.
+// Returns ONLY free users (node_id IS NULL) grouped by their referral level.
+app.get('/api/referrals/free-levels/:walletAddress', async (req, res) => {
+  try {
+    const user = await query(
+      `SELECT id FROM users WHERE LOWER(wallet_address) = LOWER($1) ORDER BY id ASC LIMIT 1`,
+      [req.params.walletAddress]
+    );
+    if (user.rows.length === 0) return res.json({ levels: {}, total: 0 });
+
+    const result = await query(
+      `WITH RECURSIVE downline AS (
+         SELECT id, wallet_address, node_id, node_tier, created_at, referrer_id, 1 AS level
+         FROM users WHERE referrer_id = $1
+         UNION ALL
+         SELECT u.id, u.wallet_address, u.node_id, u.node_tier, u.created_at, u.referrer_id, d.level + 1
+         FROM users u
+         INNER JOIN downline d ON u.referrer_id = d.id
+         WHERE d.level < 10
+       )
+       SELECT
+         wallet_address,
+         created_at,
+         level,
+         GREATEST(0, 30 - EXTRACT(DAY FROM (NOW() - created_at))::int) AS trial_days_left
+       FROM downline
+       WHERE (node_id IS NULL AND (node_tier IS NULL OR node_tier = 0))
+       ORDER BY level ASC, created_at DESC`,
+      [user.rows[0].id]
+    );
+
+    const levels = {};
+    for (const row of result.rows) {
+      const lvl = String(row.level);
+      if (!levels[lvl]) levels[lvl] = [];
+      levels[lvl].push({
+        wallet_address: row.wallet_address,
+        trial_days_left: Number(row.trial_days_left || 0),
+        created_at: row.created_at,
+        level: row.level
+      });
+    }
+
+    const maxLevel = result.rows.length > 0 ? Math.max(...result.rows.map(r => r.level)) : 0;
+    res.json({ levels, total: result.rows.length, maxLevel });
+  } catch (err) {
+    console.error('Free levels error:', err.message);
+    res.status(500).json({ error: 'Failed to fetch free levels' });
+  }
+});
+
+// POST Upgrade Mining Tier
 app.post('/api/mining/upgrade', async (req, res) => {
   const { walletAddress, tier, isPremium, nodeId } = req.body;
   if (!walletAddress) return res.status(400).json({ error: 'Wallet required' });

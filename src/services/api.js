@@ -60,6 +60,18 @@ class ApiService {
     return res.json();
   }
 
+  // Returns free users (no node) organized by referral level (1=direct, 2=level2 etc.)
+  // Response: { levels: { "1": [...], "2": [...] }, total: N, maxLevel: N }
+  async fetchFreeUserLevels(walletAddress) {
+    try {
+      const res = await fetch(`${this.baseUrl}/referrals/free-levels/${walletAddress}`);
+      if (!res.ok) return { levels: {}, total: 0, maxLevel: 0 };
+      return res.json();
+    } catch {
+      return { levels: {}, total: 0, maxLevel: 0 };
+    }
+  }
+
   async trackReferral(walletAddress, refToken) {
     try {
       const res = await fetch(`${this.baseUrl}/referrals/track`, {
