@@ -151,19 +151,19 @@ export const useGameStore = create(
         const isActive = data.nodeId && Number(data.nodeId) > 0;
         const baseRate = isActive ? 100 : BASE_MINING_RATE;
         const newMiningRate = Math.round(baseRate * Math.pow(1.2, Math.max(0, tier - 1)));
-        
-        const newMaxEnergy  = 500 + (tier - 1) * 200;
+
+        const newMaxEnergy = 500 + (tier - 1) * 200;
 
         set({
-          hasNode:    isActive,
-          nodeId:     isActive ? Number(data.nodeId) : null,
-          nodeTier:   isActive ? tier : 0,
+          hasNode: isActive,
+          nodeId: isActive ? Number(data.nodeId) : null,
+          nodeTier: isActive ? tier : 0,
           nodeActive: data.active,
           miningRate: newMiningRate,
-          maxEnergy:  newMaxEnergy,
-          energy:     Math.min(newMaxEnergy, get().energy),
-          isLocked:   !isActive,
-          demoTaps:   0,
+          maxEnergy: newMaxEnergy,
+          energy: Math.min(newMaxEnergy, get().energy),
+          isLocked: !isActive,
+          demoTaps: 0,
         });
       },
 
@@ -202,7 +202,7 @@ export const useGameStore = create(
         // Elite Sync: Node owners recharge 3x faster (3 per tick vs 1)
         const amount = state.hasNode ? 3 : 1;
         set((s) => ({ energy: Math.min(s.maxEnergy, s.energy + amount) }));
-        
+
         // Anti-flicker: authoritative balance remains on server
       },
 
@@ -222,8 +222,6 @@ export const useGameStore = create(
               lastClaimTime: new Date(res.user.last_claim_time).getTime(),
               lastSyncTime: Date.now(),
               // RACE CONDITION FIX: Block the 30s fetchUserData sync for 30 more seconds.
-              // Without this, a concurrent fetchUserData SELECT (started before our UPDATE)
-              // would complete AFTER us and overwrite localReward with the pre-claim balance.
               lastBackendSync: Date.now(),
               pendingMined: 0, // Confirmed: keep at 0
             });
@@ -233,9 +231,16 @@ export const useGameStore = create(
           set({ pendingMined: previousPending });
           return false;
         } catch (err) {
+          // 409 = race guard triggered (concurrent claim). This is not a real error —
+          // the first request already succeeded. Restore pending display silently.
+          if (err.message?.includes('409') || err.message?.toLowerCase().includes('already in progress')) {
+            set({ pendingMined: previousPending });
+            console.info('Claim: concurrent request detected, ignoring duplicate.');
+            return false;
+          }
           // Network/server error — restore pending so user doesn't lose their display
           set({ pendingMined: previousPending });
-          console.warn("Claim API failed:", err.message);
+          console.warn('Claim API failed:', err.message);
           return false;
         }
       },
@@ -247,16 +252,24 @@ export const useGameStore = create(
       setReferrerId: (id) => set({ referrerId: id }),
 
       claimStreak: async (day) => {
-        // FIX: claimStreak previously only updated local state — rewards never persisted to DB.
-        // Now delegates to the API-backed claimDailyReward which atomically updates local_reward.
-        const { hasNode } = get();
-        const baseRewards = [100, 250, 450, 700, 1000, 1800, 2500];
-        const multiplier = hasNode ? 10 : 1;
-        const reward = baseRewards[Math.min(day - 1, 6)] * multiplier;
+        // FIX: claimStreak previously showed toast with a DIFFERENT reward table than the server.
+        // Server: [100,200,300,400,500,600,700,1000,2000,5000] (10-day cycle)
+        // Old client: [100,250,450,700,1000,1800,2500] — completely different schedule.
+        // Now we call the API first and use res.reward (server-authoritative amount) for the toast.
+        // The fallback table now matches the server exactly.
+        const SERVER_DAILY_REWARDS = [100, 200, 300, 400, 500, 600, 700, 1000, 2000, 5000];
+        const fallbackReward = SERVER_DAILY_REWARDS[Math.min((day - 1) % 10, 9)];
         try {
-          await get().claimDailyReward();
+          const res = await get().claimDailyReward();
+          // Return the server-confirmed reward so callers can show the correct amount in toast
+          const confirmedReward = res?.reward ?? fallbackReward;
+          set({ showDailyPopup: false });
+          return confirmedReward;
         } catch {
           // Fallback: optimistic local update (still better than silent failure)
+          const { hasNode } = get();
+          const multiplier = hasNode ? 10 : 1;
+          const reward = fallbackReward * multiplier;
           set((s) => ({
             localReward: s.localReward + reward,
             streak: day,
@@ -264,9 +277,8 @@ export const useGameStore = create(
             lastBackendSync: Date.now(),
             showDailyPopup: false,
           }));
+          return reward;
         }
-        set({ showDailyPopup: false });
-        return reward;
       },
 
       updateChainData: (data) =>
@@ -278,16 +290,16 @@ export const useGameStore = create(
           poolClaimable: data.poolClaimable ?? s.poolClaimable,
           poolQual: {
             ...s.poolQual,
-            poolName:         data.poolName         ?? s.poolQual.poolName,
-            totalDeposited:   data.totalDeposited   ?? s.poolQual.totalDeposited,
-            isPoolQualified:  data.isPoolQualified  ?? s.poolQual.isPoolQualified,
-            totalPoolEarned:  data.totalPoolEarned  ?? s.poolQual.totalPoolEarned,
+            poolName: data.poolName ?? s.poolQual.poolName,
+            totalDeposited: data.totalDeposited ?? s.poolQual.totalDeposited,
+            isPoolQualified: data.isPoolQualified ?? s.poolQual.isPoolQualified,
+            totalPoolEarned: data.totalPoolEarned ?? s.poolQual.totalPoolEarned,
             totalPoolClaimed: data.totalPoolClaimed ?? s.poolQual.totalPoolClaimed,
-            remainingCap:     data.remainingCap     ?? s.poolQual.remainingCap,
-            lifetimeCap:      data.lifetimeCap      ?? s.poolQual.lifetimeCap,
-            missingDirects:   data.missingDirects   ?? s.poolQual.missingDirects,
-            missingTier:      data.missingTier      ?? s.poolQual.missingTier,
-            missingTeam:      data.missingTeam      ?? s.poolQual.missingTeam,
+            remainingCap: data.remainingCap ?? s.poolQual.remainingCap,
+            lifetimeCap: data.lifetimeCap ?? s.poolQual.lifetimeCap,
+            missingDirects: data.missingDirects ?? s.poolQual.missingDirects,
+            missingTier: data.missingTier ?? s.poolQual.missingTier,
+            missingTeam: data.missingTeam ?? s.poolQual.missingTeam,
           },
         })),
 

@@ -199,7 +199,8 @@ export default function EarnScreen() {
     claimMined, setActiveTab, addLocalReward, fetchTeamHistory,
     isFreeActive, createdAt, globalHistory, fetchGlobalHistory,
     initialLoaded, pendingMined, lastSyncTime,
-    claimedMilestones, claimSignupBonusAction, miningRate
+    claimedMilestones, claimSignupBonusAction, miningRate,
+    isNewUser  // FIX: needed to guard welcome bonus modal for returning users
   } = useGameStore();
 
   const [view, setView] = useState('mining'); // 'mining' | 'history'
@@ -873,8 +874,15 @@ export default function EarnScreen() {
       )}
 
       {/* ── Welcome Bonus Modal ── */}
-      <AnimatePresence>
-        {initialLoaded && !claimedMilestones?.includes('signup_bonus') && (
+      {/* FIX: Added isNewUser guard — previously showed for ANY user who hadn't claimed,
+           meaning returning users who skipped it got permanently blocked by this overlay.
+           Fallback: also show for accounts less than 24 hours old (catches new users
+           who connected before isNewUser was set in older versions). */}
+      {(() => {
+        const isVeryNew = createdAt && (Date.now() - new Date(createdAt).getTime() < 24 * 60 * 60 * 1000);
+        const shouldShowBonus = initialLoaded && !claimedMilestones?.includes('signup_bonus') && (isNewUser || isVeryNew);
+        return shouldShowBonus;
+      })() && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -945,8 +953,8 @@ export default function EarnScreen() {
               </button>
             </motion.div>
           </motion.div>
-        )}
-      </AnimatePresence>
+        )
+      }
     </div>
   );
 }

@@ -189,6 +189,9 @@ export default function ReferralScreen() {
   const loadingReferrals  = store?.loadingReferrals || false;
   const activatedRefs     = store?.activatedRefs || 0;
   const isFreeActive      = store?.isFreeActive || false;
+  // FIX: destructure at top level — avoids useGameStore.getState() inside .map()
+  const claimedMilestones      = store?.claimedMilestones || [];
+  const claimFreeMilestoneAction = store?.claimFreeMilestoneAction;
 
   const [inviteTab, setInviteTab] = useState('activated');
   const [showShareCard, setShowShareCard] = useState(false);
@@ -533,7 +536,8 @@ export default function ReferralScreen() {
           { threshold: 50,  reward: 50000,  label: '50 Free Friends' },
           { threshold: 100, reward: 200000, label: '100 Free Friends' },
         ].map((m) => {
-          const { claimedMilestones, claimFreeMilestoneAction } = useGameStore.getState();
+          // FIX: claimedMilestones and claimFreeMilestoneAction are now from top-level store
+          // (was: useGameStore.getState() inside .map — React hooks rules violation + stale value)
           const isClaimed = (claimedMilestones || []).includes(`free_${m.threshold}`);
           const canClaim  = directRefs >= m.threshold && !isClaimed;
           const progress  = Math.min((directRefs / m.threshold) * 100, 100);

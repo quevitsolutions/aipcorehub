@@ -122,6 +122,7 @@ CREATE TABLE IF NOT EXISTS events (
     max_seats INTEGER DEFAULT 100,
     price_aip NUMERIC(36, 18) DEFAULT 0,
     telegram_link VARCHAR(500),
+    schedule_time VARCHAR(255),   -- FIX: was missing — used by admin event creation endpoint
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

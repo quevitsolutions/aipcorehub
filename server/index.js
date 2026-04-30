@@ -95,6 +95,9 @@ const ensureSchema = async () => {
     await query(`ALTER TABLE users ALTER COLUMN local_reward SET DEFAULT 0`);
     await query(`UPDATE users SET local_reward = 0 WHERE local_reward IS NULL`);
 
+    // FIX: events table was missing schedule_time column (used by admin event creation)
+    await query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS schedule_time VARCHAR(255)`);
+
     // Seed Genesis Node (ID 36999) - Never bind this to the active Admin Wallet
     const genesisId = 36999;
     // This is the true contract creator wallet
@@ -715,20 +718,24 @@ app.post('/api/mining/claim', async (req, res) => {
       return res.status(400).json({ error: 'Nothing to claim yet. Come back later!' });
     }
 
-    // Atomic update — wallet address lookup, never ID
+    // Atomic update — wallet address lookup, never ID.
+    // RACE GUARD: Only update if last_claim_time hasn't changed since our SELECT above
+    // (prevents double-credit from concurrent claim requests).
     const update = await query(
       `UPDATE users
        SET local_reward     = COALESCE(local_reward, 0) + $2,
            last_claim_time  = CURRENT_TIMESTAMP,
            updated_at       = CURRENT_TIMESTAMP
        WHERE LOWER(wallet_address) = LOWER($1)
+         AND last_claim_time = $3
        RETURNING id, wallet_address, local_reward, last_claim_time, node_tier, is_premium, claimed_milestones`,
-      [walletAddress, reward]
+      [walletAddress, reward, user.last_claim_time || lastClaim]
     );
 
     if (update.rows.length === 0) {
-      console.error(`Mining Claim UPDATE failed for ${walletAddress}`);
-      return res.status(500).json({ error: 'Claim update failed' });
+      // Two simultaneous claims — the second one hit the race guard. Return the current state.
+      console.warn(`Mining Claim: Race condition detected for ${walletAddress} — second request rejected.`);
+      return res.status(409).json({ error: 'Claim already in progress. Please wait a moment and try again.' });
     }
 
     console.log(`✅ Mined: ${walletAddress} claimed ${reward.toFixed(4)} $AIP`);
@@ -1361,21 +1368,8 @@ app.get('/api/user/conversions/:walletAddress', async (req, res) => {
   }
 });
 
-// GET User Income History
-app.get('/api/user/income-history/:walletAddress', async (req, res) => {
-  try {
-    const history = await query(`
-      SELECT event_type, amount_bnb, amount_usd, tier, from_node_id, is_missed, timestamp, tx_hash
-      FROM income_history
-      WHERE wallet_address = $1
-      ORDER BY timestamp DESC
-    `, [req.params.walletAddress]);
-    res.json(history.rows);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to fetch income history' });
-  }
-});
+// NOTE: /api/user/income-history/:walletAddress is defined below (line ~1816) with background blockchain sync.
+// This stub was removed to prevent Express from shadowing the full implementation.
 
 // GET Global Income History (Live Feed)
 app.get('/api/history/global', async (req, res) => {
@@ -2091,40 +2085,9 @@ app.post('/api/referrals/track', async (req, res) => {
   }
 });
 
-// Sync game state via wallet address (taps, energy, localReward & node tier sync)
-app.post('/api/sync', async (req, res) => {
-  const { walletAddress, taps, energy, nodeTier, localReward } = req.body;
-  
-  if (!walletAddress) return res.status(400).json({ error: 'Wallet address required' });
-
-  try {
-    const result = await query(
-      `UPDATE users 
-       SET taps = COALESCE($2, taps), 
-           energy = COALESCE($3, energy), 
-           node_tier = GREATEST(COALESCE($4, node_tier), node_tier),
-           local_reward = COALESCE($5, local_reward),
-           updated_at = CURRENT_TIMESTAMP
-       WHERE wallet_address = $1
-       RETURNING *`,
-      [walletAddress, taps, energy, nodeTier, localReward]
-    );
-    
-    if (result.rows.length === 0) {
-      // If user doesn't exist yet, create them during sync
-      const newUser = await query(
-        'INSERT INTO users (wallet_address, taps, energy, node_tier, local_reward) VALUES ($1, $2, $3, COALESCE($4, 0), COALESCE($5, 0)) RETURNING *',
-        [walletAddress, taps, energy, nodeTier, localReward]
-      );
-      return res.json(newUser.rows[0]);
-    }
-    
-    res.json(result.rows[0]);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Sync failed' });
-  }
-});
+// NOTE: The authoritative /api/sync handler is defined at line ~491 above.
+// This duplicate (which dangerously accepted client-supplied local_reward) has been removed
+// to prevent economy tampering via client-controlled balance overwrite.
 
 // POST Claim Daily Login Reward — Root-Cause-Fixed
 app.post('/api/daily/claim', async (req, res) => {
