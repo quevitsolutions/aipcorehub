@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 import { ethers } from 'ethers';
 import axios from 'axios';
 import { query } from './db.js';
-import { initTelegramBot, sendNotification, broadcastToUsers, verifyTelegramMembership } from './telegramBot.js';
+import { initTelegramBot, sendNotification, broadcastToUsers, verifyTelegramMembership, checkExpiringTrials } from './telegramBot.js';
 
 dotenv.config();
 
@@ -260,6 +260,13 @@ async function startupNodeSync() {
 
 // Run startup sync after server is ready (non-blocking)
 setTimeout(startupNodeSync, 5000);
+
+// ── Expiring Trial Notification Worker ───────────────────────────────────────
+// Runs every 12 hours. Sends 3-day and 1-day alerts to free users + their sponsors.
+setTimeout(() => {
+  checkExpiringTrials(); // run once at startup (catches any missed alerts after restart)
+  setInterval(checkExpiringTrials, 12 * 60 * 60 * 1000); // then every 12h
+}, 30_000); // wait 30s for bot to fully init first
 
 /**
  * Background worker to sync on-chain events for a user

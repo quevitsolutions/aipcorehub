@@ -160,6 +160,28 @@ export function initTelegramBot() {
       const tierLabel   = nodeTier > 0 ? `✅ Tier ${nodeTier} Node` : '⏳ Free User (Not Activated)';
       const nodeLabel   = nodeTier > 0 ? (nodeId > 0 ? `#${nodeId}` : 'Activated') : 'Not Activated';
 
+      // Team stats (cycle-safe recursive CTE)
+      let teamTotal = 0, teamFree = 0, teamActivated = 0;
+      try {
+        const teamRes = await query(`
+          WITH RECURSIVE tree AS (
+            SELECT id, 0 as depth, ARRAY[id] AS visited FROM users WHERE id = $1
+            UNION ALL
+            SELECT u.id, t.depth + 1, t.visited || u.id
+            FROM users u INNER JOIN tree t ON u.referrer_id = t.id
+            WHERE t.depth < 18 AND NOT (u.id = ANY(t.visited))
+          )
+          SELECT
+            COUNT(DISTINCT u.id) FILTER (WHERE t.depth > 0)                    AS total,
+            COUNT(DISTINCT u.id) FILTER (WHERE t.depth > 0 AND u.node_tier > 0) AS activated,
+            COUNT(DISTINCT u.id) FILTER (WHERE t.depth = 1)                    AS directs_count
+          FROM tree t JOIN users u ON u.id = t.id
+        `, [u.id]);
+        teamTotal     = parseInt(teamRes.rows[0]?.total      || 0);
+        teamActivated = parseInt(teamRes.rows[0]?.activated  || 0);
+        teamFree      = teamTotal - teamActivated;
+      } catch (e) { /* non-critical */ }
+
       // Step 4: Pool check — only if user has a node (avoid wasting RPC for free users)
       let poolText = '🔒 Pool: Not Qualified';
       if (nodeId > 0) {
@@ -191,6 +213,7 @@ export function initTelegramBot() {
         `🏆 Status: ${tierLabel}\n` +
         `💎 $AIP Balance: ${Number(aip).toLocaleString()}\n` +
         `👥 Direct Refs: ${directs}\n` +
+        `🌳 Team (18 lvls): ${teamTotal} total | ✅ ${teamActivated} active | ⏳ ${teamFree} free\n` +
         `${poolText}\n\n${footer}`,
         { parse_mode: 'Markdown', reply_markup: getDashboardKeyboard() }
       );
@@ -206,24 +229,29 @@ export function initTelegramBot() {
     const chatId     = msg.chat.id;
     const telegramId = msg.from.id;
     try {
-      const userRes = await query(
+      const result = await query(
         `SELECT id, wallet_address, node_tier FROM users WHERE telegram_id = $1 ORDER BY node_tier DESC LIMIT 1`,
         [telegramId]
       );
-      if (userRes.rows.length === 0) {
+      if (result.rows.length === 0) {
         return bot.sendMessage(chatId, '❌ No wallet linked. Connect your Telegram from the app first.');
       }
-      const userId = userRes.rows[0].id;
+      const userId = result.rows[0].id;
+
       const countRes = await query(`
         WITH RECURSIVE tree AS (
-          SELECT id, 0 as level FROM users WHERE id = $1
+          SELECT id, 0 as depth, ARRAY[id] AS visited FROM users WHERE id = $1
           UNION ALL
-          SELECT u.id, t.level + 1 FROM users u INNER JOIN tree t ON u.referrer_id = t.id WHERE t.level < 18
+          SELECT u.id, t.depth + 1, t.visited || u.id
+          FROM users u INNER JOIN tree t ON u.referrer_id = t.id
+          WHERE t.depth < 18 AND NOT (u.id = ANY(t.visited))
         )
         SELECT
-          COUNT(*) FILTER (WHERE level > 0) as total_team,
-          COUNT(*) FILTER (WHERE level = 1) as directs,
-          COUNT(*) FILTER (WHERE node_tier > 0 AND level > 0) as activated
+          COUNT(DISTINCT u.id) FILTER (WHERE t.depth > 0)                     AS total_team,
+          COUNT(DISTINCT u.id) FILTER (WHERE t.depth = 1)                     AS directs,
+          COUNT(DISTINCT u.id) FILTER (WHERE t.depth > 0 AND u.node_tier > 0) AS activated,
+          COUNT(DISTINCT u.id) FILTER (WHERE t.depth > 0 AND (u.node_tier IS NULL OR u.node_tier = 0) AND u.created_at > NOW() - INTERVAL '30 days') AS in_trial,
+          COUNT(DISTINCT u.id) FILTER (WHERE t.depth > 0 AND (u.node_tier IS NULL OR u.node_tier = 0) AND u.created_at <= NOW() - INTERVAL '30 days') AS expired
         FROM tree t JOIN users u ON u.id = t.id
       `, [userId]);
 
@@ -231,11 +259,20 @@ export function initTelegramBot() {
       const total    = parseInt(c.total_team || 0);
       const directs  = parseInt(c.directs    || 0);
       const activated = parseInt(c.activated || 0);
+      const inTrial  = parseInt(c.in_trial   || 0);
+      const expired  = parseInt(c.expired    || 0);
       const free     = total - activated;
       const convRate = total > 0 ? ((activated / total) * 100).toFixed(1) : '0.0';
 
       await bot.sendMessage(chatId,
-        `👥 *Your Team Network*\n\n📏 Total Team (18 levels): ${total}\n👤 Direct Referrals: ${directs}\n✅ Activated Nodes: ${activated}\n⏳ Free Users: ${free}\n📈 Conversion Rate: ${convRate}%\n\n${free > 0 ? `💡 Share your link to convert ${free} free users!` : '🏆 Amazing! Your whole team is activated!'}`,
+        `👥 *Your Team Network*\n\n` +
+        `📏 Total (18 levels): ${total}\n` +
+        `👤 Direct Referrals: ${directs}\n` +
+        `✅ Activated Nodes: ${activated}\n` +
+        `🔵 In Free Trial: ${inTrial}\n` +
+        `⏰ Trial Expired: ${expired}\n` +
+        `📈 Conversion Rate: ${convRate}%\n\n` +
+        `${free > 0 ? `💡 ${free} free users waiting to be converted!` : '🏆 Amazing! Your whole team is activated!'}`,
         { parse_mode: 'Markdown', reply_markup: getDashboardKeyboard() }
       );
     } catch (err) {
@@ -364,7 +401,66 @@ export async function broadcastToUsers({ filter = 'all', message, imageUrl = nul
   return { sent, failed, total: users.rows.length };
 }
 
-// ── Web3 Task Authentication ───────────────────────────────────────────────
+// ── Expiring Trial Notifications ──────────────────────────────────────────────
+// Called periodically from index.js (every 12h).
+// Finds free users whose 30-day trial expires in exactly 3 days or 1 day,
+// notifies them directly AND notifies their sponsor.
+export async function checkExpiringTrials() {
+  if (!bot) return;
+  try {
+    // Find free users expiring in ~3 days (27–28 days old) or ~1 day (29–30 days old)
+    const expiring = await query(`
+      SELECT
+        u.wallet_address, u.telegram_id, u.created_at,
+        GREATEST(0, 30 - EXTRACT(DAY FROM (NOW() - COALESCE(u.created_at, NOW())))::int) AS days_left,
+        s.telegram_id  AS sponsor_tg,
+        s.wallet_address AS sponsor_wallet,
+        s.node_id        AS sponsor_node_id
+      FROM users u
+      LEFT JOIN users s ON s.id = u.referrer_id
+      WHERE (u.node_tier IS NULL OR u.node_tier = 0)
+        AND u.created_at IS NOT NULL
+        AND EXTRACT(DAY FROM (NOW() - u.created_at)) BETWEEN 27 AND 30
+    `);
+
+    let notified = 0;
+    for (const row of expiring.rows) {
+      const daysLeft = Number(row.days_left);
+      if (daysLeft !== 3 && daysLeft !== 1) continue; // only exact 3d and 1d alerts
+
+      const walletShort = `${row.wallet_address.slice(0,6)}...${row.wallet_address.slice(-4)}`;
+      const appUrl = `${APP_URL}/?ref=${row.wallet_address}`;
+
+      // 1. Notify the free user themselves (if they have Telegram linked)
+      if (row.telegram_id) {
+        const userMsg = daysLeft === 3
+          ? `⚠️ *Free Trial Expiring in 3 Days!*\n\nHey! Your AIPCore free trial ends in *3 days*.\n\n🔒 After expiry, your spot in the network will be lost and you'll need to start over.\n\n✅ *Activate your node now* to secure your position and start earning real BNB from your team!\n\n👇 [Open AIPCore](${APP_URL})`
+          : `🚨 *LAST DAY — Trial Expires Tomorrow!*\n\nThis is your final reminder — your AIPCore free trial expires *tomorrow*.\n\n⚡ Don't lose your network position! Activate your node today to:\n• Earn real BNB 24/7\n• Keep your team's referral earnings\n• Access the 18-tier matrix\n\n👇 [Activate Now](${APP_URL})`;
+        await sendNotification(row.telegram_id, userMsg);
+        notified++;
+      }
+
+      // 2. Notify the sponsor (so they can follow up and convert)
+      if (row.sponsor_tg) {
+        const sponsorMsg = daysLeft === 3
+          ? `👤 *Free Trial Alert — 3 Days Left*\n\nYour team member \`${walletShort}\` has *3 days* left in their free trial.\n\n💡 Reach out and encourage them to activate — when they do, you earn BNB from their node!\n\n📱 Share your referral link again to give them the nudge they need.`
+          : `🚨 *Urgent — Team Member Expires Tomorrow!*\n\n\`${walletShort}\` is in your team and their free trial expires *tomorrow*.\n\n⚡ This is your last chance to convert them! Send them your referral link now:\n${APP_URL}/?ref=${row.sponsor_node_id || row.sponsor_wallet}`;
+        await sendNotification(row.sponsor_tg, sponsorMsg);
+        notified++;
+      }
+
+      // Throttle to respect Telegram rate limits
+      await new Promise(r => setTimeout(r, 50));
+    }
+
+    if (notified > 0) {
+      console.log(`📬 Expiring trial alerts sent: ${notified} notifications for ${expiring.rows.length} users`);
+    }
+  } catch (err) {
+    console.error('checkExpiringTrials error:', err.message);
+  }
+}
+
 export async function verifyTelegramMembership(telegramId, channelUrl) {
   if (!bot || !telegramId) return false;
   try {
