@@ -307,7 +307,9 @@ export default function DashboardScreen() {
         {/* Pool Lifetime Stats Row — 3 columns */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 20, paddingTop: 20, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
           {[
-            { label: 'POOL EARNED',  val: formatBNB(poolQual.totalPoolEarned),  color: '#A3FF12', icon: '⬡' },
+            { label: 'POOL EARNED',
+              val: formatBNB(parseFloat(poolQual.totalPoolClaimed || 0) + parseFloat(poolClaimable || 0)),
+              color: '#A3FF12', icon: '⬡' },
             { label: 'POOL CLAIMED', val: formatBNB(poolQual.totalPoolClaimed), color: '#4FC3F7', icon: '✅' },
             { label: 'DEPOSITED',    val: formatBNB(poolQual.totalDeposited),   color: '#FFD700', icon: '📥' },
           ].map((s, i) => (
@@ -332,12 +334,12 @@ export default function DashboardScreen() {
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', fontWeight: 800, letterSpacing: 0.5 }}>POOL CAP</span>
-                  <span style={{ fontSize: 14, fontWeight: 900, color: '#FFD700' }}>{formatBNB(cap)} BNB</span>
+                  <span style={{ fontSize: 14, fontWeight: 900, color: '#FFD700' }}>{formatBNB(cap)}</span>
                   {bnbPrice > 0 && <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)' }}>≈ ${(cap * bnbPrice).toFixed(2)}</span>}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                   <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', fontWeight: 800, letterSpacing: 0.5 }}>REMAINING</span>
-                  <span style={{ fontSize: 14, fontWeight: 900, color: capColor }}>{formatBNB(rem)} BNB</span>
+                  <span style={{ fontSize: 14, fontWeight: 900, color: capColor }}>{formatBNB(rem)}</span>
                   {bnbPrice > 0 && <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)' }}>≈ ${(rem * bnbPrice).toFixed(2)}</span>}
                 </div>
               </div>
@@ -383,7 +385,7 @@ export default function DashboardScreen() {
             }}
             onClick={() => claimRewards()}
           >
-            ⬡ CLAIM NODE REWARDS ({formatBNB(pendingReward)} BNB)
+            ⬡ CLAIM NODE REWARDS ({formatBNB(pendingReward)})
           </button>
         )}
 
@@ -399,7 +401,7 @@ export default function DashboardScreen() {
             }}
             onClick={() => claimPool(nodeId)}
           >
-            🏆 CLAIM POOL REWARDS ({formatBNB(poolClaimable)} BNB)
+            🏆 CLAIM POOL REWARDS ({formatBNB(poolClaimable)})
           </button>
         )}
 
