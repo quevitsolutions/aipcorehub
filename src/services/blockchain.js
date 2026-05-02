@@ -62,7 +62,7 @@ class BlockchainService {
       if (!nId || Number(nId) === 0) return { nodeId: 0, hasNode: false };
 
       // All calls are isolated — one failure cannot break others
-      const [viewStats, coreStats, nodeRaw, isActive, pending, poolData, viewBreakdown, poolClaimableData] =
+      const [viewStats, coreStats, nodeRaw, isActive, pending, poolData, viewBreakdown, poolClaimableData, capInfo] =
         await Promise.all([
           this.view.getNodeStats(nId).catch(() => null),         // AIPVIEW  → [totalEarned, teamSize, directRefs, level]
           this.core.getNodeStats(nId).catch(() => null),         // AIPCORE  → [tier, directCount, matrixCount, ...]
@@ -70,8 +70,9 @@ class BlockchainService {
           this.core.isNodeActive(nId).catch(() => false),
           this.core.pendingReward(address).catch(() => 0n),      // AIPCORE pending (by wallet)
           this.pool.getPoolViewHelper(nId).catch(() => null),    // full pool view
-          this.view.getIncomeBreakdown(nId).catch(() => null),   // AIPVIEW → [direct,matrix,pool,pending] ← more accurate pending
-          this.pool.getClaimable(nId).catch(() => null),         // REWARDPOOL → [fromCurrentPool,fromExited,total] ← direct claimable
+          this.view.getIncomeBreakdown(nId).catch(() => null),   // AIPVIEW → [direct,matrix,pool,pending] ← pool income
+          this.pool.getClaimable(nId).catch(() => null),         // REWARDPOOL → [fromCurrentPool,fromExited,total]
+          this.pool.getCapInfo(nId).catch(() => null),           // REWARDPOOL → [capMult,deposited,lifetimeCap,claimed,remaining]
         ]);
 
       // ── 4-source tier waterfall ──
@@ -115,6 +116,18 @@ class BlockchainService {
         ? BigInt(poolClaimTotal)
         : (poolData?.[2] || 0n);
 
+      // ── totalPoolEarned: AIPVIEW getIncomeBreakdown()[2] = pool income (most accurate) ──
+      // Falls back to getPoolViewHelper[3] if AIPVIEW unavailable
+      const poolEarned = viewBreakdown && BigInt(viewBreakdown[2] || 0n) > 0n
+        ? viewBreakdown[2]
+        : (poolData?.[3] || 0n);
+
+      // ── totalPoolClaimed: getCapInfo()[3] = claimed against cap (dedicated tracker) ──
+      // Falls back to getPoolViewHelper[4] if getCapInfo unavailable
+      const poolClaimed = capInfo && BigInt(capInfo[3] || 0n) > 0n
+        ? capInfo[3]
+        : (poolData?.[4] || 0n);
+
       return {
         hasNode: true,
         nodeId: Number(nId),
@@ -126,12 +139,12 @@ class BlockchainService {
         pendingReward:    ethers.formatEther(finalPending),
         poolClaimable:    ethers.formatEther(finalPoolClaimable),
         poolName:         String(poolData?.[1] || "None"),
-        totalDeposited:   ethers.formatEther(poolData?.[7] || 0n),
+        totalDeposited:   ethers.formatEther(capInfo?.[1] || poolData?.[7] || 0n),
         isPoolQualified:  Boolean(poolData?.[9]),
-        totalPoolEarned:  ethers.formatEther(poolData?.[3] || 0n),
-        totalPoolClaimed: ethers.formatEther(poolData?.[4] || 0n),
-        remainingCap:     ethers.formatEther(poolData?.[5] || 0n),   // cap remaining
-        lifetimeCap:      ethers.formatEther(poolData?.[6] || 0n),   // total lifetime cap
+        totalPoolEarned:  ethers.formatEther(poolEarned),
+        totalPoolClaimed: ethers.formatEther(poolClaimed),
+        remainingCap:     ethers.formatEther(capInfo?.[4] || poolData?.[5] || 0n),
+        lifetimeCap:      ethers.formatEther(capInfo?.[2] || poolData?.[6] || 0n),
         missingDirects:   Number(poolData?.[11]?.[0] || 0),
         missingTier:      Number(poolData?.[11]?.[1] || 0),
         missingTeam:      Number(poolData?.[11]?.[2] || 0),

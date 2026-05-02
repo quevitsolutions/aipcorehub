@@ -307,11 +307,10 @@ export default function DashboardScreen() {
         {/* Pool Lifetime Stats Row — 3 columns */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 20, paddingTop: 20, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
           {[
-            { label: 'POOL EARNED',
-              val: formatBNB(parseFloat(poolQual.totalPoolClaimed || 0) + parseFloat(poolClaimable || 0)),
-              color: '#A3FF12', icon: '⬡' },
+            { label: 'POOL EARNED',  val: formatBNB(poolQual.totalPoolEarned),  color: '#A3FF12', icon: '⬡' },
             { label: 'POOL CLAIMED', val: formatBNB(poolQual.totalPoolClaimed), color: '#4FC3F7', icon: '✅' },
             { label: 'DEPOSITED',    val: formatBNB(poolQual.totalDeposited),   color: '#FFD700', icon: '📥' },
+
           ].map((s, i) => (
             <div key={i} style={{ background: 'rgba(0,0,0,0.25)', borderRadius: 12, padding: '10px 6px', textAlign: 'center' }}>
               <div style={{ fontSize: 18, marginBottom: 4 }}>{s.icon}</div>
