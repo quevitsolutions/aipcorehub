@@ -213,12 +213,13 @@ export default function ReferralScreen() {
 
   const safeReferralList = Array.isArray(referralList) ? referralList : [];
 
-  // A referral is "activated" if they have a node_id assigned OR node_active=true OR node_tier > 0.
-  // node_tier may lag behind due to RPC sync delay, so we use all three signals.
-  const isActivated  = (f) => Number(f?.node_id || 0) > 0 || f?.node_active === true || Number(f?.node_tier || 0) > 0;
+  // A referral is "activated" only if node_tier > 0 (they bought a package).
+  // node_active is intentionally excluded — RPC sync sets it TRUE even for tier=0 users.
+  // This is consistent with the server-side definition in /api/referrals/stats.
+  const isActivated  = (f) => Number(f?.node_tier || 0) > 0;
   const activatedList = safeReferralList.filter(f => isActivated(f));
-  const freeTrialList = safeReferralList.filter(f => !isActivated(f) && Number(f?.trial_days_left || 0) > 0);
-  const expiredList   = safeReferralList.filter(f => !isActivated(f) && Number(f?.trial_days_left || 0) === 0);
+  const freeTrialList = safeReferralList.filter(f => !isActivated(f) && Number(f?.trial_days_left ?? 30) > 0);
+  const expiredList   = safeReferralList.filter(f => !isActivated(f) && Number(f?.trial_days_left ?? 30) === 0);
 
 
   const conversionRate   = safeReferralList.length > 0
@@ -499,10 +500,9 @@ export default function ReferralScreen() {
             // Use same 3-signal check as the filter above
 
             const rowNodeId   = Number(friend.node_id || 0);
-            const rowActive   = friend.node_active === true;
             const rowTier     = Number(friend.node_tier || 0);
-            const isActivated = rowNodeId > 0 || rowActive || rowTier > 0;
-            const daysLeft    = Number(friend.trial_days_left || 0);
+            const isActivated = rowTier > 0;
+            const daysLeft    = friend.trial_days_left != null ? Number(friend.trial_days_left) : 30; // null = new user, default 30d
             const isExpired   = !isActivated && daysLeft === 0;
             const isFreeTrial = !isActivated && daysLeft > 0;
             const rowColor    = isActivated ? 'var(--neon-lime)' : isExpired ? '#FF5252' : '#4FC3F7';

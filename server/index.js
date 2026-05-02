@@ -852,27 +852,31 @@ app.post('/api/mining/claim', async (req, res) => {
 });
 
 // ── GET Referrals List (direct refs with trial info) ─────────────────────────
+// IMPORTANT: Must be defined AFTER /stats and /free-levels to avoid route collision in Express
 app.get('/api/referrals/:walletAddress', async (req, res) => {
   try {
-    const user = await query(
-      `SELECT id FROM users WHERE LOWER(wallet_address) = LOWER($1) ORDER BY id ASC LIMIT 1`,
+    // Get ALL rows for this wallet (handles duplicate accounts) so we catch
+    // referred users linked to any of the parent's DB IDs
+    const parents = await query(
+      `SELECT id FROM users WHERE LOWER(wallet_address) = LOWER($1)`,
       [req.params.walletAddress]
     );
-    if (user.rows.length === 0) return res.json([]);
+    if (parents.rows.length === 0) return res.json([]);
+    const parentIds = parents.rows.map(r => r.id);
 
     const refs = await query(
-      `SELECT
+      `SELECT DISTINCT ON (u.wallet_address)
          u.wallet_address,
          u.node_id,
          u.node_tier,
-         u.node_active,
-         u.created_at,
-         GREATEST(0, 30 - EXTRACT(DAY FROM (NOW() - u.created_at))::int) AS trial_days_left,
+         COALESCE(u.local_reward, 0)                                             AS local_reward,
+         COALESCE(u.created_at, NOW())                                            AS created_at,
+         GREATEST(0, 30 - EXTRACT(DAY FROM (NOW() - COALESCE(u.created_at, NOW())))::int) AS trial_days_left,
          1 AS level
        FROM users u
-       WHERE u.referrer_id = $1
-       ORDER BY u.created_at DESC`,
-      [user.rows[0].id]
+       WHERE u.referrer_id = ANY($1::int[])
+       ORDER BY u.wallet_address, u.created_at DESC`,
+      [parentIds]
     );
     res.json(refs.rows);
   } catch (err) {
@@ -880,6 +884,7 @@ app.get('/api/referrals/:walletAddress', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch referrals' });
   }
 });
+
 
 // ── GET Free Users by Level ───────────────────────────────────────────────────
 // Recursive CTE walks the entire downline up to 10 levels deep.
