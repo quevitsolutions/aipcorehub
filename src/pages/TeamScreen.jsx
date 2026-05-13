@@ -19,122 +19,173 @@ function TierBadge({ tier }) {
   );
 }
 
-// ── Matrix Tree View ──────────────────────────────────────────────────────────
-function TreeNodeCard({ node, isRoot }) {
-  if (!node) {
+// ── Lazy Expandable Matrix Tree View ─────────────────────────────────────────
+function MatrixTreeView({ nodeId, nodeTier, walletAddress, directRefs, teamSize, fetchFn }) {
+  const cacheRef   = useRef({});      // nodeId → children[]
+  const fetchingRef = useRef(new Set()); // nodeIds currently being fetched
+  const [childMap, setChildMap]   = useState({});
+  const [expanded, setExpanded]   = useState({});
+  const [loadingSet, setLoading]  = useState({});
+
+  const loadChildren = async (nId) => {
+    if (cacheRef.current[nId] !== undefined) return;
+    if (fetchingRef.current.has(nId)) return;
+    fetchingRef.current.add(nId);
+    setLoading(p => ({ ...p, [nId]: true }));
+    try {
+      const kids = await fetchFn(nId, 0);
+      cacheRef.current[nId] = kids || [];
+    } catch {
+      cacheRef.current[nId] = [];
+    }
+    fetchingRef.current.delete(nId);
+    setChildMap({ ...cacheRef.current });
+    setLoading(p => { const n = { ...p }; delete n[nId]; return n; });
+  };
+
+  const toggle = async (nId, hasKids) => {
+    if (expanded[nId]) {
+      setExpanded(p => ({ ...p, [nId]: false }));
+    } else {
+      if (hasKids) await loadChildren(nId);
+      setExpanded(p => ({ ...p, [nId]: true }));
+    }
+  };
+
+  // Auto-expand root on mount
+  useEffect(() => {
+    const rId = Number(nodeId);
+    if (!rId) return;
+    loadChildren(rId).then(() => setExpanded(p => ({ ...p, [rId]: true })));
+  }, [nodeId]); // eslint-disable-line
+
+  const renderNode = (node, depth) => {
+    const nId     = Number(node.nodeId || node.node_id || 0);
+    const tier    = Number(node.tier || node.node_tier || 0);
+    const color   = TIER_COLORS[tier - 1] || '#555';
+    const wallet  = node.wallet || node.wallet_address || '';
+    const directs = Number(node.directNodes || node.direct_count || 0);
+    const sub     = Number(node.totalMatrixNodes || node.team_size || 0);
+    const joined  = node.joinedAt || node.joined_at;
+    let dateStr = '';
+    if (joined) {
+      const d = typeof joined === 'string' ? new Date(joined) : new Date(Number(joined) * 1000);
+      if (!isNaN(d)) dateStr = `${d.getDate()}/${d.getMonth()+1}/${String(d.getFullYear()).slice(-2)}`;
+    }
+    const hasKids   = directs > 0 || sub > 0;
+    const isExpanded = expanded[nId];
+    const isLoading  = !!loadingSet[nId];
+    const children   = childMap[nId] || [];
+
     return (
-      <div style={{ textAlign: 'center', minWidth: 72, maxWidth: 88 }}>
-        <div style={{ width: 1, height: 14, background: 'rgba(255,255,255,0.08)', margin: '0 auto' }} />
-        <div style={{ border: '1px dashed rgba(255,255,255,0.08)', borderRadius: 8, padding: '6px 4px' }}>
-          <div style={{ fontSize: 7, color: '#333', fontWeight: 700 }}>OPEN</div>
+      <div key={nId || depth} style={{ marginLeft: depth ? 20 : 0, position: 'relative' }}>
+        {/* Vertical guide line */}
+        {depth > 0 && (
+          <div style={{ position: 'absolute', left: -12, top: 0, bottom: 0,
+            borderLeft: `1px solid ${color}20`, pointerEvents: 'none' }} />
+        )}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginBottom: 8 }}>
+          {/* Horizontal connector */}
+          {depth > 0 && (
+            <div style={{ position: 'absolute', left: -12, top: 18,
+              width: 12, borderTop: `1px solid ${color}20` }} />
+          )}
+          {/* Expand/Collapse toggle */}
+          <div
+            onClick={() => nId && toggle(nId, hasKids)}
+            style={{
+              width: 22, height: 22, borderRadius: 6, flexShrink: 0, marginTop: 8,
+              background: hasKids ? `${color}18` : 'rgba(255,255,255,0.03)',
+              border: `1px solid ${hasKids ? color+'35' : 'rgba(255,255,255,0.06)'}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: hasKids ? 'pointer' : 'default',
+              fontSize: 12, color: color, fontWeight: 900, transition: 'all 0.15s',
+              userSelect: 'none',
+            }}
+          >
+            {isLoading ? '◌' : hasKids ? (isExpanded ? '−' : '+') : '·'}
+          </div>
+
+          {/* Node card */}
+          <div style={{
+            flex: 1,
+            background: node.isRoot
+              ? `linear-gradient(135deg, ${color}18 0%, rgba(0,0,0,0.45) 100%)`
+              : 'rgba(0,0,0,0.28)',
+            border: `1px solid ${color}${node.isRoot ? '55' : '28'}`,
+            borderRadius: 10, padding: '8px 10px',
+            boxShadow: node.isRoot ? `0 0 12px ${color}15` : 'none',
+          }}>
+            {/* Row 1: wallet + node id + tier */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <div style={{ width: 7, height: 7, borderRadius: '50%', background: color,
+                  boxShadow: `0 0 5px ${color}`, flexShrink: 0 }} />
+                <span style={{ fontSize: 11, fontWeight: 800, color: '#eee', fontFamily: 'monospace' }}>
+                  {wallet ? `${wallet.slice(0,6)}…${wallet.slice(-4)}` : '—'}
+                </span>
+                {node.isRoot && (
+                  <span style={{ fontSize: 7, background: 'rgba(163,255,18,0.12)', color: '#A3FF12',
+                    padding: '1px 5px', borderRadius: 4, fontWeight: 900 }}>YOU</span>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0 }}>
+                {nId > 0 && <span style={{ fontSize: 8, color: color, fontWeight: 900 }}>#{nId}</span>}
+                <TierBadge tier={tier} />
+              </div>
+            </div>
+            {/* Row 2: stats */}
+            <div style={{ display: 'flex', gap: 10, marginTop: 5 }}>
+              <div style={{ fontSize: 9, color: '#666', fontWeight: 700 }}>
+                DIRECTS <span style={{ color: '#A3FF12', fontWeight: 900 }}>{directs}</span>
+              </div>
+              <div style={{ fontSize: 9, color: '#666', fontWeight: 700 }}>
+                TEAM <span style={{ color: '#4FC3F7', fontWeight: 900 }}>{sub}</span>
+              </div>
+              {dateStr && (
+                <div style={{ fontSize: 9, color: '#444', fontWeight: 700, marginLeft: 'auto' }}>{dateStr}</div>
+              )}
+            </div>
+          </div>
         </div>
+
+        {/* Children */}
+        {isExpanded && (
+          <div style={{ paddingLeft: 28, position: 'relative' }}>
+            {isLoading && (
+              <div style={{ padding: '6px 0 10px', fontSize: 9, color: '#FFB74D', fontWeight: 800, letterSpacing: 1 }}>
+                ◌ LOADING…
+              </div>
+            )}
+            {!isLoading && children.map(child => renderNode(child, depth + 1))}
+            {!isLoading && children.length === 0 && hasKids && (
+              <div style={{ padding: '6px 0', fontSize: 9, color: '#333', fontWeight: 700 }}>NO DATA ON CHAIN</div>
+            )}
+          </div>
+        )}
       </div>
     );
-  }
-  const tier = Number(node.tier || node.node_tier || 0);
-  const color = TIER_COLORS[tier - 1] || '#555';
-  const wallet = node.wallet || node.wallet_address || '';
-  const nId = node.nodeId || node.node_id;
-  return (
-    <div style={{ textAlign: 'center', minWidth: 72, maxWidth: 88 }}>
-      {!isRoot && <div style={{ width: 1, height: 14, background: color + '60', margin: '0 auto' }} />}
-      <div style={{ background: 'rgba(0,0,0,0.35)', border: `1px solid ${color}50`, borderRadius: 8, padding: '6px 5px' }}>
-        <div style={{ width: 7, height: 7, borderRadius: '50%', background: color, margin: '0 auto 3px', boxShadow: `0 0 5px ${color}` }} />
-        <div style={{ fontSize: 8, color: '#fff', fontWeight: 800, fontFamily: 'monospace' }}>
-          {wallet ? wallet.slice(0,4)+'…'+wallet.slice(-3) : '??'}
-        </div>
-        {nId > 0 && <div style={{ fontSize: 7, color: color, fontWeight: 900 }}>#{nId}</div>}
-        <TierBadge tier={tier} />
-      </div>
-    </div>
-  );
-}
+  };
 
-function MatrixTreeView({ nodeId, nodeTier, walletAddress, fetchTeamLevelMembers }) {
-  const [levels, setLevels] = useState([[], [], []]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (!nodeId || Number(nodeId) <= 0) return;
-    setLoading(true);
-    Promise.all([
-      fetchTeamLevelMembers(nodeId, 0).catch(() => []),
-      fetchTeamLevelMembers(nodeId, 1).catch(() => []),
-      fetchTeamLevelMembers(nodeId, 2).catch(() => []),
-    ]).then(([l1, l2, l3]) => {
-      setLevels([l1 || [], l2 || [], l3 || []]);
-      setLoading(false);
-    });
-  }, [nodeId]);
-
-  const root = { wallet: walletAddress, nodeId, tier: nodeTier, node_tier: nodeTier, isRoot: true };
-
-  // Pad each level to its max capacity so empty slots show
-  const pad = (arr, max) => { const a = [...arr].slice(0, max); while (a.length < max) a.push(null); return a; };
-  const l1 = pad(levels[0], 2);
-  const l2 = pad(levels[1], 4);
-  const l3 = pad(levels[2], 8);
-
-  const rowStyle = { display: 'flex', justifyContent: 'center', gap: 6, marginBottom: 0 };
-  const labelStyle = { fontSize: 7, color: '#444', fontWeight: 800, letterSpacing: 1, textAlign: 'center', marginBottom: 4 };
+  const rootNode = {
+    nodeId, isRoot: true,
+    tier: nodeTier, node_tier: nodeTier,
+    wallet: walletAddress, wallet_address: walletAddress,
+    directNodes: directRefs || 0, direct_count: directRefs || 0,
+    totalMatrixNodes: teamSize || 0, team_size: teamSize || 0,
+  };
 
   return (
-    <div style={{ padding: '0 8px 24px' }}>
-      <div style={{ fontSize: '10px', fontWeight: 900, color: '#4FC3F7', marginBottom: '16px', letterSpacing: '1.5px', textAlign: 'center' }}>
-        PERSONAL MATRIX TREE
+    <div style={{ padding: '0 12px 24px' }}>
+      <div style={{ fontSize: '10px', fontWeight: 900, color: '#4FC3F7',
+        marginBottom: 6, letterSpacing: '1.5px', textAlign: 'center' }}>
+        🌐 PERSONAL MATRIX TREE
       </div>
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: 40, color: '#FFB74D', fontSize: 11, fontWeight: 800 }}>BUILDING TREE...</div>
-      ) : (
-        <div style={{ overflowX: 'auto' }}>
-          {/* Root */}
-          <div style={{ ...rowStyle, marginBottom: 0 }}>
-            <TreeNodeCard node={root} isRoot />
-          </div>
-          {/* Horizontal connector to L1 */}
-          <div style={{ position: 'relative', height: 16, display: 'flex', justifyContent: 'center' }}>
-            <svg width="100%" height="16" style={{ position: 'absolute', top: 0, left: 0 }}>
-              <line x1="50%" y1="0" x2="25%" y2="16" stroke="rgba(79,195,247,0.25)" strokeWidth="1" />
-              <line x1="50%" y1="0" x2="75%" y2="16" stroke="rgba(79,195,247,0.25)" strokeWidth="1" />
-            </svg>
-          </div>
-          {/* Level 1 */}
-          <div style={{ marginBottom: 2 }}><div style={labelStyle}>LEVEL 1</div></div>
-          <div style={{ ...rowStyle, gap: 10 }}>{l1.map((n, i) => <TreeNodeCard key={i} node={n} />)}</div>
-          {/* Level 2 */}
-          <div style={{ position: 'relative', height: 14 }}>
-            <svg width="100%" height="14" style={{ position: 'absolute', top: 0 }}>
-              {[0,1,2,3].map(i => (
-                <line key={i}
-                  x1={`${12.5 + i * 25}%`} y1="14"
-                  x2={`${25 + Math.floor(i / 2) * 50}%`} y2="0"
-                  stroke={l2[i] ? 'rgba(79,195,247,0.2)' : 'rgba(255,255,255,0.05)'} strokeWidth="1"
-                />
-              ))}
-            </svg>
-          </div>
-          <div style={{ marginBottom: 2 }}><div style={labelStyle}>LEVEL 2</div></div>
-          <div style={{ ...rowStyle, gap: 4 }}>{l2.map((n, i) => <TreeNodeCard key={i} node={n} />)}</div>
-          {/* Level 3 */}
-          <div style={{ position: 'relative', height: 14 }}>
-            <svg width="100%" height="14" style={{ position: 'absolute', top: 0 }}>
-              {[0,1,2,3,4,5,6,7].map(i => (
-                <line key={i}
-                  x1={`${6.25 + i * 12.5}%`} y1="14"
-                  x2={`${12.5 + Math.floor(i / 2) * 25}%`} y2="0"
-                  stroke={l3[i] ? 'rgba(79,195,247,0.15)' : 'rgba(255,255,255,0.04)'} strokeWidth="1"
-                />
-              ))}
-            </svg>
-          </div>
-          <div style={{ marginBottom: 2 }}><div style={labelStyle}>LEVEL 3</div></div>
-          <div style={{ ...rowStyle, gap: 2 }}>{l3.map((n, i) => <TreeNodeCard key={i} node={n} />)}</div>
-
-          <div style={{ textAlign: 'center', marginTop: 16, fontSize: 8, color: '#333', fontWeight: 700, letterSpacing: 1 }}>
-            POSITIONAL BINARY MATRIX — {levels[0].length + levels[1].length + levels[2].length} NODES VISIBLE
-          </div>
-        </div>
-      )}
+      <div style={{ fontSize: '8px', color: '#444', textAlign: 'center', marginBottom: 16,
+        fontWeight: 700, letterSpacing: 1 }}>
+        TAP + TO EXPAND ANY NODE · CHILDREN LOADED ON DEMAND
+      </div>
+      {renderNode(rootNode, 0)}
     </div>
   );
 }
@@ -671,9 +722,12 @@ export default function TeamScreen() {
           nodeId={nodeId}
           nodeTier={nodeTier}
           walletAddress={walletAddress}
-          fetchTeamLevelMembers={fetchTeamLevelMembers}
+          directRefs={directRefs}
+          teamSize={teamSize}
+          fetchFn={fetchTeamLevelMembers}
         />
       )}
+
 
       {activeTab === 'direct' && (
         <div style={{ padding: '0 16px' }}>
