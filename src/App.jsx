@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from './store/gameStore.js';
 import { shortAddr } from './utils/format.js';
 import { useContract, useWalletLifecycle } from './hooks/useContract.js';
+import { useChainEvents } from './hooks/useChainEvents.js';
 import LoginScreen from './components/LoginScreen.jsx';
 import TopBar from './components/TopBar.jsx';
 import TabBar from './components/TabBar.jsx';
@@ -82,6 +83,9 @@ export default function App() {
   const { connectWallet, disconnectWallet } = useContract();
   const { setupListeners, removeListeners } = useWalletLifecycle();
   const welcomeShown = useRef(false);
+
+  // Real-time chain event listener — pushes DB updates + toast notifications
+  useChainEvents();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);

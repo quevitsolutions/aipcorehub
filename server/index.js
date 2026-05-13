@@ -10,6 +10,25 @@ dotenv.config();
 
 // In-memory per-wallet claim lock — prevents concurrent double-credit on mining claim.
 // Entries are added before the DB UPDATE and deleted in finally{} so they never get stuck.
+
+// ── Real-time SSE Client Registry ────────────────────────────────────────────
+// Holds all active EventSource connections from the frontend.
+const sseClients = new Set();
+
+/**
+ * Broadcast a chain event to every connected SSE client.
+ * @param {string} type  – event type (e.g. 'node_created')
+ * @param {object} payload – serialisable data for the frontend
+ */
+function broadcastEvent(type, payload) {
+  const msg = `data: ${JSON.stringify({ type, payload, ts: Date.now() })}\n\n`;
+  sseClients.forEach(res => {
+    try { res.write(msg); } catch { sseClients.delete(res); }
+  });
+  console.log(`[SSE] Broadcast → ${type}`, JSON.stringify(payload).slice(0, 120));
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 const claimLocks = new Set();
 
 // Per-wallet RPC sync cooldown: Only call ensureNodeSync once per 5 minutes per wallet.
@@ -2582,4 +2601,177 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`AIPCore Backend running on port ${PORT}`);
   syncGlobalHistory(); // Initial fetch
   initTelegramBot();   // Start Telegram bot
+  startChainEventListeners(); // Real-time on-chain event indexer
+});
+
+// ── Real-time Chain Event Listeners ──────────────────────────────────────────
+/**
+ * Attach ethers.js contract listeners for all key events.
+ * On each event: update the DB and push to all connected SSE clients.
+ */
+function startChainEventListeners() {
+  console.log('[Chain Events] Starting real-time event listeners...');
+
+  // ── NodeCreated ────────────────────────────────────────────────────────────
+  // Fires when a new user registers a node on-chain.
+  aipcoreContract.on('NodeCreated', async (nodeAddr, userId, referrerId, uplineId, event) => {
+    const nId = Number(userId);
+    const sponsorId = Number(referrerId);
+    const matrixParentId = Number(uplineId);
+    console.log(`[Chain] NodeCreated: nodeId=${nId} wallet=${nodeAddr} sponsor=${sponsorId}`);
+    try {
+      // Fetch full node info from chain
+      const node = await aipcoreContract.nodes(nId);
+      const wallet = node.wallet?.toLowerCase() || nodeAddr.toLowerCase();
+      const tier   = Number(node.tier);
+      const joinedAt = Number(node.joinedAt);
+
+      // Find DB IDs for sponsor and matrix parent
+      const sponsorDbRes = await query('SELECT id FROM users WHERE node_id = $1', [sponsorId]);
+      const sponsorDbId  = sponsorDbRes.rows[0]?.id || null;
+      const matrixDbRes  = await query('SELECT id FROM users WHERE node_id = $1', [matrixParentId]);
+      const matrixDbId   = matrixDbRes.rows[0]?.id || null;
+
+      // Upsert user row
+      await query(`
+        INSERT INTO users
+          (wallet_address, node_id, node_tier, node_active, referrer_id, referrer_node_id,
+           matrix_parent_id, matrix_parent_node_id, created_at)
+        VALUES (LOWER($1), $2, $3, TRUE, $4, $5, $6, $7, TO_TIMESTAMP($8))
+        ON CONFLICT (node_id) DO UPDATE SET
+          wallet_address = LOWER(EXCLUDED.wallet_address),
+          node_tier      = GREATEST(users.node_tier, EXCLUDED.node_tier),
+          node_active    = TRUE,
+          referrer_id    = COALESCE(EXCLUDED.referrer_id,    users.referrer_id),
+          referrer_node_id = COALESCE(EXCLUDED.referrer_node_id, users.referrer_node_id),
+          matrix_parent_id = COALESCE(EXCLUDED.matrix_parent_id, users.matrix_parent_id),
+          matrix_parent_node_id = COALESCE(EXCLUDED.matrix_parent_node_id, users.matrix_parent_node_id)
+      `, [wallet, nId, tier, sponsorDbId, sponsorId, matrixDbId, matrixParentId, joinedAt]);
+
+      // Push SSE event to all connected frontends
+      broadcastEvent('node_created', {
+        nodeId: nId, wallet, tier, sponsorId, matrixParentId,
+        block: event.blockNumber
+      });
+
+      // Notify sponsor via Telegram if possible
+      try {
+        const tgRes = await query('SELECT telegram_id FROM users WHERE node_id = $1', [sponsorId]);
+        const tgId  = tgRes.rows[0]?.telegram_id;
+        if (tgId) {
+          await sendNotification(tgId,
+            `🎉 *New Direct Referral!*\nNode #${nId} joined under your sponsorship.\nTier: T${tier} | Wallet: \`${wallet.slice(0,10)}…\``);
+        }
+      } catch { /* non-critical */ }
+    } catch (err) {
+      console.error('[Chain] NodeCreated handler error:', err.message);
+    }
+  });
+
+  // ── TierUnlocked ───────────────────────────────────────────────────────────
+  // Fires when an existing node upgrades to a higher tier.
+  aipcoreContract.on('TierUnlocked', async (nodeAddr, userId, packageId, event) => {
+    const nId  = Number(userId);
+    const tier = Number(packageId);
+    console.log(`[Chain] TierUnlocked: nodeId=${nId} newTier=${tier}`);
+    try {
+      const node   = await aipcoreContract.nodes(nId);
+      const wallet = node.wallet?.toLowerCase() || nodeAddr.toLowerCase();
+      const actualTier = Number(node.tier); // Use chain value as authoritative
+
+      await query(
+        `UPDATE users SET node_tier = $1, node_active = TRUE WHERE node_id = $2`,
+        [actualTier, nId]
+      );
+
+      broadcastEvent('tier_unlocked', { nodeId: nId, wallet, tier: actualTier, block: event.blockNumber });
+
+      // Notify the user themselves
+      try {
+        const tgRes = await query('SELECT telegram_id FROM users WHERE node_id = $1', [nId]);
+        const tgId  = tgRes.rows[0]?.telegram_id;
+        if (tgId) {
+          await sendNotification(tgId,
+            `🚀 *Tier Upgraded!*\nYour node #${nId} is now Tier ${actualTier}!`);
+        }
+      } catch { /* non-critical */ }
+    } catch (err) {
+      console.error('[Chain] TierUnlocked handler error:', err.message);
+    }
+  });
+
+  // ── RewardDistributed ──────────────────────────────────────────────────────
+  // Fires for every referral reward pushed on-chain.
+  aipcoreContract.on('RewardDistributed',
+    async (walletAddr, nodeId, fromId, layer, amount, time, isMissed, rewardType, tier, event) => {
+      const wallet = walletAddr.toLowerCase();
+      const nId    = Number(nodeId);
+      const bnbAmt = parseFloat(ethers.formatEther(amount));
+      console.log(`[Chain] RewardDistributed: nodeId=${nId} wallet=${wallet.slice(0,10)} amount=${bnbAmt} BNB`);
+      try {
+        // Upsert income_history row (ignore duplicates by tx hash)
+        const txHash = event.transactionHash;
+        await query(`
+          INSERT INTO income_history
+            (wallet_address, amount_bnb, amount_usd, tx_hash, block_number, from_node_id, layer, is_missed, reward_type)
+          VALUES (LOWER($1), $2, $3, $4, $5, $6, $7, $8, $9)
+          ON CONFLICT (tx_hash) DO NOTHING
+        `, [
+          wallet, bnbAmt, 0, txHash, event.blockNumber,
+          Number(fromId), Number(layer), Boolean(isMissed), Number(rewardType)
+        ]);
+
+        broadcastEvent('reward_distributed', {
+          wallet, nodeId: nId, amountBnb: bnbAmt,
+          layer: Number(layer), isMissed: Boolean(isMissed),
+          block: event.blockNumber
+        });
+      } catch (err) {
+        console.error('[Chain] RewardDistributed handler error:', err.message);
+      }
+    }
+  );
+
+  // ── RewardClaimed (RewardPool) ─────────────────────────────────────────────
+  rewardPoolContract.on('RewardClaimed', async (nodeId, walletAddr, amount, event) => {
+    const wallet = walletAddr.toLowerCase();
+    const nId    = Number(nodeId);
+    const bnbAmt = parseFloat(ethers.formatEther(amount));
+    console.log(`[Chain] RewardClaimed: nodeId=${nId} wallet=${wallet.slice(0,10)} amount=${bnbAmt} BNB`);
+    broadcastEvent('reward_claimed', { nodeId: nId, wallet, amountBnb: bnbAmt, block: event.blockNumber });
+  });
+
+  // ── Heartbeat: re-attach listeners if provider reconnects ─────────────────
+  provider.on('error', (err) => {
+    console.error('[Chain Provider] Error:', err.message, '— will auto-reconnect via ethers.');
+  });
+
+  console.log('[Chain Events] Listening for: NodeCreated, TierUnlocked, RewardDistributed, RewardClaimed');
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── SSE Stream Endpoint ───────────────────────────────────────────────────────
+// Clients connect here to receive real-time chain events via Server-Sent Events.
+app.get('/api/events/stream', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no'); // disable Nginx buffering
+  res.flushHeaders();
+
+  // Send initial connection confirmation
+  res.write(`data: ${JSON.stringify({ type: 'connected', ts: Date.now() })}\n\n`);
+  sseClients.add(res);
+  console.log(`[SSE] Client connected. Total: ${sseClients.size}`);
+
+  // Heartbeat every 25s to keep the connection alive through proxies
+  const heartbeat = setInterval(() => {
+    try { res.write(': heartbeat\n\n'); } catch { clearInterval(heartbeat); sseClients.delete(res); }
+  }, 25_000);
+
+  req.on('close', () => {
+    clearInterval(heartbeat);
+    sseClients.delete(res);
+    console.log(`[SSE] Client disconnected. Total: ${sseClients.size}`);
+  });
 });
