@@ -402,19 +402,24 @@ class BlockchainService {
 
   async getMatrixLevelCounts(nodeId) {
     try {
-      // Fetch matrix counts by checking getMatrixUsers for each level
-      // Contract uses 0-indexed layers (Layer 0 = Level 1)
-      const layers = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-      const calls = layers.map(layer => ({
+      // Contract uses 0-indexed layers (Layer 0 = Level 1, Layer 17 = Level 18)
+      // Split into two multicall batches to avoid block-gas / payload limits
+      const batch1 = Array.from({ length: 9 }, (_, i) => ({
         target: CONTRACTS.AIPCORE,
-        // Safe limit to ensure the gasless view call doesn't timeout or exceed block limits
-        callData: this.core.interface.encodeFunctionData("getMatrixUsers", [nodeId, layer, 0, 100])
+        callData: this.core.interface.encodeFunctionData("getMatrixUsers", [nodeId, i, 0, 50])
+      }));
+      const batch2 = Array.from({ length: 9 }, (_, i) => ({
+        target: CONTRACTS.AIPCORE,
+        callData: this.core.interface.encodeFunctionData("getMatrixUsers", [nodeId, i + 9, 0, 50])
       }));
 
-      const [, returnData] = await this.multicall.aggregate(calls);
-      
+      const [[, data1], [, data2]] = await Promise.all([
+        this.multicall.aggregate(batch1),
+        this.multicall.aggregate(batch2),
+      ]);
+
       const matrixCounts = new Array(18).fill(0);
-      returnData.forEach((data, i) => {
+      [...data1, ...data2].forEach((data, i) => {
         try {
           const members = this.core.interface.decodeFunctionResult("getMatrixUsers", data)[0];
           matrixCounts[i] = members.length;
@@ -428,6 +433,7 @@ class BlockchainService {
       return new Array(18).fill(0);
     }
   }
+
 
   async getDirectReferrals(nodeId, num = 100) {
     try {

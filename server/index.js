@@ -1712,16 +1712,20 @@ app.get('/api/network/level/:walletAddress/:level', async (req, res) => {
   try {
     const rootRes = await query('SELECT id FROM users WHERE LOWER(wallet_address) = LOWER($1) ORDER BY id ASC', [walletAddress]);
     if (rootRes.rows.length === 0) return res.status(404).json({ error: 'User not found' });
-    const rootId = rootRes.rows[0].id;
+    const rootIds = rootRes.rows.map(r => r.id);
 
-    // Recursive CTE to find members at depth, and another sub-CTE for their team sizes
+    // Cycle-safe recursive CTE — ARRAY[id] visited prevents infinite loops from circular matrix_parent_id
     const members = await query(`
       WITH RECURSIVE mt AS (
-        SELECT id, matrix_parent_id, 0 as depth FROM users WHERE id = $1
+        SELECT id, matrix_parent_id, 0 as depth, ARRAY[id] AS visited
+        FROM users WHERE id = ANY($1::int[])
         UNION ALL
-        SELECT u.id, u.matrix_parent_id, mt.depth + 1 FROM users u INNER JOIN mt ON u.matrix_parent_id = mt.id WHERE mt.depth < 18
+        SELECT u.id, u.matrix_parent_id, mt.depth + 1, mt.visited || u.id
+        FROM users u
+        INNER JOIN mt ON u.matrix_parent_id = mt.id
+        WHERE mt.depth < 18 AND NOT (u.id = ANY(mt.visited))
       )
-      SELECT 
+      SELECT DISTINCT ON (u.wallet_address)
         u.wallet_address, 
         u.node_id, 
         u.node_tier, 
@@ -1730,19 +1734,22 @@ app.get('/api/network/level/:walletAddress/:level', async (req, res) => {
         (SELECT COUNT(*) FROM users WHERE referrer_id = u.id) as direct_count,
         (
           WITH RECURSIVE sub_tree AS (
-            SELECT id, 0 as d FROM users WHERE matrix_parent_id = u.id
+            SELECT id, 0 as d, ARRAY[id] AS sv FROM users WHERE matrix_parent_id = u.id
             UNION ALL
-            SELECT s.id, st.d + 1 FROM users s INNER JOIN sub_tree st ON s.matrix_parent_id = st.id WHERE st.d < 18
+            SELECT s.id, st.d + 1, st.sv || s.id
+            FROM users s
+            INNER JOIN sub_tree st ON s.matrix_parent_id = st.id
+            WHERE st.d < 17 AND NOT (s.id = ANY(st.sv))
           )
           SELECT COUNT(*) FROM sub_tree
         ) as team_size,
-        CASE WHEN u.referrer_id = $1 THEN true ELSE false END as is_direct
+        CASE WHEN u.referrer_id = ANY($1::int[]) THEN true ELSE false END as is_direct
       FROM users u
       JOIN mt ON u.id = mt.id
       WHERE mt.depth = $2
-      ORDER BY u.created_at DESC
+      ORDER BY u.wallet_address, u.created_at DESC
       LIMIT 100
-    `, [rootId, targetDepth]);
+    `, [rootIds, targetDepth]);
 
     res.json(members.rows);
   } catch (err) {
@@ -1761,28 +1768,34 @@ app.get('/api/network/referral-level/:walletAddress/:level', async (req, res) =>
     if (rootRes.rows.length === 0) return res.status(404).json({ error: 'User not found' });
     const parentIds = rootRes.rows.map(r => r.id);
 
-    // Recursive CTE to find members in REFERRAL tree (using referrer_id)
+    // Cycle-safe recursive CTE using referrer_id
     const members = await query(`
       WITH RECURSIVE rt AS (
-        SELECT id, referrer_id, 0 as depth FROM users WHERE id = ANY($1::int[])
+        SELECT id, referrer_id, 0 as depth, ARRAY[id] AS visited
+        FROM users WHERE id = ANY($1::int[])
         UNION ALL
-        SELECT u.id, u.referrer_id, rt.depth + 1 FROM users u INNER JOIN rt ON u.referrer_id = rt.id WHERE rt.depth < 18
+        SELECT u.id, u.referrer_id, rt.depth + 1, rt.visited || u.id
+        FROM users u
+        INNER JOIN rt ON u.referrer_id = rt.id
+        WHERE rt.depth < 18 AND NOT (u.id = ANY(rt.visited))
       )
-      SELECT 
+      SELECT DISTINCT ON (u.wallet_address)
         u.wallet_address, 
         u.node_id, 
         u.node_tier, 
         u.node_active,
         u.local_reward,
         u.created_at as joined_at,
-        -- Trial days remaining
         GREATEST(0, CEIL(EXTRACT(EPOCH FROM ((COALESCE(u.created_at, NOW()) + INTERVAL '30 days') - NOW())) / 86400)::int) as trial_days_left,
         (SELECT COUNT(*) FROM users WHERE referrer_id = u.id) as direct_count,
         (
           WITH RECURSIVE sub_tree AS (
-            SELECT id, 0 as d FROM users WHERE referrer_id = u.id
+            SELECT id, 0 as d, ARRAY[id] AS sv FROM users WHERE referrer_id = u.id
             UNION ALL
-            SELECT s.id, st.d + 1 FROM users s INNER JOIN sub_tree st ON s.referrer_id = st.id WHERE st.d < 18
+            SELECT s.id, st.d + 1, st.sv || s.id
+            FROM users s
+            INNER JOIN sub_tree st ON s.referrer_id = st.id
+            WHERE st.d < 17 AND NOT (s.id = ANY(st.sv))
           )
           SELECT COUNT(*) FROM sub_tree
         ) as sub_referral_team,
@@ -1790,7 +1803,7 @@ app.get('/api/network/referral-level/:walletAddress/:level', async (req, res) =>
       FROM users u
       JOIN rt ON u.id = rt.id
       WHERE rt.depth = $2
-      ORDER BY u.created_at DESC
+      ORDER BY u.wallet_address, u.created_at DESC
       LIMIT 100
     `, [parentIds, targetDepth]);
 
@@ -1805,40 +1818,59 @@ app.get('/api/network/referral-level/:walletAddress/:level', async (req, res) =>
 app.get('/api/network/counts/:walletAddress', async (req, res) => {
   const { walletAddress } = req.params;
   try {
-    const rootRes = await query(`
-      SELECT id FROM users WHERE LOWER(wallet_address) = LOWER($1)
-    `, [walletAddress]);
+    const rootRes = await query(
+      `SELECT id FROM users WHERE LOWER(wallet_address) = LOWER($1)`,
+      [walletAddress]
+    );
     
     if (rootRes.rows.length === 0) return res.status(404).json({ error: 'User not found' });
     const parentIds = rootRes.rows.map(r => r.id);
 
+    // Cycle-safe matrix tree CTE
     const matrixRes = await query(`
       WITH RECURSIVE matrix_tree AS (
-        SELECT id, 0 as level FROM users WHERE id = ANY($1::int[])
+        SELECT id, 0 as level, ARRAY[id] AS visited
+        FROM users WHERE id = ANY($1::int[])
         UNION ALL
-        SELECT u.id, mt.level + 1 FROM users u INNER JOIN matrix_tree mt ON u.matrix_parent_id = mt.id WHERE mt.level < 18
+        SELECT u.id, mt.level + 1, mt.visited || u.id
+        FROM users u
+        INNER JOIN matrix_tree mt ON u.matrix_parent_id = mt.id
+        WHERE mt.level < 18 AND NOT (u.id = ANY(mt.visited))
       )
-      SELECT level, COUNT(*) as count FROM matrix_tree WHERE level > 0 GROUP BY level
+      SELECT level, COUNT(DISTINCT id) as count
+      FROM matrix_tree WHERE level > 0
+      GROUP BY level
     `, [parentIds]);
+
     const matrixCounts = new Array(18).fill(0);
     matrixRes.rows.forEach(r => {
       const level = parseInt(r.level);
       const count = parseInt(r.count);
-      const maxSlots = Math.pow(2, level);
-      matrixCounts[level - 1] = Math.min(count, maxSlots);
+      if (level >= 1 && level <= 18) matrixCounts[level - 1] = count;
     });
 
+    // Cycle-safe referral tree CTE
     const referralRes = await query(`
       WITH RECURSIVE referral_tree AS (
-        SELECT id, 0 as level FROM users WHERE id = ANY($1::int[])
+        SELECT id, 0 as level, ARRAY[id] AS visited
+        FROM users WHERE id = ANY($1::int[])
         UNION ALL
-        SELECT u.id, rt.level + 1 FROM users u INNER JOIN referral_tree rt ON u.referrer_id = rt.id WHERE rt.level < 18
+        SELECT u.id, rt.level + 1, rt.visited || u.id
+        FROM users u
+        INNER JOIN referral_tree rt ON u.referrer_id = rt.id
+        WHERE rt.level < 18 AND NOT (u.id = ANY(rt.visited))
       )
-      SELECT level, COUNT(*) as count FROM referral_tree WHERE level > 0 GROUP BY level
+      SELECT level, COUNT(DISTINCT id) as count
+      FROM referral_tree WHERE level > 0
+      GROUP BY level
     `, [parentIds]);
 
     const referralCounts = new Array(18).fill(0);
-    referralRes.rows.forEach(r => referralCounts[r.level - 1] = parseInt(r.count));
+    referralRes.rows.forEach(r => {
+      const level = parseInt(r.level);
+      const count = parseInt(r.count);
+      if (level >= 1 && level <= 18) referralCounts[level - 1] = count;
+    });
 
     res.json({ referralCounts, matrixCounts });
   } catch (err) {

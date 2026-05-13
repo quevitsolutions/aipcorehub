@@ -287,14 +287,33 @@ export default function TeamScreen() {
           setLevelMembers(mappedMembers);
           setLoadingMembers(false);
 
-          // Background sync
+          // Background sync: save to DB, then re-read for extra fields (trial days etc.)
+          // IMPORTANT: merge DB result with RPC result — DB may not have node_id populated yet
           if (mappedMembers.length > 0) {
             api.syncNetworkMembers(mappedMembers, nodeId);
             const dbMembers = await api.fetchNetworkLevelMembers(walletAddress, levelIndex + 1);
             if (dbMembers && dbMembers.length > 0) {
-              setLevelMembers(dbMembers.map(m => ({ ...m, team_size: Number(m.team_size || 0), direct_count: Number(m.direct_count || 0) })));
+              // Build a lookup by wallet address from the RPC data
+              const rpcByWallet = {};
+              mappedMembers.forEach(m => {
+                if (m.wallet_address) rpcByWallet[m.wallet_address.toLowerCase()] = m;
+              });
+              // Merge: DB fields take priority except for node_id / node_tier from chain
+              const merged = dbMembers.map(dbM => {
+                const rpcM = rpcByWallet[dbM.wallet_address?.toLowerCase()];
+                return {
+                  ...dbM,
+                  // Prefer DB node_id (most accurate after sync); fallback to RPC
+                  node_id:   dbM.node_id   || rpcM?.node_id,
+                  node_tier: dbM.node_tier != null ? dbM.node_tier : rpcM?.node_tier,
+                  team_size:    Number(dbM.team_size    || rpcM?.team_size    || 0),
+                  direct_count: Number(dbM.direct_count || rpcM?.direct_count || 0),
+                };
+              });
+              setLevelMembers(merged);
             }
           }
+
         } else if (activeTab === 'free_tree' || activeTab === 'free') {
           // Referral Mode: fetch level members then filter to FREE ONLY (no node)
           const members = await api.fetchReferralLevelMembers(walletAddress, levelIndex + 1);
