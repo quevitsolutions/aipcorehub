@@ -10,6 +10,132 @@ import { CONTRACTS } from '../config/constants.js';
 
 const MAX_SESSION = 86400000; // 24h
 
+// ── Inline Income Calculator ────────────────────────────────────────────────────
+const LVL_USD_E = [5,5,10,20,40,80,160,320,640,1280,2560,5120,10240,20480,40960,81920,163840,327680];
+const TC_E = ['#A3FF12','#B4FF3A','#FFD700','#FFC107','#FF9800','#FF7043','#FF5252','#E91E63','#AB47BC','#7E57C2','#5C6BC0','#42A5F5','#26C6DA','#26A69A','#66BB6A','#8BC34A','#CDDC39','#FF6B35'];
+const AIP_E = [100,200,200,300,300,300,500,500,500,800,800,800,1200,1200,1200,2000,2000,2500];
+function fmtE(n){ if(n>=1e9)return(n/1e9).toFixed(2)+'B'; if(n>=1e6)return(n/1e6).toFixed(2)+'M'; if(n>=1e3)return(n/1e3).toFixed(1)+'K'; return n.toFixed?n.toFixed(2):n; }
+
+function IncomeCalcPanel({ nodeTier }) {
+  const [bnbPrice, setBnbPrice] = useState(600);
+  const [myTier, setMyTier]     = useState(Math.max(1, Number(nodeTier)||1));
+  const [showTiers, setShowTiers] = useState(false);
+  const acc = '#FFB74D';
+
+  const levels = LVL_USD_E.map((costUsd, i) => {
+    const lv = i+1, people = Math.pow(2,lv), earnPer = costUsd*0.70, totalEarn = people*earnPer;
+    return { lv, people, costUsd, earnPer, totalEarn, locked: lv > myTier };
+  });
+  const unlocked  = levels.filter(l => !l.locked);
+  const totPeople = unlocked.reduce((s,l) => s+l.people, 0);
+  const totUsd    = unlocked.reduce((s,l) => s+l.totalEarn, 0);
+  const totBnb    = bnbPrice > 0 ? totUsd/bnbPrice : 0;
+
+  return (
+    <div style={{ flex:1, overflowY:'auto', paddingBottom:20 }}>
+      {/* Formula */}
+      <div style={{ background:'rgba(255,183,77,0.06)', border:'1px solid rgba(255,183,77,0.15)', borderRadius:12, padding:'10px 14px', marginBottom:14, fontSize:10, color:'rgba(255,255,255,0.5)', lineHeight:1.8 }}>
+        <span style={{ color:acc, fontWeight:900 }}>FORMULA: </span>
+        People = <span style={{ color:'#4FC3F7' }}>2<sup>L</sup></span>&nbsp;·&nbsp;
+        Earn/person = <span style={{ color:'#A3FF12' }}>Level Cost × 70%</span>&nbsp;·&nbsp;
+        Matrix = <span style={{ color:'#FFD700' }}>BINARY</span>
+      </div>
+
+      {/* Controls */}
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:14 }}>
+        <div style={{ background:'rgba(255,255,255,0.04)', borderRadius:12, padding:'10px 14px', border:'1px solid rgba(255,255,255,0.08)' }}>
+          <div style={{ fontSize:8, fontWeight:900, color:'#888', letterSpacing:1, marginBottom:5 }}>BNB PRICE ($)</div>
+          <input type="number" value={bnbPrice} onChange={e => setBnbPrice(Number(e.target.value)||0)} min={0}
+            style={{ width:'100%', background:'transparent', border:'none', outline:'none', color:'#fff', fontWeight:900, fontSize:16, fontFamily:'monospace' }} />
+        </div>
+        <div style={{ background:'rgba(255,255,255,0.04)', borderRadius:12, padding:'10px 14px', border:`1px solid ${TC_E[myTier-1]}40` }}>
+          <div style={{ fontSize:8, fontWeight:900, color:'#888', letterSpacing:1, marginBottom:5 }}>YOUR LEVEL</div>
+          <select value={myTier} onChange={e => setMyTier(Number(e.target.value))}
+            style={{ width:'100%', background:'transparent', border:'none', outline:'none', color:TC_E[myTier-1], fontWeight:900, fontSize:14, cursor:'pointer' }}>
+            {LVL_USD_E.map((usd,i) => <option key={i} value={i+1} style={{ background:'#111' }}>L{i+1} — ${usd}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {/* Summary cards */}
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8, marginBottom:14 }}>
+        {[
+          { label:'MATRIX NODES', val:fmtE(totPeople), color:'#4FC3F7' },
+          { label:'EST. BNB',     val:totBnb.toFixed(3), color:'#FFD700' },
+          { label:'EST. USD',     val:'$'+fmtE(totUsd), color:'#A3FF12' },
+        ].map((c,i) => (
+          <div key={i} style={{ background:'rgba(255,255,255,0.04)', borderRadius:12, padding:'10px 6px', textAlign:'center', border:`1px solid ${c.color}20` }}>
+            <div style={{ fontSize:15, fontWeight:900, color:c.color }}>{c.val}</div>
+            <div style={{ fontSize:7, color:'#444', fontWeight:900, marginTop:2 }}>{c.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Level table */}
+      <div style={{ fontSize:10, fontWeight:900, color:'#4FC3F7', letterSpacing:1, marginBottom:8 }}>📊 LEVEL-WISE 70% INCOME</div>
+      <div style={{ background:'rgba(0,0,0,0.3)', borderRadius:12, overflow:'hidden', marginBottom:14 }}>
+        <div style={{ display:'grid', gridTemplateColumns:'36px 50px 58px 60px 1fr 44px', gap:3, padding:'7px 10px', background:'rgba(255,255,255,0.03)', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+          {['LVL','PEOPLE','COST $','70% EA','TOTAL $',''].map(h => <span key={h} style={{ fontSize:7, fontWeight:900, color:'#555' }}>{h}</span>)}
+        </div>
+        <div style={{ maxHeight:300, overflowY:'auto' }}>
+          {levels.map(({ lv, people, costUsd, earnPer, totalEarn, locked }) => {
+            const color = TC_E[(lv-1)%18];
+            return (
+              <div key={lv} style={{ display:'grid', gridTemplateColumns:'36px 50px 58px 60px 1fr 44px', gap:3, padding:'7px 10px', borderBottom:'1px solid rgba(255,255,255,0.03)', alignItems:'center', opacity:locked?0.3:1, background:locked?'transparent':`${color}04` }}>
+                <span style={{ fontSize:9, fontWeight:900, color, background:`${color}18`, borderRadius:4, padding:'2px 4px', textAlign:'center' }}>L{lv}</span>
+                <span style={{ fontSize:9, color:'#ccc' }}>{fmtE(people)}</span>
+                <span style={{ fontSize:9, color:'#FFB74D', fontWeight:700 }}>${costUsd}</span>
+                <span style={{ fontSize:9, color:'#FFD700', fontWeight:800 }}>${earnPer.toFixed(2)}</span>
+                <span style={{ fontSize:9, color:'#A3FF12', fontWeight:900 }}>${fmtE(totalEarn)}</span>
+                <span style={{ fontSize:9, textAlign:'center' }}>{locked?'🔒':'✅'}</span>
+              </div>
+            );
+          })}
+          <div style={{ display:'grid', gridTemplateColumns:'36px 50px 58px 60px 1fr 44px', gap:3, padding:'8px 10px', background:'rgba(255,183,77,0.07)', borderTop:`1px solid ${acc}30`, alignItems:'center' }}>
+            <span style={{ fontSize:8, fontWeight:900, color:acc }}>ALL</span>
+            <span style={{ fontSize:9, color:'#ccc', fontWeight:900 }}>{fmtE(totPeople)}</span>
+            <span style={{ fontSize:9, color:'#888' }}>—</span>
+            <span style={{ fontSize:9, color:'#888' }}>—</span>
+            <span style={{ fontSize:9, color:'#A3FF12', fontWeight:900 }}>${fmtE(totUsd)}</span>
+            <span style={{ fontSize:8, color:acc }}>L{myTier}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Tier comparison toggle */}
+      <button onClick={() => setShowTiers(v => !v)}
+        style={{ width:'100%', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:10, padding:'10px', color:'#888', fontWeight:900, fontSize:10, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8, marginBottom:10 }}>
+        🎯 {showTiers?'HIDE':'SHOW'} TIER-WISE COMPARISON
+      </button>
+      {showTiers && (
+        <div style={{ background:'rgba(0,0,0,0.3)', borderRadius:12, overflow:'hidden' }}>
+          <div style={{ display:'grid', gridTemplateColumns:'36px 60px 58px 60px 1fr', gap:3, padding:'7px 10px', background:'rgba(255,255,255,0.03)', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+            {['LVL','COST $','BNB~','AIP/hr','L1 EARN $'].map(h => <span key={h} style={{ fontSize:7, fontWeight:900, color:'#555' }}>{h}</span>)}
+          </div>
+          <div style={{ maxHeight:250, overflowY:'auto' }}>
+            {LVL_USD_E.map((costUsd, i) => {
+              const color = TC_E[i];
+              const l1Earn = 2 * costUsd * 0.70;
+              const costBnb = bnbPrice > 0 ? (costUsd/bnbPrice).toFixed(4) : '—';
+              return (
+                <div key={i} style={{ display:'grid', gridTemplateColumns:'36px 60px 58px 60px 1fr', gap:3, padding:'7px 10px', borderBottom:'1px solid rgba(255,255,255,0.03)', alignItems:'center', background:i+1===myTier?`${color}10`:'transparent' }}>
+                  <span style={{ fontSize:9, fontWeight:900, color, background:`${color}20`, borderRadius:4, padding:'2px 4px', textAlign:'center' }}>L{i+1}</span>
+                  <span style={{ fontSize:9, color:'#FFB74D', fontWeight:700 }}>${costUsd}</span>
+                  <span style={{ fontSize:9, color:'#FFD700' }}>{costBnb}</span>
+                  <span style={{ fontSize:9, color:'#4FC3F7' }}>{AIP_E[i]}</span>
+                  <span style={{ fontSize:9, color:'#A3FF12', fontWeight:800 }}>${l1Earn.toFixed(2)}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+      <div style={{ fontSize:8, color:'#333', fontWeight:700, marginTop:12, textAlign:'center' }}>⚠️ ESTIMATES ONLY · BINARY MATRIX · 70% DISTRIBUTION · BNB PRICE VARIABLE</div>
+    </div>
+  );
+}
+// ───────────────────────────────────────────────────────────────
+
 // ── Local mining hook — uses a ref snapshot of claimTime so reset is instant ──
 function useLocalMining(lastClaimTime, ratePerHour, isEligible) {
   const [mined, setMined] = useState(0);
@@ -456,6 +582,14 @@ export default function EarnScreen() {
               color: view === 'history' ? '#000' : '#4FC3F7',
               transition: 'all 0.2s'
             }}>📜 HISTORY</button>
+          <button
+            onClick={() => setView('calculator')}
+            style={{
+              padding: '6px 16px', borderRadius: 10, border: 'none', fontSize: 11, fontWeight: 800, cursor: 'pointer',
+              background: view === 'calculator' ? '#FFB74D' : 'transparent',
+              color: view === 'calculator' ? '#000' : '#FFB74D',
+              transition: 'all 0.2s'
+            }}>💰 CALC</button>
         </div>
 
         <button onClick={() => setActiveTab('tasks')}
@@ -465,7 +599,9 @@ export default function EarnScreen() {
       </div>
 
       {/* ── Conditional View Content ── */}
-      {view === 'mining' ? (
+      {view === 'calculator' ? (
+        <IncomeCalcPanel nodeTier={nodeTier} />
+      ) : view === 'mining' ? (
         <>
           {/* Activation Alert (Triggered at Day 20) */}
           {shouldShowBanner && (
