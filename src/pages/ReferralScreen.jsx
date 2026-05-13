@@ -44,6 +44,148 @@ function MilestoneTracker({ total }) {
   );
 }
 
+// ── Income Calculator ─────────────────────────────────────────────────────────
+const TIER_BNB_COST = [0.008,0.016,0.016,0.024,0.024,0.024,0.04,0.04,0.04,0.064,0.064,0.064,0.096,0.096,0.096,0.16,0.16,0.24];
+const TIER_AIP_RATE = [100,200,200,300,300,300,500,500,500,800,800,800,1200,1200,1200,2000,2000,2500];
+const TC = ['#A3FF12','#B4FF3A','#FFD700','#FFC107','#FF9800','#FF7043','#FF5252','#E91E63','#AB47BC','#7E57C2','#5C6BC0','#42A5F5','#26C6DA','#26A69A','#66BB6A','#8BC34A','#CDDC39','#FF6B35'];
+const LVL_PCT = [0.30,0.15,0.10,0.07,0.06,0.05,0.04,0.035,0.03,0.025,0.025,0.02,0.02,0.015,0.015,0.01,0.01,0.01];
+function calcFmt(n){ if(n>=1e9)return(n/1e9).toFixed(2)+'B'; if(n>=1e6)return(n/1e6).toFixed(2)+'M'; if(n>=1e3)return(n/1e3).toFixed(1)+'K'; return n.toFixed?n.toFixed(2):String(n); }
+
+function IncomeCalculator({ currentTier }) {
+  const [open, setOpen]         = useState(false);
+  const [directs, setDirects]   = useState(10);
+  const [bnbPrice, setBnbPrice] = useState(600);
+  const [selTier, setSelTier]   = useState(Math.max(1, Number(currentTier)||1));
+  const [showTiers, setShowTiers] = useState(false);
+
+  const actBnb = TIER_BNB_COST[selTier - 1];
+
+  const levels = Array.from({ length: 18 }, (_, i) => {
+    const people = Math.round(Math.pow(directs, i + 1));
+    const bnb    = people * actBnb * LVL_PCT[i];
+    return { lv: i+1, people, bnb, usd: bnb * bnbPrice };
+  });
+
+  const totPeople = levels.reduce((s,l) => s + l.people, 0);
+  const totBnb    = levels.reduce((s,l) => s + l.bnb, 0);
+  const totUsd    = totBnb * bnbPrice;
+  const acc       = '#FFB74D';
+
+  return (
+    <div style={{ marginBottom: 24 }}>
+      <button onClick={() => setOpen(v => !v)}
+        style={{ width:'100%', background: open?'rgba(255,183,77,0.10)':'rgba(255,255,255,0.04)', border:`1px solid ${open?'rgba(255,183,77,0.4)':'rgba(255,255,255,0.1)'}`, borderRadius: open?'14px 14px 0 0':14, padding:'14px 16px', color: open?acc:'#fff', fontWeight:900, fontSize:13, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:10, transition:'all 0.2s' }}>
+        <span style={{ fontSize:18 }}>💰</span> INCOME CALCULATOR <span style={{ marginLeft:'auto' }}>{open?'▲':'▼'}</span>
+      </button>
+
+      {open && (
+        <div style={{ background:'rgba(0,0,0,0.45)', border:`1px solid ${acc}25`, borderTop:'none', borderRadius:'0 0 16px 16px', padding:'20px 14px' }}>
+          {/* Controls */}
+          <div style={{ marginBottom:16 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
+              <span style={{ fontSize:9, fontWeight:900, color:acc, letterSpacing:1 }}>EACH PERSON INVITES</span>
+              <span style={{ fontSize:13, fontWeight:900, color:'#fff' }}>{directs} <span style={{ color:acc }}>people</span></span>
+            </div>
+            <input type="range" min={2} max={20} value={directs} onChange={e => setDirects(Number(e.target.value))}
+              style={{ width:'100%', accentColor:acc, cursor:'pointer' }} />
+            <div style={{ display:'flex', justifyContent:'space-between', fontSize:8, color:'#444', fontWeight:700 }}><span>2</span><span>20</span></div>
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:16 }}>
+            <div style={{ background:'rgba(255,255,255,0.04)', borderRadius:10, padding:'10px 12px', border:'1px solid rgba(255,255,255,0.08)' }}>
+              <div style={{ fontSize:8, fontWeight:900, color:'#888', letterSpacing:1, marginBottom:5 }}>BNB PRICE (USD)</div>
+              <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+                <span style={{ fontSize:12, color:'#FFD700' }}>$</span>
+                <input type="number" value={bnbPrice} onChange={e => setBnbPrice(Number(e.target.value)||0)} min={0}
+                  style={{ width:'100%', background:'transparent', border:'none', outline:'none', color:'#fff', fontWeight:900, fontSize:15, fontFamily:'monospace' }} />
+              </div>
+            </div>
+            <div style={{ background:'rgba(255,255,255,0.04)', borderRadius:10, padding:'10px 12px', border:`1px solid ${TC[selTier-1]}40` }}>
+              <div style={{ fontSize:8, fontWeight:900, color:'#888', letterSpacing:1, marginBottom:5 }}>YOUR TIER</div>
+              <select value={selTier} onChange={e => setSelTier(Number(e.target.value))}
+                style={{ width:'100%', background:'transparent', border:'none', outline:'none', color:TC[selTier-1], fontWeight:900, fontSize:15, cursor:'pointer' }}>
+                {TIER_BNB_COST.map((_,i) => <option key={i} value={i+1} style={{ background:'#111' }}>Tier {i+1} — {TIER_BNB_COST[i]} BNB</option>)}
+              </select>
+            </div>
+          </div>
+
+          {/* Summary */}
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8, marginBottom:16 }}>
+            {[{label:'NETWORK',val:calcFmt(totPeople),unit:'people',color:'#4FC3F7'},{label:'EST. BNB',val:totBnb.toFixed(3),unit:'BNB',color:'#FFD700'},{label:'EST. USD',val:'$'+calcFmt(totUsd),unit:'total',color:'#A3FF12'}].map((c,i) => (
+              <div key={i} style={{ background:'rgba(255,255,255,0.04)', borderRadius:10, padding:'10px 8px', textAlign:'center', border:`1px solid ${c.color}20` }}>
+                <div style={{ fontSize:14, fontWeight:900, color:c.color }}>{c.val}</div>
+                <div style={{ fontSize:7, color:c.color, opacity:0.7, fontWeight:800 }}>{c.unit}</div>
+                <div style={{ fontSize:7, color:'#444', fontWeight:900, marginTop:2, letterSpacing:0.5 }}>{c.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Level Table */}
+          <div style={{ fontSize:9, fontWeight:900, color:'#4FC3F7', letterSpacing:1, marginBottom:8 }}>📊 LEVEL-WISE EARNING ESTIMATE</div>
+          <div style={{ background:'rgba(0,0,0,0.3)', borderRadius:12, overflow:'hidden', marginBottom:16 }}>
+            <div style={{ display:'grid', gridTemplateColumns:'36px 1fr 48px 1fr 1fr', gap:4, padding:'8px 10px', background:'rgba(255,255,255,0.03)', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+              {['LVL','PEOPLE','COMM%','BNB','USD'].map(h => <span key={h} style={{ fontSize:7, fontWeight:900, color:'#555', letterSpacing:0.5 }}>{h}</span>)}
+            </div>
+            <div style={{ maxHeight:300, overflowY:'auto' }}>
+              {levels.map(({ lv, people, bnb, usd }) => {
+                const color = TC[(lv-1)%18];
+                return (
+                  <div key={lv} style={{ display:'grid', gridTemplateColumns:'36px 1fr 48px 1fr 1fr', gap:4, padding:'7px 10px', borderBottom:'1px solid rgba(255,255,255,0.03)', alignItems:'center' }}>
+                    <span style={{ fontSize:9, fontWeight:900, color, background:`${color}18`, borderRadius:4, padding:'2px 4px', textAlign:'center' }}>L{lv}</span>
+                    <span style={{ fontSize:9, color:'#ccc', fontWeight:700 }}>{calcFmt(people)}</span>
+                    <span style={{ fontSize:9, color:'#888', fontWeight:700 }}>{(LVL_PCT[lv-1]*100).toFixed(1)}%</span>
+                    <span style={{ fontSize:9, color:'#FFD700', fontWeight:800 }}>{bnb<0.0001?bnb.toExponential(2):bnb.toFixed(4)}</span>
+                    <span style={{ fontSize:9, color:'#A3FF12', fontWeight:800 }}>${calcFmt(usd)}</span>
+                  </div>
+                );
+              })}
+              <div style={{ display:'grid', gridTemplateColumns:'36px 1fr 48px 1fr 1fr', gap:4, padding:'8px 10px', background:`rgba(255,183,77,0.06)`, borderTop:`1px solid ${acc}30`, alignItems:'center' }}>
+                <span style={{ fontSize:8, fontWeight:900, color:acc }}>ALL</span>
+                <span style={{ fontSize:9, color:'#ccc', fontWeight:900 }}>{calcFmt(totPeople)}</span>
+                <span style={{ fontSize:9, color:'#888' }}>—</span>
+                <span style={{ fontSize:9, color:'#FFD700', fontWeight:900 }}>{totBnb.toFixed(3)}</span>
+                <span style={{ fontSize:9, color:'#A3FF12', fontWeight:900 }}>${calcFmt(totUsd)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Tier Table Toggle */}
+          <button onClick={() => setShowTiers(v => !v)}
+            style={{ width:'100%', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:10, padding:'10px', color:'#888', fontWeight:900, fontSize:10, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8, marginBottom: showTiers?0:0 }}>
+            🎯 {showTiers?'HIDE':'SHOW'} TIER-WISE COMPARISON
+          </button>
+          {showTiers && (
+            <div style={{ marginTop:10, background:'rgba(0,0,0,0.3)', borderRadius:12, overflow:'hidden' }}>
+              <div style={{ display:'grid', gridTemplateColumns:'40px 68px 60px 1fr 1fr', gap:4, padding:'8px 10px', background:'rgba(255,255,255,0.03)', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+                {['TIER','COST BNB','$AIP/hr','DIRECT BNB','DIRECT $'].map(h => <span key={h} style={{ fontSize:7, fontWeight:900, color:'#555', letterSpacing:0.5 }}>{h}</span>)}
+              </div>
+              <div style={{ maxHeight:300, overflowY:'auto' }}>
+                {TIER_BNB_COST.map((cost,i) => {
+                  const color = TC[i];
+                  const dBnb  = directs * cost * LVL_PCT[0];
+                  const dUsd  = dBnb * bnbPrice;
+                  return (
+                    <div key={i} style={{ display:'grid', gridTemplateColumns:'40px 68px 60px 1fr 1fr', gap:4, padding:'7px 10px', borderBottom:'1px solid rgba(255,255,255,0.03)', alignItems:'center', background: i+1===selTier?`${color}0c`:'transparent' }}>
+                      <span style={{ fontSize:9, fontWeight:900, color, background:`${color}20`, borderRadius:4, padding:'2px 5px', textAlign:'center' }}>T{i+1}</span>
+                      <span style={{ fontSize:9, color:'#FFD700', fontWeight:800 }}>{cost}</span>
+                      <span style={{ fontSize:9, color:'#4FC3F7', fontWeight:700 }}>{TIER_AIP_RATE[i]}</span>
+                      <span style={{ fontSize:9, color:'#A3FF12', fontWeight:800 }}>{dBnb.toFixed(4)}</span>
+                      <span style={{ fontSize:9, color:'#fff', fontWeight:700 }}>${dUsd.toFixed(0)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          <div style={{ fontSize:8, color:'#333', fontWeight:700, marginTop:12, textAlign:'center', lineHeight:1.6 }}>
+            ⚠️ ESTIMATES ONLY · ACTUAL EARNINGS DEPEND ON CONTRACT RATES, BNB PRICE &amp; NETWORK ACTIVITY
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 // ── Viral Share Card ──────────────────────────────────────────────────────────
 function ShareCard({ nodeId, nodeTier, miningRate, teamSize, directRefs, inviteLink, hasNode }) {
   const [copied, setCopied] = useState(false);
@@ -861,6 +1003,8 @@ export default function ReferralScreen() {
         })}
       </div>
 
+          {/* ── Income Calculator ── */}
+          <IncomeCalculator currentTier={nodeTier} />
 
     </div>
   );
