@@ -10,6 +10,108 @@ import { formatNumber, formatBNB, shortAddr } from '../utils/format.js';
 import { useBnbPrice } from '../hooks/useBnbPrice.js';
 import { CONTRACTS } from '../config/constants.js';
 
+// ── Inline Income Calculator (Mini) ──────────────────────────────────────────
+const LVL_USD_COST_D = [5,5,10,20,40,80,160,320,640,1280,2560,5120,10240,20480,40960,81920,163840,327680];
+const TC_D = ['#A3FF12','#B4FF3A','#FFD700','#FFC107','#FF9800','#FF7043','#FF5252','#E91E63','#AB47BC','#7E57C2','#5C6BC0','#42A5F5','#26C6DA','#26A69A','#66BB6A','#8BC34A','#CDDC39','#FF6B35'];
+const TIER_AIP_D = [100,200,200,300,300,300,500,500,500,800,800,800,1200,1200,1200,2000,2000,2500];
+function fmtD(n){ if(n>=1e9)return(n/1e9).toFixed(2)+'B'; if(n>=1e6)return(n/1e6).toFixed(2)+'M'; if(n>=1e3)return(n/1e3).toFixed(1)+'K'; return n.toFixed?n.toFixed(2):n; }
+
+function IncomeCalcMini({ nodeTier }) {
+  const [open, setOpen]     = useState(false);
+  const [bnbPrice, setBnbPrice] = useState(600);
+  const [myTier, setMyTier] = useState(Math.max(1, Number(nodeTier)||1));
+  const acc = '#FFB74D';
+
+  const levels = LVL_USD_COST_D.map((costUsd, i) => {
+    const lv        = i + 1;
+    const people    = Math.pow(2, lv);
+    const earnPer   = costUsd * 0.70;
+    const totalEarn = people * earnPer;
+    const locked    = lv > myTier;
+    return { lv, people, costUsd, earnPer, totalEarn, locked };
+  });
+
+  const unlocked  = levels.filter(l => !l.locked);
+  const totPeople = unlocked.reduce((s,l) => s + l.people, 0);
+  const totUsd    = unlocked.reduce((s,l) => s + l.totalEarn, 0);
+  const totBnb    = bnbPrice > 0 ? totUsd / bnbPrice : 0;
+
+  return (
+    <div style={{ marginBottom: 24 }}>
+      <button onClick={() => setOpen(v => !v)}
+        style={{ width:'100%', background:open?'rgba(255,183,77,0.10)':'rgba(255,255,255,0.04)', border:`1px solid ${open?'rgba(255,183,77,0.4)':'rgba(255,255,255,0.1)'}`, borderRadius:open?'14px 14px 0 0':14, padding:'14px 16px', color:open?acc:'#fff', fontWeight:900, fontSize:13, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:10, transition:'all 0.2s' }}>
+        <span style={{ fontSize:18 }}>💰</span> MATRIX INCOME CALCULATOR <span style={{ marginLeft:'auto' }}>{open?'▲':'▼'}</span>
+      </button>
+      {open && (
+        <div style={{ background:'rgba(0,0,0,0.45)', border:`1px solid ${acc}25`, borderTop:'none', borderRadius:'0 0 14px 14px', padding:'16px 14px' }}>
+          {/* Formula */}
+          <div style={{ background:'rgba(255,183,77,0.06)', borderRadius:10, padding:'8px 12px', marginBottom:12, fontSize:9, color:'rgba(255,255,255,0.5)', lineHeight:1.7 }}>
+            <span style={{ color:acc, fontWeight:900 }}>FORMULA: </span>People = 2<sup>L</sup> &nbsp;·&nbsp; Earn = <span style={{ color:'#A3FF12' }}>Level Cost × 70%</span>
+          </div>
+          {/* Controls */}
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:12 }}>
+            <div style={{ background:'rgba(255,255,255,0.04)', borderRadius:10, padding:'10px 12px', border:'1px solid rgba(255,255,255,0.08)' }}>
+              <div style={{ fontSize:8, fontWeight:900, color:'#888', letterSpacing:1, marginBottom:4 }}>BNB PRICE $</div>
+              <input type="number" value={bnbPrice} onChange={e => setBnbPrice(Number(e.target.value)||0)} min={0}
+                style={{ width:'100%', background:'transparent', border:'none', outline:'none', color:'#fff', fontWeight:900, fontSize:14, fontFamily:'monospace' }} />
+            </div>
+            <div style={{ background:'rgba(255,255,255,0.04)', borderRadius:10, padding:'10px 12px', border:`1px solid ${TC_D[myTier-1]}40` }}>
+              <div style={{ fontSize:8, fontWeight:900, color:'#888', letterSpacing:1, marginBottom:4 }}>YOUR LEVEL</div>
+              <select value={myTier} onChange={e => setMyTier(Number(e.target.value))}
+                style={{ width:'100%', background:'transparent', border:'none', outline:'none', color:TC_D[myTier-1], fontWeight:900, fontSize:13, cursor:'pointer' }}>
+                {LVL_USD_COST_D.map((usd,i) => <option key={i} value={i+1} style={{ background:'#111' }}>L{i+1} — ${usd}</option>)}
+              </select>
+            </div>
+          </div>
+          {/* Summary */}
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8, marginBottom:12 }}>
+            {[
+              {label:'NODES',val:fmtD(totPeople),color:'#4FC3F7'},
+              {label:'EST BNB',val:totBnb.toFixed(3),color:'#FFD700'},
+              {label:'EST USD',val:'$'+fmtD(totUsd),color:'#A3FF12'},
+            ].map((c,i) => (
+              <div key={i} style={{ background:'rgba(255,255,255,0.04)', borderRadius:10, padding:'8px 6px', textAlign:'center', border:`1px solid ${c.color}20` }}>
+                <div style={{ fontSize:13, fontWeight:900, color:c.color }}>{c.val}</div>
+                <div style={{ fontSize:7, color:'#444', fontWeight:900, marginTop:2 }}>{c.label}</div>
+              </div>
+            ))}
+          </div>
+          {/* Level table */}
+          <div style={{ fontSize:9, fontWeight:900, color:'#4FC3F7', letterSpacing:1, marginBottom:6 }}>📊 LEVEL-WISE 70% INCOME</div>
+          <div style={{ background:'rgba(0,0,0,0.3)', borderRadius:10, overflow:'hidden' }}>
+            <div style={{ display:'grid', gridTemplateColumns:'32px 48px 56px 56px 1fr', gap:4, padding:'6px 10px', background:'rgba(255,255,255,0.03)', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+              {['LVL','PEOPLE','COST $','70% EA','TOTAL $'].map(h => <span key={h} style={{ fontSize:7, fontWeight:900, color:'#555' }}>{h}</span>)}
+            </div>
+            <div style={{ maxHeight:280, overflowY:'auto' }}>
+              {levels.map(({ lv, people, costUsd, earnPer, totalEarn, locked }) => {
+                const color = TC_D[(lv-1)%18];
+                return (
+                  <div key={lv} style={{ display:'grid', gridTemplateColumns:'32px 48px 56px 56px 1fr', gap:4, padding:'6px 10px', borderBottom:'1px solid rgba(255,255,255,0.03)', alignItems:'center', opacity:locked?0.3:1 }}>
+                    <span style={{ fontSize:8, fontWeight:900, color, background:`${color}18`, borderRadius:3, padding:'1px 3px', textAlign:'center' }}>L{lv}</span>
+                    <span style={{ fontSize:8, color:'#ccc' }}>{fmtD(people)}</span>
+                    <span style={{ fontSize:8, color:'#FFB74D' }}>${costUsd}</span>
+                    <span style={{ fontSize:8, color:'#FFD700' }}>${earnPer.toFixed(2)}</span>
+                    <span style={{ fontSize:8, color:'#A3FF12', fontWeight:800 }}>${fmtD(totalEarn)}</span>
+                  </div>
+                );
+              })}
+              <div style={{ display:'grid', gridTemplateColumns:'32px 48px 56px 56px 1fr', gap:4, padding:'7px 10px', background:`rgba(255,183,77,0.07)`, borderTop:`1px solid ${acc}30`, alignItems:'center' }}>
+                <span style={{ fontSize:7, fontWeight:900, color:acc }}>ALL</span>
+                <span style={{ fontSize:8, color:'#ccc', fontWeight:900 }}>{fmtD(totPeople)}</span>
+                <span style={{ fontSize:8, color:'#888' }}>—</span>
+                <span style={{ fontSize:8, color:'#888' }}>—</span>
+                <span style={{ fontSize:8, color:'#A3FF12', fontWeight:900 }}>${fmtD(totUsd)}</span>
+              </div>
+            </div>
+          </div>
+          <div style={{ fontSize:8, color:'#333', fontWeight:700, marginTop:10, textAlign:'center' }}>⚠️ ESTIMATES ONLY · BINARY MATRIX · 70% DISTRIBUTION</div>
+        </div>
+      )}
+    </div>
+  );
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function DashboardScreen() {
   const {
     walletAddress, hasNode, nodeId, nodeActive, nodeTier,
@@ -459,8 +561,11 @@ export default function DashboardScreen() {
         </div>
       </div>
 
+      {/* Income Calculator */}
+      <IncomeCalcMini nodeTier={nodeTier} />
+
       {/* Token Conversion History */}
-      <h3 style={{ fontSize: '13px', fontWeight: 800, color: '#A3FF12', marginBottom: 12, marginTop: 32 }}>HISTORY: TOKEN CONVERSION</h3>
+      <h3 style={{ fontSize: '13px', fontWeight: 800, color: '#A3FF12', marginBottom: 12, marginTop: 8 }}>HISTORY: TOKEN CONVERSION</h3>
       <div className="partner-card" style={{ flexDirection: 'column', padding: 20, marginBottom: 32 }}>
         {conversionHistory.length > 0 ? (
           <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 16 }}>
