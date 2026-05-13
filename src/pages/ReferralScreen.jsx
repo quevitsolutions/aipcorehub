@@ -107,7 +107,7 @@ function IncomeCalculator({ currentTier }) {
               <div style={{ fontSize:8, fontWeight:900, color:'#888', letterSpacing:1, marginBottom:5 }}>YOUR TIER</div>
               <select value={myTier} onChange={e => setMyTier(Number(e.target.value))}
                 style={{ width:'100%', background:'transparent', border:'none', outline:'none', color:TC[myTier-1], fontWeight:900, fontSize:14, cursor:'pointer' }}>
-                {TIER_BNB_COST.map((_,i) => <option key={i} value={i+1} style={{ background:'#111' }}>Tier {i+1} — {TIER_BNB_COST[i]} BNB</option>)}
+                {LVL_USD_COST.map((usd,i) => <option key={i} value={i+1} style={{ background:'#111' }}>Level {i+1} — ${usd}</option>)}
               </select>
             </div>
           </div>
