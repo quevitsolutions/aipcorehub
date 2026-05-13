@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../store/gameStore.js';
 import { formatNumber, shortAddr } from '../utils/format.js';
@@ -45,12 +45,11 @@ function MilestoneTracker({ total }) {
 }
 
 // ── Income Calculator ─────────────────────────────────────────────────────────
-// Binary matrix: 2^level people. 70% of tier activation cost = matrix income/person.
-const TIER_BNB_COST = [0.008,0.016,0.016,0.024,0.024,0.024,0.04,0.04,0.04,0.064,0.064,0.064,0.096,0.096,0.096,0.16,0.16,0.24];
+// Binary matrix: 2^level people. 70% of level USD cost = matrix income/person.
+// Level USD costs from contract: $5,$5,$10,$20,$40,$80,$160… doubling to $327,680
+const LVL_USD_COST = [5,5,10,20,40,80,160,320,640,1280,2560,5120,10240,20480,40960,81920,163840,327680];
 const TIER_AIP_RATE = [100,200,200,300,300,300,500,500,500,800,800,800,1200,1200,1200,2000,2000,2500];
 const TC = ['#A3FF12','#B4FF3A','#FFD700','#FFC107','#FF9800','#FF7043','#FF5252','#E91E63','#AB47BC','#7E57C2','#5C6BC0','#42A5F5','#26C6DA','#26A69A','#66BB6A','#8BC34A','#CDDC39','#FF6B35'];
-// L1→T1, L2→T1, L3→T2, L4→T3 … L18→T18
-const LVL_TIER_IDX = [0,0,1,2,3,4,6,7,8,9,10,11,12,13,14,15,16,17];
 function calcFmt(n){ if(n>=1e9)return(n/1e9).toFixed(2)+'B'; if(n>=1e6)return(n/1e6).toFixed(2)+'M'; if(n>=1e3)return(n/1e3).toFixed(1)+'K'; return n.toFixed?n.toFixed(2):String(n); }
 
 function IncomeCalculator({ currentTier }) {
@@ -63,12 +62,12 @@ function IncomeCalculator({ currentTier }) {
   const levels = Array.from({ length: 18 }, (_, i) => {
     const lv        = i + 1;
     const people    = Math.pow(2, lv);
-    const costBnb   = TIER_BNB_COST[LVL_TIER_IDX[i]];
-    const costUsd   = costBnb * bnbPrice;
-    const earnPer   = costUsd * 0.70;
+    const costUsd   = LVL_USD_COST[i];          // fixed USD from contract
+    const earnPer   = costUsd * 0.70;            // 70% matrix income per activation
     const totalEarn = people * earnPer;
+    const costBnb   = bnbPrice > 0 ? costUsd / bnbPrice : 0;
     const locked    = lv > myTier;
-    return { lv, people, costBnb, costUsd, earnPer, totalEarn, locked };
+    return { lv, people, costUsd, costBnb, earnPer, totalEarn, locked };
   });
 
   const unlocked  = levels.filter(l => !l.locked);
@@ -166,20 +165,22 @@ function IncomeCalculator({ currentTier }) {
           </button>
           {showTiers && (
             <div style={{ marginTop:10, background:'rgba(0,0,0,0.3)', borderRadius:12, overflow:'hidden' }}>
-              <div style={{ display:'grid', gridTemplateColumns:'40px 72px 60px 1fr 1fr', gap:4, padding:'8px 10px', background:'rgba(255,255,255,0.03)', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
-                {['TIER','COST BNB','AIP/hr','L1 EARN $','STATUS'].map(h => <span key={h} style={{ fontSize:7, fontWeight:900, color:'#555', letterSpacing:0.5 }}>{h}</span>)}
+              <div style={{ display:'grid', gridTemplateColumns:'40px 60px 60px 70px 1fr 1fr', gap:4, padding:'8px 10px', background:'rgba(255,255,255,0.03)', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+                {['LVL','COST $','BNB~','AIP/hr','L1 EARN $','STATUS'].map(h => <span key={h} style={{ fontSize:7, fontWeight:900, color:'#555', letterSpacing:0.5 }}>{h}</span>)}
               </div>
               <div style={{ maxHeight:300, overflowY:'auto' }}>
-                {TIER_BNB_COST.map((cost,i) => {
+                {LVL_USD_COST.map((costUsd,i) => {
                   const color  = TC[i];
-                  const l1Earn = 2 * cost * bnbPrice * 0.70;
+                  const l1Earn = 2 * costUsd * 0.70;           // L1: 2^1=2 people × 70%
+                  const costBnb= bnbPrice > 0 ? (costUsd/bnbPrice).toFixed(4) : '—';
                   return (
-                    <div key={i} style={{ display:'grid', gridTemplateColumns:'40px 72px 60px 1fr 1fr', gap:4, padding:'7px 10px', borderBottom:'1px solid rgba(255,255,255,0.03)', alignItems:'center', background:i+1===myTier?`${color}0c`:'transparent' }}>
-                      <span style={{ fontSize:9, fontWeight:900, color, background:`${color}20`, borderRadius:4, padding:'2px 5px', textAlign:'center' }}>T{i+1}</span>
-                      <span style={{ fontSize:9, color:'#FFD700', fontWeight:800 }}>{cost} BNB</span>
+                    <div key={i} style={{ display:'grid', gridTemplateColumns:'40px 60px 60px 70px 1fr 1fr', gap:4, padding:'7px 10px', borderBottom:'1px solid rgba(255,255,255,0.03)', alignItems:'center', background:i+1===myTier?`${color}0c`:'transparent' }}>
+                      <span style={{ fontSize:9, fontWeight:900, color, background:`${color}20`, borderRadius:4, padding:'2px 5px', textAlign:'center' }}>L{i+1}</span>
+                      <span style={{ fontSize:9, color:'#FFB74D', fontWeight:800 }}>${costUsd}</span>
+                      <span style={{ fontSize:9, color:'#FFD700', fontWeight:700 }}>{costBnb}</span>
                       <span style={{ fontSize:9, color:'#4FC3F7', fontWeight:700 }}>{TIER_AIP_RATE[i]}</span>
                       <span style={{ fontSize:9, color:'#A3FF12', fontWeight:800 }}>${l1Earn.toFixed(2)}</span>
-                      <span style={{ fontSize:8, fontWeight:900, color:i+1<=myTier?'#A3FF12':'#555' }}>{i+1<=myTier?'✅ UNLOCKED':'🔒 LOCKED'}</span>
+                      <span style={{ fontSize:8, fontWeight:900, color:i+1<=myTier?'#A3FF12':'#555' }}>{i+1<=myTier?'✅':'🔒'}</span>
                     </div>
                   );
                 })}
