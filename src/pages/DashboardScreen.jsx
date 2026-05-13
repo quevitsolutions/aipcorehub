@@ -561,9 +561,6 @@ export default function DashboardScreen() {
         </div>
       </div>
 
-      {/* Income Calculator */}
-      <IncomeCalcMini nodeTier={nodeTier} />
-
       {/* Token Conversion History */}
       <h3 style={{ fontSize: '13px', fontWeight: 800, color: '#A3FF12', marginBottom: 12, marginTop: 8 }}>HISTORY: TOKEN CONVERSION</h3>
       <div className="partner-card" style={{ flexDirection: 'column', padding: 20, marginBottom: 32 }}>
@@ -592,6 +589,9 @@ export default function DashboardScreen() {
           </div>
         )}
       </div>
+
+      {/* Income Calculator */}
+      <IncomeCalcMini nodeTier={nodeTier} />
 
       {/* Wallet Actions */}
       {!isConnected ? (
