@@ -19,6 +19,128 @@ function TierBadge({ tier }) {
   );
 }
 
+// ── Matrix Tree View ──────────────────────────────────────────────────────────
+function TreeNodeCard({ node, isRoot }) {
+  if (!node) {
+    return (
+      <div style={{ textAlign: 'center', minWidth: 72, maxWidth: 88 }}>
+        <div style={{ width: 1, height: 14, background: 'rgba(255,255,255,0.08)', margin: '0 auto' }} />
+        <div style={{ border: '1px dashed rgba(255,255,255,0.08)', borderRadius: 8, padding: '6px 4px' }}>
+          <div style={{ fontSize: 7, color: '#333', fontWeight: 700 }}>OPEN</div>
+        </div>
+      </div>
+    );
+  }
+  const tier = Number(node.tier || node.node_tier || 0);
+  const color = TIER_COLORS[tier - 1] || '#555';
+  const wallet = node.wallet || node.wallet_address || '';
+  const nId = node.nodeId || node.node_id;
+  return (
+    <div style={{ textAlign: 'center', minWidth: 72, maxWidth: 88 }}>
+      {!isRoot && <div style={{ width: 1, height: 14, background: color + '60', margin: '0 auto' }} />}
+      <div style={{ background: 'rgba(0,0,0,0.35)', border: `1px solid ${color}50`, borderRadius: 8, padding: '6px 5px' }}>
+        <div style={{ width: 7, height: 7, borderRadius: '50%', background: color, margin: '0 auto 3px', boxShadow: `0 0 5px ${color}` }} />
+        <div style={{ fontSize: 8, color: '#fff', fontWeight: 800, fontFamily: 'monospace' }}>
+          {wallet ? wallet.slice(0,4)+'…'+wallet.slice(-3) : '??'}
+        </div>
+        {nId > 0 && <div style={{ fontSize: 7, color: color, fontWeight: 900 }}>#{nId}</div>}
+        <TierBadge tier={tier} />
+      </div>
+    </div>
+  );
+}
+
+function MatrixTreeView({ nodeId, nodeTier, walletAddress, fetchTeamLevelMembers }) {
+  const [levels, setLevels] = useState([[], [], []]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!nodeId || Number(nodeId) <= 0) return;
+    setLoading(true);
+    Promise.all([
+      fetchTeamLevelMembers(nodeId, 0).catch(() => []),
+      fetchTeamLevelMembers(nodeId, 1).catch(() => []),
+      fetchTeamLevelMembers(nodeId, 2).catch(() => []),
+    ]).then(([l1, l2, l3]) => {
+      setLevels([l1 || [], l2 || [], l3 || []]);
+      setLoading(false);
+    });
+  }, [nodeId]);
+
+  const root = { wallet: walletAddress, nodeId, tier: nodeTier, node_tier: nodeTier, isRoot: true };
+
+  // Pad each level to its max capacity so empty slots show
+  const pad = (arr, max) => { const a = [...arr].slice(0, max); while (a.length < max) a.push(null); return a; };
+  const l1 = pad(levels[0], 2);
+  const l2 = pad(levels[1], 4);
+  const l3 = pad(levels[2], 8);
+
+  const rowStyle = { display: 'flex', justifyContent: 'center', gap: 6, marginBottom: 0 };
+  const labelStyle = { fontSize: 7, color: '#444', fontWeight: 800, letterSpacing: 1, textAlign: 'center', marginBottom: 4 };
+
+  return (
+    <div style={{ padding: '0 8px 24px' }}>
+      <div style={{ fontSize: '10px', fontWeight: 900, color: '#4FC3F7', marginBottom: '16px', letterSpacing: '1.5px', textAlign: 'center' }}>
+        PERSONAL MATRIX TREE
+      </div>
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: 40, color: '#FFB74D', fontSize: 11, fontWeight: 800 }}>BUILDING TREE...</div>
+      ) : (
+        <div style={{ overflowX: 'auto' }}>
+          {/* Root */}
+          <div style={{ ...rowStyle, marginBottom: 0 }}>
+            <TreeNodeCard node={root} isRoot />
+          </div>
+          {/* Horizontal connector to L1 */}
+          <div style={{ position: 'relative', height: 16, display: 'flex', justifyContent: 'center' }}>
+            <svg width="100%" height="16" style={{ position: 'absolute', top: 0, left: 0 }}>
+              <line x1="50%" y1="0" x2="25%" y2="16" stroke="rgba(79,195,247,0.25)" strokeWidth="1" />
+              <line x1="50%" y1="0" x2="75%" y2="16" stroke="rgba(79,195,247,0.25)" strokeWidth="1" />
+            </svg>
+          </div>
+          {/* Level 1 */}
+          <div style={{ marginBottom: 2 }}><div style={labelStyle}>LEVEL 1</div></div>
+          <div style={{ ...rowStyle, gap: 10 }}>{l1.map((n, i) => <TreeNodeCard key={i} node={n} />)}</div>
+          {/* Level 2 */}
+          <div style={{ position: 'relative', height: 14 }}>
+            <svg width="100%" height="14" style={{ position: 'absolute', top: 0 }}>
+              {[0,1,2,3].map(i => (
+                <line key={i}
+                  x1={`${12.5 + i * 25}%`} y1="14"
+                  x2={`${25 + Math.floor(i / 2) * 50}%`} y2="0"
+                  stroke={l2[i] ? 'rgba(79,195,247,0.2)' : 'rgba(255,255,255,0.05)'} strokeWidth="1"
+                />
+              ))}
+            </svg>
+          </div>
+          <div style={{ marginBottom: 2 }}><div style={labelStyle}>LEVEL 2</div></div>
+          <div style={{ ...rowStyle, gap: 4 }}>{l2.map((n, i) => <TreeNodeCard key={i} node={n} />)}</div>
+          {/* Level 3 */}
+          <div style={{ position: 'relative', height: 14 }}>
+            <svg width="100%" height="14" style={{ position: 'absolute', top: 0 }}>
+              {[0,1,2,3,4,5,6,7].map(i => (
+                <line key={i}
+                  x1={`${6.25 + i * 12.5}%`} y1="14"
+                  x2={`${12.5 + Math.floor(i / 2) * 25}%`} y2="0"
+                  stroke={l3[i] ? 'rgba(79,195,247,0.15)' : 'rgba(255,255,255,0.04)'} strokeWidth="1"
+                />
+              ))}
+            </svg>
+          </div>
+          <div style={{ marginBottom: 2 }}><div style={labelStyle}>LEVEL 3</div></div>
+          <div style={{ ...rowStyle, gap: 2 }}>{l3.map((n, i) => <TreeNodeCard key={i} node={n} />)}</div>
+
+          <div style={{ textAlign: 'center', marginTop: 16, fontSize: 8, color: '#333', fontWeight: 700, letterSpacing: 1 }}>
+            POSITIONAL BINARY MATRIX — {levels[0].length + levels[1].length + levels[2].length} NODES VISIBLE
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
+
 function NodeBadge({ nodeId }) {
   if (!nodeId || Number(nodeId) <= 0) return null;
   return (
@@ -128,7 +250,7 @@ function MemberCard({ m, index, total }) {
 }
 
 export default function TeamScreen() {
-  const { isConnected, nodeId, directRefs, teamSize, walletAddress } = useGameStore();
+  const { isConnected, nodeId, nodeTier, directRefs, teamSize, walletAddress } = useGameStore();
   const { fetchTeamCounts, fetchMatrixCounts, fetchTeamLevelMembers, fetchDirectMembers } = useContract();
 
   const [dualCounts, setDualCounts] = useState({
@@ -385,6 +507,11 @@ export default function TeamScreen() {
           style={{ flexShrink: 0, padding: '10px 16px', borderRadius: '8px', background: activeTab === 'free' ? 'rgba(255,152,0,0.15)' : 'rgba(255,255,255,0.05)', color: activeTab === 'free' ? '#FF9800' : '#888', border: `1px solid ${activeTab === 'free' ? 'rgba(255,152,0,0.3)' : 'transparent'}`, fontSize: '10px', fontWeight: 800 }}>
           FREE ({freeTotalCount})
         </button>
+        <button
+          onClick={() => setActiveTab('tree')}
+          style={{ flexShrink: 0, padding: '10px 16px', borderRadius: '8px', background: activeTab === 'tree' ? 'rgba(163,255,18,0.15)' : 'rgba(255,255,255,0.05)', color: activeTab === 'tree' ? '#A3FF12' : '#888', border: `1px solid ${activeTab === 'tree' ? 'rgba(163,255,18,0.3)' : 'transparent'}`, fontSize: '10px', fontWeight: 800 }}>
+          🌐 TREE
+        </button>
         <button 
           onClick={() => setActiveTab('direct')}
           style={{ flexShrink: 0, padding: '10px 16px', borderRadius: '8px', background: activeTab === 'direct' ? 'rgba(163,255,18,0.15)' : 'rgba(255,255,255,0.05)', color: activeTab === 'direct' ? '#A3FF12' : '#888', border: `1px solid ${activeTab === 'direct' ? 'rgba(163,255,18,0.3)' : 'transparent'}`, fontSize: '10px', fontWeight: 800 }}>
@@ -537,6 +664,15 @@ export default function TeamScreen() {
             </div>
           )}
         </div>
+      )}
+
+      {activeTab === 'tree' && (
+        <MatrixTreeView
+          nodeId={nodeId}
+          nodeTier={nodeTier}
+          walletAddress={walletAddress}
+          fetchTeamLevelMembers={fetchTeamLevelMembers}
+        />
       )}
 
       {activeTab === 'direct' && (

@@ -724,28 +724,7 @@ export default function ReferralScreen() {
         })}
       </div>
 
-      {/* ── Global Leaderboard ── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '12px' }}>
-        <h3 style={{ fontSize: '12px', fontWeight: 900, color: '#FF5252', letterSpacing: '1px' }}>GLOBAL LEADERBOARD</h3>
-        <span style={{ fontSize: '10px', color: 'var(--neon-lime)', fontWeight: 800 }}>LIVE STATS</span>
-      </div>
-      <div className="booster-card" style={{ padding: '8px 16px' }}>
-        {(Array.isArray(leaderboard) ? leaderboard : []).slice(0, 10).map((u, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', padding: '12px 0', borderBottom: i < 9 && i < (leaderboard?.length || 0) - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
-            <span style={{ width: '24px', fontSize: '13px', fontWeight: 900, color: i === 0 ? '#FFD700' : i === 1 ? '#C0C0C0' : i === 2 ? '#CD7F32' : 'rgba(255,255,255,0.4)' }}>#{i + 1}</span>
-            <div style={{ flex: 1, marginLeft: '12px' }}>
-              <span style={{ fontSize: '13px', fontWeight: 800, color: u?.wallet_address === walletAddress ? 'var(--neon-lime)' : '#fff', display: 'block' }}>
-                {u?.wallet_address ? shortAddr(u.wallet_address) : '...'} {u?.wallet_address === walletAddress && '(YOU)'}
-              </span>
-              <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)' }}>{formatNumber(u?.taps || 0)} taps</span>
-            </div>
-            <span style={{ fontSize: '13px', fontWeight: 900, color: 'var(--neon-lime)' }}>{((u?.local_reward || 0) / 1000000).toFixed(2)}M</span>
-          </div>
-        ))}
-        {(!leaderboard || leaderboard.length === 0) && (
-          <div style={{ padding: '20px', textAlign: 'center', fontSize: '11px', opacity: 0.5 }}>Syncing global rankings...</div>
-        )}
-      </div>
+
     </div>
   );
 }
