@@ -47,7 +47,109 @@ function MilestoneTracker({ total }) {
 // ── Viral Share Card ──────────────────────────────────────────────────────────
 function ShareCard({ nodeId, nodeTier, miningRate, teamSize, directRefs, inviteLink, hasNode }) {
   const [copied, setCopied] = useState(false);
+  const [dlLoading, setDlLoading] = useState(false);
   const tierColors = ['#A3FF12','#B4FF3A','#FFD700','#FFC107','#FF9800','#FF7043','#FF5252','#E91E63','#AB47BC','#7E57C2','#5C6BC0','#42A5F5','#26C6DA','#26A69A','#66BB6A','#8BC34A','#CDDC39','#FF9800'];
+
+  const downloadQRCard = async () => {
+    setDlLoading(true);
+    try {
+      const tierColor = tierColors[Math.max(0, (nodeTier || 1) - 1)];
+      const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(inviteLink)}&bgcolor=080D14&color=${tierColor.replace('#','')}&qzone=2&format=png`;
+
+      const qrImg = new Image();
+      qrImg.crossOrigin = 'anonymous';
+      await new Promise((res, rej) => { qrImg.onload = res; qrImg.onerror = rej; qrImg.src = qrApiUrl; });
+
+      const W = 400, H = 580;
+      const canvas = document.createElement('canvas');
+      canvas.width = W; canvas.height = H;
+      const ctx = canvas.getContext('2d');
+
+      // Background
+      const bg = ctx.createLinearGradient(0, 0, W, H);
+      bg.addColorStop(0, '#080D14'); bg.addColorStop(1, '#101520');
+      ctx.fillStyle = bg;
+      ctx.beginPath(); ctx.roundRect(0, 0, W, H, 22); ctx.fill();
+
+      // Tier border glow
+      ctx.strokeStyle = tierColor + '70'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.roundRect(1, 1, W-2, H-2, 21); ctx.stroke();
+
+      // Header label
+      ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.font = 'bold 11px monospace';
+      ctx.fillText('AIPCORE PROTOCOL · BSC', 22, 36);
+
+      // Node ID
+      ctx.fillStyle = '#ffffff'; ctx.font = 'bold 30px sans-serif';
+      ctx.fillText(hasNode ? `NODE #${nodeId}` : 'FREE MEMBER', 22, 72);
+
+      // Tier badge
+      ctx.fillStyle = tierColor + '25';
+      ctx.beginPath(); ctx.roundRect(W-80, 18, 58, 46, 10); ctx.fill();
+      ctx.strokeStyle = tierColor + '80'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.roundRect(W-80, 18, 58, 46, 10); ctx.stroke();
+      ctx.fillStyle = tierColor; ctx.font = 'bold 20px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(`T${nodeTier}`, W-51, 48);
+      ctx.font = 'bold 9px sans-serif'; ctx.fillText('TIER', W-51, 60);
+      ctx.textAlign = 'left';
+
+      // Divider
+      ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(22, 88); ctx.lineTo(W-22, 88); ctx.stroke();
+
+      // Stats
+      const stats = [['MINING', `${miningRate} $AIP/hr`, tierColor], ['TEAM', `${teamSize} nodes`, '#4FC3F7'], ['DIRECTS', `${directRefs}`, '#FFD700']];
+      stats.forEach(([lbl, val, col], i) => {
+        const x = 22 + i * 120;
+        ctx.fillStyle = 'rgba(255,255,255,0.04)';
+        ctx.beginPath(); ctx.roundRect(x, 98, 110, 50, 8); ctx.fill();
+        ctx.fillStyle = col; ctx.font = 'bold 14px sans-serif';
+        ctx.fillText(val, x + 8, 120);
+        ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.font = 'bold 9px sans-serif';
+        ctx.fillText(lbl, x + 8, 138);
+      });
+
+      // QR Code centered
+      const qrX = (W - 200) / 2, qrY = 168;
+      ctx.fillStyle = '#080D14';
+      ctx.beginPath(); ctx.roundRect(qrX - 10, qrY - 10, 220, 220, 14); ctx.fill();
+      ctx.strokeStyle = tierColor + '40'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.roundRect(qrX - 10, qrY - 10, 220, 220, 14); ctx.stroke();
+      ctx.drawImage(qrImg, qrX, qrY, 200, 200);
+
+      // Scan label
+      ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.font = 'bold 10px monospace'; ctx.textAlign = 'center';
+      ctx.fillText('SCAN TO JOIN MY MATRIX', W/2, 408);
+
+      // URL
+      ctx.fillStyle = tierColor; ctx.font = 'bold 10px monospace';
+      ctx.fillText(inviteLink, W/2, 430);
+
+      // Footer divider
+      ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(22, 450); ctx.lineTo(W-22, 450); ctx.stroke();
+
+      // BSC badge
+      ctx.fillStyle = 'rgba(163,255,18,0.6)'; ctx.font = 'bold 9px monospace';
+      ctx.fillText('● BSC SMART CONTRACT · AUDITABLE ON-CHAIN', W/2, 472);
+
+      // Powered by
+      ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.font = '9px monospace';
+      ctx.fillText('aipcore.online', W/2, 494);
+      ctx.textAlign = 'left';
+
+      // Download
+      const a = document.createElement('a');
+      a.download = `aipcore-qr-node${nodeId || 'free'}.png`;
+      a.href = canvas.toDataURL('image/png');
+      a.click();
+    } catch(e) {
+      console.error('QR download error:', e);
+      alert('Failed to generate QR. Try again.');
+    }
+    setDlLoading(false);
+  };
+
   const tierColor = tierColors[Math.max(0, (nodeTier || 1) - 1)];
 
   const cardMsg = hasNode
@@ -167,7 +269,42 @@ ${inviteLink}
         style={{ width: '100%', background: copied ? 'rgba(163,255,18,0.12)' : 'rgba(255,255,255,0.04)', border: `1px solid ${copied ? '#A3FF12' : 'rgba(255,255,255,0.1)'}`, borderRadius: 14, padding: '13px', color: copied ? '#A3FF12' : '#fff', fontWeight: 900, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'all 0.2s' }}>
         {copied ? '✅ COPIED TO CLIPBOARD!' : '📋 COPY SHARE MESSAGE'}
       </motion.button>
+
+      {/* ── QR Code Section ────────────────────────────────────────────────── */}
+      <div style={{ marginTop: 10, background: 'rgba(0,0,0,0.35)', border: `1px solid ${tierColor}25`, borderRadius: 16, padding: '16px', textAlign: 'center' }}>
+        <div style={{ fontSize: 9, fontWeight: 900, color: tierColor, letterSpacing: 1.5, marginBottom: 12 }}>
+          🔲 AFFILIATE QR CODE
+        </div>
+        {/* QR image from API */}
+        <div style={{ display: 'inline-block', background: '#080D14', border: `1.5px solid ${tierColor}40`, borderRadius: 12, padding: 8 }}>
+          <img
+            src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(inviteLink)}&bgcolor=080D14&color=${tierColor.replace('#','')}&qzone=2`}
+            alt="Referral QR Code"
+            style={{ width: 140, height: 140, display: 'block', borderRadius: 6, imageRendering: 'pixelated' }}
+          />
+        </div>
+        <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.3)', fontWeight: 700, marginTop: 8, marginBottom: 12 }}>
+          SCAN TO JOIN MY MATRIX
+        </div>
+        <motion.button
+          whileTap={{ scale: 0.96 }}
+          onClick={downloadQRCard}
+          disabled={dlLoading}
+          style={{
+            width: '100%', borderRadius: 12, padding: '12px 0',
+            background: dlLoading ? 'rgba(255,255,255,0.04)' : `linear-gradient(135deg, ${tierColor}22, ${tierColor}08)`,
+            border: `1px solid ${tierColor}45`,
+            color: dlLoading ? '#555' : tierColor,
+            fontWeight: 900, fontSize: 12, cursor: dlLoading ? 'not-allowed' : 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            letterSpacing: 0.5, transition: 'all 0.2s',
+          }}
+        >
+          {dlLoading ? '⏳ GENERATING...' : '📥 DOWNLOAD QR CARD'}
+        </motion.button>
+      </div>
     </div>
+
   );
 }
 
