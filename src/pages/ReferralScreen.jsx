@@ -460,6 +460,159 @@ ${inviteLink}
   );
 }
 
+// ── Free User Invitation Projection ──────────────────────────────────────────
+const FREE_MINING_RATE = 10;          // $AIP/hr for free users
+const FREE_HOURS       = 24 * 30;     // 30-day trial = 720 hrs
+const AIP_PER_FREE_USER = FREE_MINING_RATE * FREE_HOURS; // 7,200 $AIP per user
+
+const NODE_USD_COSTS = [5,5,10,20,40,80,160,320,640,1280,2560,5120,10240,20480,40960,81920,163840,327680];
+const NODE_TC        = ['#A3FF12','#B4FF3A','#FFD700','#FFC107','#FF9800','#FF7043','#FF5252','#E91E63','#AB47BC','#7E57C2','#5C6BC0','#42A5F5','#26C6DA','#26A69A','#66BB6A','#8BC34A','#CDDC39','#FF6B35'];
+
+function fmtR(n){ if(n>=1e6)return(n/1e6).toFixed(2)+'M'; if(n>=1e3)return(n/1e3).toFixed(0)+'K'; return Math.floor(n).toLocaleString(); }
+
+function FreeInviteProjection({ directRefs, freeTrialList }) {
+  const [target, setTarget] = useState(10);
+  const [aipUsd, setAipUsd] = useState(0.01); // $AIP price assumption
+  const current  = directRefs || 0;
+  const reached  = Math.min(current, target);
+  const pct      = target > 0 ? Math.min(100, (reached/target)*100) : 0;
+  const totalAip = target * AIP_PER_FREE_USER;
+  const totalUsd = totalAip * aipUsd;
+
+  // How many users needed to cover each node tier cost
+  const coverageData = NODE_USD_COSTS.slice(0,6).map((cost, i) => {
+    const aipNeeded  = aipUsd > 0 ? cost / aipUsd : Infinity;
+    const usersNeed  = Math.ceil(aipNeeded / AIP_PER_FREE_USER);
+    const covered    = totalAip >= aipNeeded;
+    return { tier:i+1, cost, aipNeeded, usersNeed, covered, color: NODE_TC[i] };
+  });
+
+  const milestones = [
+    { n:10,  aip: 10  * AIP_PER_FREE_USER, label:'STARTER',  color:'#4FC3F7' },
+    { n:25,  aip: 25  * AIP_PER_FREE_USER, label:'BUILDER',  color:'#A3FF12' },
+    { n:50,  aip: 50  * AIP_PER_FREE_USER, label:'LEADER',   color:'#FFD700' },
+    { n:100, aip: 100 * AIP_PER_FREE_USER, label:'CHAMPION', color:'#FF7043' },
+  ];
+
+  return (
+    <div style={{ marginBottom:32 }}>
+      {/* Header */}
+      <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:14 }}>
+        <div style={{ width:38, height:38, borderRadius:12, background:'linear-gradient(135deg,rgba(163,255,18,0.2),rgba(79,195,247,0.1))', border:'1px solid rgba(163,255,18,0.3)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20 }}>🎯</div>
+        <div>
+          <div style={{ fontSize:13, fontWeight:900, color:'#fff', letterSpacing:0.5 }}>FREE USER INVITATION PROJECTION</div>
+          <div style={{ fontSize:9, color:'rgba(255,255,255,0.4)', fontWeight:700, marginTop:1 }}>INVITE 10+ FRIENDS · EARN $AIP · REPLACE NODE COSTS</div>
+        </div>
+      </div>
+
+      {/* Goal progress */}
+      <div style={{ background:'rgba(163,255,18,0.04)', border:'1px solid rgba(163,255,18,0.15)', borderRadius:16, padding:'16px', marginBottom:12 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
+          <span style={{ fontSize:11, fontWeight:900, color:'var(--neon-lime)', letterSpacing:1 }}>YOUR GOAL</span>
+          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <span style={{ fontSize:10, color:'rgba(255,255,255,0.5)', fontWeight:700 }}>Target:</span>
+            <select value={target} onChange={e => setTarget(Number(e.target.value))}
+              style={{ background:'rgba(0,0,0,0.4)', border:'1px solid rgba(163,255,18,0.3)', borderRadius:8, color:'var(--neon-lime)', fontWeight:900, fontSize:13, padding:'2px 8px', outline:'none', cursor:'pointer' }}>
+              {[5,10,25,50,100,200,500].map(v => <option key={v} value={v} style={{ background:'#111' }}>{v} users</option>)}
+            </select>
+          </div>
+        </div>
+
+        {/* Big progress display */}
+        <div style={{ display:'flex', alignItems:'flex-end', gap:6, marginBottom:10 }}>
+          <span style={{ fontSize:42, fontWeight:900, color:'var(--neon-lime)', lineHeight:1 }}>{current}</span>
+          <span style={{ fontSize:16, color:'rgba(255,255,255,0.3)', fontWeight:700, marginBottom:4 }}>/ {target}</span>
+          <span style={{ fontSize:11, color:'rgba(255,255,255,0.4)', fontWeight:700, marginBottom:6, marginLeft:4 }}>free users invited</span>
+        </div>
+
+        {/* Progress bar */}
+        <div style={{ height:8, background:'rgba(255,255,255,0.06)', borderRadius:4, overflow:'hidden', marginBottom:6 }}>
+          <div style={{ height:'100%', width:`${pct}%`, background: pct>=100 ? 'var(--neon-lime)' : 'linear-gradient(90deg,rgba(163,255,18,0.5),var(--neon-lime))', borderRadius:4, transition:'width 0.5s ease-out', boxShadow: pct>=100 ? '0 0 12px rgba(163,255,18,0.4)' : 'none' }} />
+        </div>
+        <div style={{ display:'flex', justifyContent:'space-between', fontSize:9, color:'rgba(255,255,255,0.3)', fontWeight:700 }}>
+          <span>{Math.floor(pct)}% complete</span>
+          <span>{Math.max(0, target - current)} more to reach goal</span>
+        </div>
+
+        {pct >= 100 && (
+          <div style={{ marginTop:10, background:'rgba(163,255,18,0.1)', border:'1px solid rgba(163,255,18,0.4)', borderRadius:10, padding:'8px 12px', textAlign:'center', fontSize:11, fontWeight:900, color:'var(--neon-lime)' }}>
+            🎉 GOAL REACHED! You've invited {current} free users!
+          </div>
+        )}
+      </div>
+
+      {/* $AIP Projection Cards */}
+      <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:16, padding:'14px', marginBottom:12 }}>
+        <div style={{ fontSize:10, fontWeight:900, color:'#FFB74D', letterSpacing:1, marginBottom:10 }}>📊 $AIP PROJECTION ({target} USERS × {AIP_PER_FREE_USER.toLocaleString()} $AIP)</div>
+
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:12 }}>
+          {[
+            { label:'PER USER (30 DAYS)', val:fmtR(AIP_PER_FREE_USER)+' $AIP', sub:'10 $AIP/hr × 720 hrs', color:'#4FC3F7' },
+            { label:'TOTAL PROJECTED', val:fmtR(totalAip)+' $AIP', sub:`${target} users combined`, color:'#A3FF12' },
+          ].map((c,i) => (
+            <div key={i} style={{ background:`${c.color}08`, border:`1px solid ${c.color}20`, borderRadius:12, padding:'10px 12px' }}>
+              <div style={{ fontSize:8, fontWeight:900, color:'rgba(255,255,255,0.4)', letterSpacing:1, marginBottom:4 }}>{c.label}</div>
+              <div style={{ fontSize:16, fontWeight:900, color:c.color }}>{c.val}</div>
+              <div style={{ fontSize:8, color:'rgba(255,255,255,0.3)', fontWeight:700, marginTop:2 }}>{c.sub}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* AIP price input */}
+        <div style={{ display:'flex', alignItems:'center', gap:10, background:'rgba(0,0,0,0.3)', borderRadius:10, padding:'8px 12px' }}>
+          <span style={{ fontSize:9, fontWeight:900, color:'rgba(255,255,255,0.4)', letterSpacing:1, flexShrink:0 }}>$AIP PRICE ($)</span>
+          <input type="number" value={aipUsd} onChange={e => setAipUsd(Math.max(0, Number(e.target.value)||0))} min={0} step={0.001}
+            style={{ flex:1, background:'transparent', border:'none', outline:'none', color:'#FFD700', fontWeight:900, fontSize:13, fontFamily:'monospace', textAlign:'right' }} />
+          <span style={{ fontSize:9, color:'rgba(255,255,255,0.3)', fontWeight:700 }}>→ <span style={{ color:'#A3FF12', fontWeight:900 }}>${totalUsd < 1000 ? totalUsd.toFixed(2) : fmtR(totalUsd)}</span> USD</span>
+        </div>
+      </div>
+
+      {/* Node Cost Replacement */}
+      <div style={{ background:'rgba(255,183,77,0.04)', border:'1px solid rgba(255,183,77,0.15)', borderRadius:16, padding:'14px', marginBottom:12 }}>
+        <div style={{ fontSize:10, fontWeight:900, color:'#FFB74D', letterSpacing:1, marginBottom:10 }}>💡 $AIP REPLACES NODE COST — HOW MANY USERS NEEDED?</div>
+        <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+          {coverageData.map((row) => {
+            const barPct = Math.min(100, (target / Math.max(row.usersNeed, 1)) * 100);
+            return (
+              <div key={row.tier} style={{ display:'grid', gridTemplateColumns:'44px 1fr 56px 52px', gap:8, alignItems:'center' }}>
+                <span style={{ fontSize:9, fontWeight:900, color:row.color, background:`${row.color}18`, borderRadius:6, padding:'2px 4px', textAlign:'center' }}>L{row.tier} ${row.cost}</span>
+                <div style={{ height:5, background:'rgba(255,255,255,0.05)', borderRadius:3, overflow:'hidden' }}>
+                  <div style={{ height:'100%', width:`${barPct}%`, background: row.covered ? row.color : `${row.color}60`, borderRadius:3, transition:'width 0.4s' }} />
+                </div>
+                <span style={{ fontSize:8, fontWeight:800, color:'rgba(255,255,255,0.4)', textAlign:'right' }}>{row.usersNeed} users</span>
+                <span style={{ fontSize:9, fontWeight:900, color: row.covered ? '#A3FF12' : '#FF5252', textAlign:'center' }}>{row.covered ? '✅ OK' : '🔒 need more'}</span>
+              </div>
+            );
+          })}
+        </div>
+        <div style={{ fontSize:8, color:'rgba(255,255,255,0.2)', fontWeight:700, marginTop:10, textAlign:'center' }}>⚠️ Based on $AIP price entered above · Actual value may vary</div>
+      </div>
+
+      {/* Milestone Rewards */}
+      <div style={{ fontSize:10, fontWeight:900, color:'#4FC3F7', letterSpacing:1, marginBottom:10 }}>🏆 REACH THESE MILESTONES</div>
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:8 }}>
+        {milestones.map((m) => {
+          const done = current >= m.n;
+          return (
+            <div key={m.n} style={{ background: done ? `${m.color}12` : 'rgba(255,255,255,0.03)', border:`1px solid ${done?m.color+'60':'rgba(255,255,255,0.06)'}`, borderRadius:12, padding:'12px', textAlign:'center' }}>
+              <div style={{ fontSize:9, fontWeight:900, color:m.color, letterSpacing:1, marginBottom:4 }}>{m.label} {done?'✅':''}</div>
+              <div style={{ fontSize:20, fontWeight:900, color:'#fff', lineHeight:1 }}>{m.n}</div>
+              <div style={{ fontSize:8, color:'rgba(255,255,255,0.4)', fontWeight:700, margin:'2px 0 6px' }}>free users</div>
+              <div style={{ fontSize:11, fontWeight:900, color:m.color }}>{fmtR(m.aip)} $AIP</div>
+              <div style={{ fontSize:7, color:'rgba(255,255,255,0.25)', fontWeight:700, marginTop:2 }}>total projected</div>
+              {/* mini progress */}
+              <div style={{ height:3, background:'rgba(255,255,255,0.05)', borderRadius:2, overflow:'hidden', marginTop:8 }}>
+                <div style={{ height:'100%', width:`${Math.min(100,(current/m.n)*100)}%`, background:m.color, borderRadius:2, transition:'width 0.5s' }} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function ReferralScreen() {
   const store             = useGameStore();
@@ -1012,6 +1165,9 @@ export default function ReferralScreen() {
           );
         })}
       </div>
+
+      {/* ── FREE USER INVITATION PROJECTION ── */}
+      <FreeInviteProjection directRefs={directRefs} freeTrialList={freeTrialList} />
 
           {/* ── Income Calculator ── */}
           <IncomeCalculator currentTier={nodeTier} />
