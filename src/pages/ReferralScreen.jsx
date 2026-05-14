@@ -536,7 +536,6 @@ function FreeInviteProjection({ directRefs }) {
   );
 }
 // ─────────────────────────────────────────────────────────────────────────────
-  const [target, setTarget] = useState(10);
 
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function ReferralScreen() {
