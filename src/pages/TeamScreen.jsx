@@ -394,11 +394,11 @@ export default function TeamScreen() {
         if (stats) setReferralStats(stats);
         setLoadingStats(false);
 
-        // FALLBACK: If DB matrix counts are all 0, fetch directly from contract
-        const dbMatrixTotal = (dc.matrix || []).reduce((a,b) => a+b, 0);
-        if (dbMatrixTotal === 0 && nodeId && Number(nodeId) > 0) {
-          console.log("⚡ DB matrix empty, fetching live from RPC...");
-          const liveMatrix = await fetchMatrixCounts(nodeId);
+        // Always fetch RPC matrix counts — DB matrix_parent_id is incomplete for many users
+        // so the CTE undercounts. RPC reads straight from the contract and is authoritative.
+        if (nodeId && Number(nodeId) > 0) {
+          console.log("⚡ Fetching live matrix counts from RPC...");
+          const liveMatrix = await fetchMatrixCounts(nodeId).catch(() => new Array(18).fill(0));
           setRpcMatrixCounts(liveMatrix);
         }
       } catch (err) {
@@ -519,7 +519,8 @@ export default function TeamScreen() {
   const calculatedTotal = matrixTotal || (teamSize || 0);
   
   // LEVEL DATA: Matrix-only. Priority: DB matrix > Live RPC fallback
-  const levelData = new Array(18).fill(0).map((_, i) => dualCounts.matrix[i] || rpcMatrixCounts[i] || 0);
+  // RPC is authoritative (contract source of truth); DB is fallback only
+  const levelData = new Array(18).fill(0).map((_, i) => rpcMatrixCounts[i] || dualCounts.matrix[i] || 0);
   // Max capacity per level in binary matrix: 2^(level)
   const maxCapacity = (level) => Math.pow(2, level);
 
