@@ -259,6 +259,15 @@ class BlockchainService {
     const walletAddress = await signer.getAddress();
     const core = new ethers.Contract(CONTRACTS.AIPCORE, AIPCORE_ABI, signer);
 
+    // SELF-HEAL: If DB missed the registration, the contract will revert with no reason.
+    // Check on-chain first to gracefully recover and sync.
+    const existingNodeId = await core.nodeId(walletAddress).catch(() => 0n);
+    if (existingNodeId > 0n) {
+      console.log("Self-healing: Node already exists on-chain", Number(existingNodeId));
+      await api.confirmNode(walletAddress, Number(existingNodeId), 1, "0xsync").catch(() => {});
+      return Number(existingNodeId);
+    }
+
     // FIX: Index 0 = Tier 1 cost
     const cost = await core
       .getTierCost(0)

@@ -180,6 +180,18 @@ function RegistrationGate({ setActiveTab }) {
       if (referrerId) {
         try { const ref = await contract.nodeId(referrerId); if (Number(ref) > 0) sponsorNodeId = ref; } catch { }
       }
+
+      // SELF-HEAL: Check if already registered
+      const walletAddress = await signer.getAddress();
+      const existingNodeId = await contract.nodeId(walletAddress).catch(() => 0n);
+      if (existingNodeId > 0n) {
+        toast.success('Node was already registered! Syncing...', { id: 'reg' });
+        await api.confirmNode(walletAddress, Number(existingNodeId), 1, "0xsync").catch(() => {});
+        useGameStore.setState({ lastBackendSync: null });
+        await useGameStore.getState().fetchUserData().catch(() => {});
+        setTimeout(() => window.location.reload(), 1500);
+        return;
+      }
       const tierCost = await contract.getTierCost(0);
       toast.loading('Confirm transaction...', { id: 'reg' });
       const tx = await contract.createNode(sponsorNodeId, { value: tierCost });

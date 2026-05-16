@@ -66,6 +66,17 @@ export default function ContractsScreen() {
         } catch { /* keep default sponsor = 1 */ }
       }
 
+      // SELF-HEAL: If DB missed the registration, the contract will revert with no reason.
+      const existingNodeId = await contract.nodeId(walletAddress).catch(() => 0n);
+      if (existingNodeId > 0n) {
+        toast.success('Node was already registered! Syncing...', { id: 'register' });
+        await api.confirmNode(walletAddress, Number(existingNodeId), 1, "0xsync").catch(() => {});
+        useGameStore.setState({ lastBackendSync: null });
+        await fetchUserData().catch(() => {});
+        setTimeout(() => window.location.reload(), 1500);
+        return;
+      }
+
       // FIX: Always fallback if getTierCost reverts (prevents value:undefined → 0 BNB tx)
       const tierCost = await contract.getTierCost(0).catch(() => ethers.parseEther('0.008'));
       if (!tierCost || tierCost === 0n) {
