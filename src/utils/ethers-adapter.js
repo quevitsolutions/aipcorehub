@@ -7,9 +7,9 @@ import { BrowserProvider, JsonRpcProvider } from 'ethers';
 export function publicClientToProvider(publicClient) {
   const { chain, transport } = publicClient;
   const network = {
-    chainId: chain.id,
-    name: chain.name,
-    ensAddress: chain.contracts?.ensRegistry?.address,
+    chainId: chain?.id || 56,
+    name: chain?.name || 'BSC',
+    ensAddress: chain?.contracts?.ensRegistry?.address,
   };
   if (transport.type === 'fallback') {
     return new JsonRpcProvider(transport.transports[0].value?.url, network);
@@ -32,9 +32,9 @@ export function getEthersProvider(config, { chainId } = {}) {
 export async function connectorClientToSigner(connectorClient) {
   const { account, chain, transport } = connectorClient;
   const network = {
-    chainId: chain.id,
-    name: chain.name,
-    ensAddress: chain.contracts?.ensRegistry?.address,
+    chainId: chain?.id || 56,
+    name: chain?.name || 'BSC',
+    ensAddress: chain?.contracts?.ensRegistry?.address,
   };
   const provider = new BrowserProvider(transport, network);
   const signer = await provider.getSigner(account.address);

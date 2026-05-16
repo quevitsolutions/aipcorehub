@@ -64,8 +64,25 @@ export default function UpgradeScreen() {
 
   const handleRegister = async () => {
     setIsLoading(true);
-    const { sponsorNodeId } = useGameStore.getState();
-    await createNode(sponsorNodeId || 36999);
+    let effectiveSponsor = 1;
+    const { referrerId } = useGameStore.getState();
+    
+    if (referrerId) {
+      try {
+        const provider = new ethers.JsonRpcProvider("https://bsc-dataseed.binance.org/");
+        const contract = new ethers.Contract(CONTRACTS.AIPCORE, AIPCORE_ABI, provider);
+        if (typeof referrerId === 'string' && referrerId.startsWith('0x') && referrerId.length === 42) {
+          const refId = await contract.nodeId(referrerId);
+          if (refId && Number(refId) > 0) effectiveSponsor = Number(refId);
+        } else if (Number(referrerId) > 0) {
+          effectiveSponsor = Number(referrerId);
+        }
+      } catch (err) {
+        console.warn("Sponsor lookup failed, using default 1");
+      }
+    }
+    
+    await createNode(effectiveSponsor);
     setIsLoading(false);
   };
 
