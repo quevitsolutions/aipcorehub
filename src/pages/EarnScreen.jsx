@@ -194,7 +194,7 @@ function RegistrationGate({ setActiveTab }) {
       }
       const tierCost = await contract.getTierCost(0);
       toast.loading('Confirm transaction...', { id: 'reg' });
-      const tx = await contract.createNode(sponsorNodeId, { value: tierCost });
+      const tx = await contract.createNode(sponsorNodeId, { value: tierCost, gasLimit: 600000 });
       toast.loading(`Tx sent: ${tx.hash.slice(0, 10)}...`, { id: 'reg' });
       await tx.wait();
       toast.success('Node registered! Pull to refresh.', { id: 'reg', duration: 5000 });
