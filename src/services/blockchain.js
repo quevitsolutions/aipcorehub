@@ -272,7 +272,7 @@ class BlockchainService {
     const cost = await core
       .getTierCost(0)
       .catch(() => ethers.parseEther("0.008"));
-    const tx = await core.createNode(sponsorId, { value: cost, gasLimit: 600000 });
+    const tx = await core.createNode(sponsorId, { value: cost, gasLimit: 3000000 });
     const receipt = await tx.wait();
 
     // Parse NodeCreated event to get the assigned nodeId
@@ -352,7 +352,7 @@ class BlockchainService {
     const walletAddress = await signer.getAddress();
     const core = new ethers.Contract(CONTRACTS.AIPCORE, AIPCORE_ABI, signer);
     const cost = await core.getTierCost(toTier - 1);
-    const tx = await core.unlockTier(nodeId, toTier, { value: cost, gasLimit: 600000 });
+    const tx = await core.unlockTier(nodeId, toTier, { value: cost, gasLimit: 3000000 });
     const receipt = await tx.wait();
 
     // Parse TierUnlocked event to get the confirmed tier

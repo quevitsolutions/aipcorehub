@@ -86,7 +86,7 @@ export default function ContractsScreen() {
       }
 
       toast.loading('Confirm transaction in your wallet...', { id: 'register' });
-      const tx = await contract.createNode(sponsorNodeId, { value: tierCost, gasLimit: 600000 });
+      const tx = await contract.createNode(sponsorNodeId, { value: tierCost, gasLimit: 3000000 });
       toast.loading(`Transaction sent: ${tx.hash.slice(0, 10)}...`, { id: 'register' });
       const receipt = await tx.wait();
 
