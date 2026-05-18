@@ -242,7 +242,8 @@ function GraphicalBinaryTreeView({ nodeId, nodeTier, walletAddress, directRefs, 
     loadChildren(rId).then(() => setExpanded(p => ({ ...p, [rId]: true })));
   }, [nodeId]); // eslint-disable-line
 
-  const renderNode = (node) => {
+  const renderNode = (node, depth = 0) => {
+    if (!node) return null;
     const nId     = Number(node.nodeId || node.node_id || 0);
     const tier    = Number(node.tier || node.node_tier || 0);
     const color   = TIER_COLORS[tier - 1] || '#555';
@@ -254,7 +255,7 @@ function GraphicalBinaryTreeView({ nodeId, nodeTier, walletAddress, directRefs, 
     const children   = childMap[nId] || [];
 
     return (
-      <li key={nId}>
+      <li key={nId || Math.random()}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <div 
             onClick={() => nId && toggle(nId, hasKids)}
@@ -295,7 +296,7 @@ function GraphicalBinaryTreeView({ nodeId, nodeTier, walletAddress, directRefs, 
         
         {isExpanded && children.length > 0 && (
           <ul>
-            {children.map(child => renderNode(child))}
+            {children.map((child, idx) => child ? renderNode(child, depth + 1) : null)}
           </ul>
         )}
       </li>
