@@ -106,19 +106,7 @@ function MatrixTreeView({ nodeId, nodeTier, walletAddress, directRefs, teamSize,
             {isLoading ? '◌' : hasKids ? (isExpanded ? '−' : '+') : '·'}
           </div>
 
-          {/* Graphical Tree Tab */}
-          {activeTab === 'graphical' && (
-            <GraphicalBinaryTreeView 
-              nodeId={nodeId} nodeTier={nodeTier} walletAddress={walletAddress}
-              directRefs={directRefs} teamSize={teamSize}
-              fetchFn={async (parentNid) => {
-                const m = await fetchTeamLevelMembers(parentNid, 0); 
-                return m;
-              }}
-            />
-          )}
 
-          {/* Free Tier CTE Tab */}
           <div style={{
             flex: 1,
             background: node.isRoot
