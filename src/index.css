@@ -528,6 +528,9 @@ html, body, #root {
   text-align: center;
   min-height: 400px;
   cursor: grab;
+  width: 100%;
+  max-width: 100vw;
+  -webkit-overflow-scrolling: touch;
 }
 .org-tree-container:active {
   cursor: grabbing;

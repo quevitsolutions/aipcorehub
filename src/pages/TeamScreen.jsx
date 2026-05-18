@@ -210,6 +210,27 @@ function GraphicalBinaryTreeView({ nodeId, nodeTier, walletAddress, directRefs, 
   const [expanded, setExpanded]   = useState({});
   const [loadingSet, setLoading]  = useState({});
 
+  const containerRef = useRef(null);
+  const isDragging = useRef(false);
+  const startX = useRef(0);
+  const scrollLeft = useRef(0);
+
+  const onMouseDown = (e) => {
+    if (!containerRef.current) return;
+    isDragging.current = true;
+    startX.current = e.pageX - containerRef.current.offsetLeft;
+    scrollLeft.current = containerRef.current.scrollLeft;
+  };
+  const onMouseLeave = () => { isDragging.current = false; };
+  const onMouseUp = () => { isDragging.current = false; };
+  const onMouseMove = (e) => {
+    if (!isDragging.current || !containerRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - containerRef.current.offsetLeft;
+    const walk = (x - startX.current) * 2; // Scroll-fast multiplier
+    containerRef.current.scrollLeft = scrollLeft.current - walk;
+  };
+
   const loadChildren = async (nId) => {
     if (cacheRef.current[nId] !== undefined) return;
     if (fetchingRef.current.has(nId)) return;
@@ -321,7 +342,14 @@ function GraphicalBinaryTreeView({ nodeId, nodeTier, walletAddress, directRefs, 
         fontWeight: 700, letterSpacing: 1 }}>
         DRAG TO PAN · TAP NODE TO EXPAND CHILDREN
       </div>
-      <div className="org-tree-container no-scrollbar">
+      <div 
+        className="org-tree-container no-scrollbar"
+        ref={containerRef}
+        onMouseDown={onMouseDown}
+        onMouseLeave={onMouseLeave}
+        onMouseUp={onMouseUp}
+        onMouseMove={onMouseMove}
+      >
         <div className="org-tree">
           <ul>
             {renderNode(rootNode)}
