@@ -471,6 +471,7 @@ class BlockchainService {
     const basic = members.map((m) => ({
       wallet: m.wallet,
       nodeId: Number(m.nodeId),
+      sponsor: Number(m.sponsor),
       tier: Number(m.tier),
       joinedAt: Number(m.joinedAt),
     }));

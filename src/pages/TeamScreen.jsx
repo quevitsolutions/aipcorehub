@@ -61,11 +61,36 @@ function MatrixTreeView({ nodeId, nodeTier, walletAddress, directRefs, teamSize,
 
   const renderNode = (node, depth) => {
     const nId     = Number(node.nodeId || node.node_id || 0);
+    const sponsor = Number(node.sponsor || 0);
     const tier    = Number(node.tier || node.node_tier || 0);
     const color   = TIER_COLORS[tier - 1] || '#555';
     const wallet  = node.wallet || node.wallet_address || '';
     const directs = Number(node.directNodes || node.direct_count || 0);
     const sub     = Number(node.totalMatrixNodes || node.team_size || 0);
+
+    const rootId = Number(nodeId);
+    let boxColor = 'rgba(0,0,0,0.28)';
+    let borderColor = `${color}28`;
+    let typeTag = null;
+    
+    if (node.isRoot) {
+      boxColor = `linear-gradient(135deg, ${color}18 0%, rgba(0,0,0,0.45) 100%)`;
+      borderColor = `${color}55`;
+    } else if (sponsor > 0) {
+      if (sponsor === rootId) {
+        boxColor = 'rgba(163,255,18,0.06)';
+        borderColor = 'rgba(163,255,18,0.3)';
+        typeTag = <span style={{fontSize:6, color:'#A3FF12', border:'1px solid #A3FF1255', padding:'1px 4px', borderRadius:4}}>DIRECT</span>;
+      } else if (sponsor < rootId) {
+        boxColor = 'rgba(255,152,0,0.06)';
+        borderColor = 'rgba(255,152,0,0.3)';
+        typeTag = <span style={{fontSize:6, color:'#FF9800', border:'1px solid #FF980055', padding:'1px 4px', borderRadius:4}}>SPILLOVER</span>;
+      } else {
+        boxColor = 'rgba(79,195,247,0.06)';
+        borderColor = 'rgba(79,195,247,0.3)';
+        typeTag = <span style={{fontSize:6, color:'#4FC3F7', border:'1px solid #4FC3F755', padding:'1px 4px', borderRadius:4}}>TEAM</span>;
+      }
+    }
     const joined  = node.joinedAt || node.joined_at;
     let dateStr = '';
     if (joined) {
@@ -109,10 +134,8 @@ function MatrixTreeView({ nodeId, nodeTier, walletAddress, directRefs, teamSize,
 
           <div style={{
             flex: 1,
-            background: node.isRoot
-              ? `linear-gradient(135deg, ${color}18 0%, rgba(0,0,0,0.45) 100%)`
-              : 'rgba(0,0,0,0.28)',
-            border: `1px solid ${color}${node.isRoot ? '55' : '28'}`,
+            background: boxColor,
+            border: `1px solid ${borderColor}`,
             borderRadius: 10, padding: '8px 10px',
             boxShadow: node.isRoot ? `0 0 12px ${color}15` : 'none',
           }}>
@@ -128,6 +151,7 @@ function MatrixTreeView({ nodeId, nodeTier, walletAddress, directRefs, teamSize,
                   <span style={{ fontSize: 7, background: 'rgba(163,255,18,0.12)', color: '#A3FF12',
                     padding: '1px 5px', borderRadius: 4, fontWeight: 900 }}>YOU</span>
                 )}
+                {typeTag}
               </div>
               <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0 }}>
                 {nId > 0 && <span style={{ fontSize: 8, color: color, fontWeight: 900 }}>#{nId}</span>}
@@ -254,6 +278,7 @@ function GraphicalBinaryTreeView({ nodeId, nodeTier, walletAddress, directRefs, 
   const renderNode = (node, depth = 0) => {
     if (!node) return null;
     const nId     = Number(node.nodeId || node.node_id || 0);
+    const sponsor = Number(node.sponsor || 0);
     const tier    = Number(node.tier || node.node_tier || 0);
     const color   = TIER_COLORS[tier - 1] || '#555';
     const wallet  = node.wallet || node.wallet_address || '';
@@ -263,20 +288,45 @@ function GraphicalBinaryTreeView({ nodeId, nodeTier, walletAddress, directRefs, 
     const isLoading  = !!loadingSet[nId];
     const children   = childMap[nId] || [];
 
+    const rootId = Number(nodeId);
+    let boxColor = 'rgba(0,0,0,0.6)';
+    let borderColor = `${color}33`;
+    let typeTag = null;
+
+    if (node.isRoot) {
+      boxColor = `linear-gradient(135deg, ${color}18, rgba(0,0,0,0.6))`;
+      borderColor = `${color}66`;
+    } else if (sponsor > 0) {
+      if (sponsor === rootId) {
+        boxColor = 'rgba(163,255,18,0.06)';
+        borderColor = 'rgba(163,255,18,0.3)';
+        typeTag = <div style={{fontSize:5, color:'#A3FF12', fontWeight:900, marginBottom:2}}>DIRECT</div>;
+      } else if (sponsor < rootId) {
+        boxColor = 'rgba(255,152,0,0.06)';
+        borderColor = 'rgba(255,152,0,0.3)';
+        typeTag = <div style={{fontSize:5, color:'#FF9800', fontWeight:900, marginBottom:2}}>SPILLOVER</div>;
+      } else {
+        boxColor = 'rgba(79,195,247,0.06)';
+        borderColor = 'rgba(79,195,247,0.3)';
+        typeTag = <div style={{fontSize:5, color:'#4FC3F7', fontWeight:900, marginBottom:2}}>TEAM</div>;
+      }
+    }
+
     return (
       <li key={nId || Math.random()}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <div 
             onClick={() => nId && toggle(nId, hasKids)}
             style={{
-              background: node.isRoot ? `linear-gradient(135deg, ${color}18, rgba(0,0,0,0.6))` : 'rgba(0,0,0,0.6)',
-              border: `1px solid ${color}${node.isRoot ? '66' : '33'}`,
+              background: boxColor,
+              border: `1px solid ${borderColor}`,
               borderRadius: '12px', padding: '10px 14px',
               minWidth: '120px', cursor: hasKids ? 'pointer' : 'default',
               boxShadow: node.isRoot ? `0 0 15px ${color}20` : 'none',
               transition: 'all 0.2s', position: 'relative'
             }}
           >
+            {typeTag}
             <div style={{ fontSize: '11px', color: '#fff', fontWeight: 800, marginBottom: '4px' }}>
               #{nId}
             </div>
