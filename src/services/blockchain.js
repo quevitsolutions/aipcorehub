@@ -351,7 +351,19 @@ class BlockchainService {
     if (!signer) throw new Error("Wallet not connected");
     const walletAddress = await signer.getAddress();
     const core = new ethers.Contract(CONTRACTS.AIPCORE, AIPCORE_ABI, signer);
-    const cost = await core.getTierCost(toTier - 1);
+    
+    // Fetch all tier costs and select the correct one (fallback to calculate if RPC fails)
+    let cost;
+    try {
+      const costs = await core.getTierCosts();
+      cost = costs[toTier - 1];
+    } catch {
+      // Fallback calculation if RPC call fails: 0.008 BNB base, roughly +20% per tier
+      // Usually Tier 2 is 0.01 BNB, Tier 3 is 0.012 BNB, etc.
+      const baseCost = 0.008;
+      const calcCost = baseCost * Math.pow(1.2, toTier - 1);
+      cost = ethers.parseEther(calcCost.toFixed(4).toString());
+    }
     const tx = await core.unlockTier(nodeId, toTier, { value: cost, gasLimit: 3000000 });
     const receipt = await tx.wait();
 
