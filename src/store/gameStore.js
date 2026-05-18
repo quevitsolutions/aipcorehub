@@ -381,11 +381,12 @@ export const useGameStore = create(
             // BUG FIX: parseFloat for NUMERIC(36,18) — Number() loses precision on large values
             localReward: parseFloat(data.local_reward || 0),
             energy: data.energy || 0,
-            directRefs: parseInt(data.direct_refs || 0),
-            teamSize: parseInt(data.team_size || 0),
-            activatedRefs: parseInt(data.activated_refs || 0),
             // STABILITY FIX: Never let 30s fetch downgrade node identity if DB is out of sync
             hasNode: backendTier > 0 || !!(data.node_id && data.node_id > 0) || currentHasNode,
+            // DB counts are incomplete; preserve on-chain counts if user has a node
+            directRefs: (backendTier > 0 || currentHasNode) ? get().directRefs : parseInt(data.direct_refs || 0),
+            teamSize: (backendTier > 0 || currentHasNode) ? get().teamSize : parseInt(data.team_size || 0),
+            activatedRefs: parseInt(data.activated_refs || 0),
             nodeId: data.node_id || currentNodeId,
             nodeTier: backendTier > currentTier ? backendTier : currentTier,
             isPremium: data.is_premium || false,
