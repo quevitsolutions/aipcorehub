@@ -364,7 +364,13 @@ class BlockchainService {
       const calcCost = baseCost * Math.pow(1.2, toTier - 1);
       cost = ethers.parseEther(calcCost.toFixed(4).toString());
     }
-    const tx = await core.unlockTier(nodeId, toTier, { value: cost, gasLimit: 3000000 });
+
+    // Add a 5% buffer to prevent 'Low BNB' reverts if the oracle price updates 
+    // exactly during our transaction, or if the fallback math is slightly off.
+    // The smart contract automatically refunds any excess BNB sent.
+    const bufferCost = (cost * 105n) / 100n;
+
+    const tx = await core.unlockTier(nodeId, toTier, { value: bufferCost, gasLimit: 3000000 });
     const receipt = await tx.wait();
 
     // Parse TierUnlocked event to get the confirmed tier
