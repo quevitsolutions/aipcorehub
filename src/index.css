@@ -535,11 +535,16 @@ html, body, #root {
 .org-tree-container:active {
   cursor: grabbing;
 }
+.org-tree {
+  width: max-content;
+  margin: 0 auto;
+}
 .org-tree * { margin: 0; padding: 0; }
 .org-tree ul {
   padding-top: 20px; position: relative;
   transition: all 0.5s;
-  display: flex; justify-content: center;
+  display: flex; 
+  justify-content: center;
 }
 .org-tree li {
   float: left; text-align: center;
