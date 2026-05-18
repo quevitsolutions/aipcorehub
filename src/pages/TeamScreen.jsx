@@ -106,7 +106,19 @@ function MatrixTreeView({ nodeId, nodeTier, walletAddress, directRefs, teamSize,
             {isLoading ? '◌' : hasKids ? (isExpanded ? '−' : '+') : '·'}
           </div>
 
-          {/* Node card */}
+          {/* Graphical Tree Tab */}
+          {activeTab === 'graphical' && (
+            <GraphicalBinaryTreeView 
+              nodeId={nodeId} nodeTier={nodeTier} walletAddress={walletAddress}
+              directRefs={directRefs} teamSize={teamSize}
+              fetchFn={async (parentNid) => {
+                const m = await fetchTeamLevelMembers(parentNid, 0); 
+                return m;
+              }}
+            />
+          )}
+
+          {/* Free Tier CTE Tab */}
           <div style={{
             flex: 1,
             background: node.isRoot
@@ -190,7 +202,135 @@ function MatrixTreeView({ nodeId, nodeTier, walletAddress, directRefs, teamSize,
   );
 }
 // ─────────────────────────────────────────────────────────────────────────────
+// ── Graphical Binary Tree View ───────────────────────────────────────────────
+function GraphicalBinaryTreeView({ nodeId, nodeTier, walletAddress, directRefs, teamSize, fetchFn }) {
+  const cacheRef   = useRef({});
+  const fetchingRef = useRef(new Set());
+  const [childMap, setChildMap]   = useState({});
+  const [expanded, setExpanded]   = useState({});
+  const [loadingSet, setLoading]  = useState({});
 
+  const loadChildren = async (nId) => {
+    if (cacheRef.current[nId] !== undefined) return;
+    if (fetchingRef.current.has(nId)) return;
+    fetchingRef.current.add(nId);
+    setLoading(p => ({ ...p, [nId]: true }));
+    try {
+      // It's a 2x18 matrix, so fetchFn should return up to 2 children
+      const kids = await fetchFn(nId, 0);
+      cacheRef.current[nId] = kids || [];
+    } catch {
+      cacheRef.current[nId] = [];
+    }
+    fetchingRef.current.delete(nId);
+    setChildMap({ ...cacheRef.current });
+    setLoading(p => { const n = { ...p }; delete n[nId]; return n; });
+  };
+
+  const toggle = async (nId, hasKids) => {
+    if (expanded[nId]) {
+      setExpanded(p => ({ ...p, [nId]: false }));
+    } else {
+      if (hasKids) await loadChildren(nId);
+      setExpanded(p => ({ ...p, [nId]: true }));
+    }
+  };
+
+  useEffect(() => {
+    const rId = Number(nodeId);
+    if (!rId) return;
+    loadChildren(rId).then(() => setExpanded(p => ({ ...p, [rId]: true })));
+  }, [nodeId]); // eslint-disable-line
+
+  const renderNode = (node) => {
+    const nId     = Number(node.nodeId || node.node_id || 0);
+    const tier    = Number(node.tier || node.node_tier || 0);
+    const color   = TIER_COLORS[tier - 1] || '#555';
+    const wallet  = node.wallet || node.wallet_address || '';
+    const sub     = Number(node.totalMatrixNodes || node.team_size || 0);
+    const hasKids = sub > 0;
+    const isExpanded = expanded[nId];
+    const isLoading  = !!loadingSet[nId];
+    const children   = childMap[nId] || [];
+
+    return (
+      <li key={nId}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <div 
+            onClick={() => nId && toggle(nId, hasKids)}
+            style={{
+              background: node.isRoot ? `linear-gradient(135deg, ${color}18, rgba(0,0,0,0.6))` : 'rgba(0,0,0,0.6)',
+              border: `1px solid ${color}${node.isRoot ? '66' : '33'}`,
+              borderRadius: '12px', padding: '10px 14px',
+              minWidth: '120px', cursor: hasKids ? 'pointer' : 'default',
+              boxShadow: node.isRoot ? `0 0 15px ${color}20` : 'none',
+              transition: 'all 0.2s', position: 'relative'
+            }}
+          >
+            <div style={{ fontSize: '11px', color: '#fff', fontWeight: 800, marginBottom: '4px' }}>
+              #{nId}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', alignItems: 'center', marginBottom: '6px' }}>
+              <div style={{ width: 6, height: 6, borderRadius: '50%', background: color, boxShadow: `0 0 5px ${color}` }} />
+              <span style={{ fontSize: '10px', color: '#ccc', fontFamily: 'monospace' }}>
+                {wallet ? `${wallet.slice(0,4)}…${wallet.slice(-4)}` : '—'}
+              </span>
+            </div>
+            <TierBadge tier={tier} />
+            <div style={{ fontSize: '9px', color: '#4FC3F7', fontWeight: 900, marginTop: '6px' }}>
+              TEAM: {sub}
+            </div>
+            {hasKids && (
+              <div style={{
+                position: 'absolute', bottom: '-10px', left: '50%', transform: 'translateX(-50%)',
+                background: '#0D1117', border: `1px solid ${color}55`, borderRadius: '50%',
+                width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 14, color: color, fontWeight: 900, zIndex: 2
+              }}>
+                {isLoading ? '◌' : isExpanded ? '−' : '+'}
+              </div>
+            )}
+          </div>
+        </div>
+        
+        {isExpanded && children.length > 0 && (
+          <ul>
+            {children.map(child => renderNode(child))}
+          </ul>
+        )}
+      </li>
+    );
+  };
+
+  const rootNode = {
+    nodeId, isRoot: true,
+    tier: nodeTier, node_tier: nodeTier,
+    wallet: walletAddress, wallet_address: walletAddress,
+    directNodes: directRefs || 0, direct_count: directRefs || 0,
+    totalMatrixNodes: teamSize || 0, team_size: teamSize || 0,
+  };
+
+  return (
+    <div style={{ padding: '0 0 24px 0' }}>
+      <div style={{ fontSize: '10px', fontWeight: 900, color: '#A3FF12',
+        marginBottom: 6, letterSpacing: '1.5px', textAlign: 'center' }}>
+        🌲 GRAPHICAL BINARY TREE
+      </div>
+      <div style={{ fontSize: '8px', color: '#444', textAlign: 'center', marginBottom: 16,
+        fontWeight: 700, letterSpacing: 1 }}>
+        DRAG TO PAN · TAP NODE TO EXPAND CHILDREN
+      </div>
+      <div className="org-tree-container no-scrollbar">
+        <div className="org-tree">
+          <ul>
+            {renderNode(rootNode)}
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 function NodeBadge({ nodeId }) {
   if (!nodeId || Number(nodeId) <= 0) return null;
@@ -563,6 +703,11 @@ export default function TeamScreen() {
           onClick={() => setActiveTab('tree')}
           style={{ flexShrink: 0, padding: '10px 16px', borderRadius: '8px', background: activeTab === 'tree' ? 'rgba(163,255,18,0.15)' : 'rgba(255,255,255,0.05)', color: activeTab === 'tree' ? '#A3FF12' : '#888', border: `1px solid ${activeTab === 'tree' ? 'rgba(163,255,18,0.3)' : 'transparent'}`, fontSize: '10px', fontWeight: 800 }}>
           🌐 TREE
+        </button>
+        <button
+          onClick={() => setActiveTab('graphical')}
+          style={{ flexShrink: 0, padding: '10px 16px', borderRadius: '8px', background: activeTab === 'graphical' ? 'rgba(163,255,18,0.15)' : 'rgba(255,255,255,0.05)', color: activeTab === 'graphical' ? '#A3FF12' : '#888', border: `1px solid ${activeTab === 'graphical' ? 'rgba(163,255,18,0.3)' : 'transparent'}`, fontSize: '10px', fontWeight: 800 }}>
+          🌲 GRAPHICAL
         </button>
         <button 
           onClick={() => setActiveTab('direct')}
