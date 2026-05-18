@@ -875,6 +875,19 @@ export default function TeamScreen() {
         />
       )}
 
+      {activeTab === 'graphical' && (
+        <GraphicalBinaryTreeView 
+          nodeId={nodeId} 
+          nodeTier={nodeTier} 
+          walletAddress={walletAddress}
+          directRefs={directRefs} 
+          teamSize={teamSize}
+          fetchFn={async (parentNid) => {
+            return await fetchTeamLevelMembers(parentNid, 0); 
+          }}
+        />
+      )}
+
 
       {activeTab === 'direct' && (
         <div style={{ padding: '0 16px' }}>
