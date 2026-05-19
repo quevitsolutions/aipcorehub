@@ -193,8 +193,12 @@ function RegistrationGate({ setActiveTab }) {
         return;
       }
       const tierCost = await contract.getTierCost(0);
+      
+      // Add 5% buffer to prevent insufficient msg.value reverts due to oracle price fluctuations
+      const bufferCost = (tierCost * 105n) / 100n;
+      
       toast.loading('Confirm transaction...', { id: 'reg' });
-      const tx = await contract.createNode(sponsorNodeId, { value: tierCost, gasLimit: 3000000 });
+      const tx = await contract.createNode(sponsorNodeId, { value: bufferCost, gasLimit: 3000000 });
       toast.loading(`Tx sent: ${tx.hash.slice(0, 10)}...`, { id: 'reg' });
       await tx.wait();
       toast.success('Node registered! Pull to refresh.', { id: 'reg', duration: 5000 });

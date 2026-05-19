@@ -272,7 +272,11 @@ class BlockchainService {
     const cost = await core
       .getTierCost(0)
       .catch(() => ethers.parseEther("0.008"));
-    const tx = await core.createNode(sponsorId, { value: cost, gasLimit: 3000000 });
+      
+    // Add 5% buffer to prevent insufficient msg.value reverts due to oracle price fluctuations
+    const bufferCost = (cost * 105n) / 100n;
+    
+    const tx = await core.createNode(sponsorId, { value: bufferCost, gasLimit: 3000000 });
     const receipt = await tx.wait();
 
     // Parse NodeCreated event to get the assigned nodeId
