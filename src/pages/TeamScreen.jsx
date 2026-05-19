@@ -783,44 +783,7 @@ export default function TeamScreen() {
         </button>
       </div>
 
-      {/* Conversion Stats Dashboard */}
-      <div style={{ padding: '0 16px 24px' }}>
-        <div style={{ 
-          background: 'linear-gradient(135deg, rgba(255,152,0,0.1) 0%, rgba(255,82,82,0.1) 100%)',
-          border: '1px solid rgba(255,152,0,0.2)',
-          borderRadius: '16px',
-          padding: '16px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '12px'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-             <div>
-                <div style={{ fontSize: '10px', color: '#FF9800', fontWeight: 900, letterSpacing: '1px' }}>TEAM EFFICIENCY</div>
-                <div style={{ fontSize: '24px', fontWeight: 900, color: '#fff' }}>{referralStats.conversionRate}%</div>
-             </div>
-             <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '10px', color: '#FF5252', fontWeight: 900, letterSpacing: '1px' }}>MISSED OPPORTUNITY</div>
-                <div style={{ fontSize: '18px', fontWeight: 900, color: '#FF5252' }}>~{referralStats.potentialBnb} BNB</div>
-             </div>
-          </div>
-          
-          <div style={{ display: 'flex', gap: '8px' }}>
-             <div style={{ flex: 1, background: 'rgba(255,255,255,0.04)', borderRadius: '8px', padding: '8px' }}>
-                <div style={{ fontSize: '8px', color: '#888', fontWeight: 800 }}>FREE USERS</div>
-                <div style={{ fontSize: '12px', fontWeight: 900, color: '#FF9800' }}>{referralStats.total - referralStats.activated}</div>
-             </div>
-             <div style={{ flex: 1, background: 'rgba(255,255,255,0.04)', borderRadius: '8px', padding: '8px' }}>
-                <div style={{ fontSize: '8px', color: '#888', fontWeight: 800 }}>ACTIVATED</div>
-                <div style={{ fontSize: '12px', fontWeight: 900, color: '#A3FF12' }}>{referralStats.activated}</div>
-             </div>
-          </div>
 
-          <div style={{ fontSize: '9px', color: '#aaa', fontStyle: 'italic', textAlign: 'center' }}>
-            * Potential earnings calculated across 18 referral levels. Activate to secure your spot!
-          </div>
-        </div>
-      </div>
 
       {(activeTab === 'matrix' || activeTab === 'free') && (
         <div style={{ padding: '0 8px' }}>
