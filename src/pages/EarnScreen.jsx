@@ -345,6 +345,7 @@ export default function EarnScreen() {
   const [historyMode, setHistoryMode] = useState('personal'); // 'personal' | 'global'
   const [selectedDate, setSelectedDate] = useState(() => {
     const d = new Date();
+    d.setDate(d.getDate() - 2);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   });
   const [isExploding, setIsExploding] = useState(false);
