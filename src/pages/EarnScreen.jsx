@@ -915,17 +915,24 @@ export default function EarnScreen() {
                 {(() => {
                   const sourceHistory = historyMode === 'personal' ? teamHistory : globalHistory;
                   
-                  // Filter by selected date
+                  // Filter by selected date and 2 days prior
+                  const [sYear, sMonth, sDay] = selectedDate.split('-').map(Number);
+                  const targetDate = new Date(sYear, sMonth - 1, sDay);
+                  const targetDate1 = new Date(sYear, sMonth - 1, sDay - 1);
+                  const targetDate2 = new Date(sYear, sMonth - 1, sDay - 2);
+                  
+                  const toStr = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                  const allowedDates = [toStr(targetDate), toStr(targetDate1), toStr(targetDate2)];
+
                   const filteredHistory = sourceHistory.filter(item => {
                     const d = new Date(item.timestamp);
-                    const itemDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                    return itemDateStr === selectedDate;
+                    return allowedDates.includes(toStr(d));
                   });
 
                   if (filteredHistory.length === 0) {
                      return (
                        <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.3)', padding: '40px 0', fontSize: 12, fontWeight: 700 }}>
-                         No income events on {new Date(selectedDate).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}.
+                         No income events between {targetDate2.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} and {targetDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}.
                        </div>
                      );
                   }
