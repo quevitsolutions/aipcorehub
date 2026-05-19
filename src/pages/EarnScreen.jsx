@@ -343,6 +343,10 @@ export default function EarnScreen() {
 
   const [view, setView] = useState('mining'); // 'mining' | 'history'
   const [historyMode, setHistoryMode] = useState('personal'); // 'personal' | 'global'
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  });
   const [isExploding, setIsExploding] = useState(false);
   const [isClaiming, setIsClaiming] = useState(false); // Prevents double-click
   const [isBonusClaiming, setIsBonusClaiming] = useState(false);
@@ -872,7 +876,25 @@ export default function EarnScreen() {
               >LIVE FEED 🌍</div>
             </div>
 
-            <span style={{ fontSize: 10, color: '#A3FF12', cursor: 'pointer', paddingRight: 8 }} onClick={() => historyMode === 'personal' ? fetchTeamHistory() : fetchGlobalHistory()}>🔄</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <input 
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                style={{
+                  background: 'rgba(255,255,255,0.1)',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  color: '#A3FF12',
+                  borderRadius: 12,
+                  padding: '6px 12px',
+                  fontSize: 11,
+                  fontWeight: 900,
+                  outline: 'none',
+                  colorScheme: 'dark'
+                }}
+              />
+              <span style={{ fontSize: 14, color: '#A3FF12', cursor: 'pointer', paddingRight: 8 }} onClick={() => historyMode === 'personal' ? fetchTeamHistory() : fetchGlobalHistory()}>🔄</span>
+            </div>
           </div>
 
           <AnimatePresence mode="wait">
@@ -890,7 +912,24 @@ export default function EarnScreen() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                 {(() => {
-                  const grouped = (historyMode === 'personal' ? teamHistory : globalHistory).reduce((acc, item) => {
+                  const sourceHistory = historyMode === 'personal' ? teamHistory : globalHistory;
+                  
+                  // Filter by selected date
+                  const filteredHistory = sourceHistory.filter(item => {
+                    const d = new Date(item.timestamp);
+                    const itemDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                    return itemDateStr === selectedDate;
+                  });
+
+                  if (filteredHistory.length === 0) {
+                     return (
+                       <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.3)', padding: '40px 0', fontSize: 12, fontWeight: 700 }}>
+                         No income events on {new Date(selectedDate).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}.
+                       </div>
+                     );
+                  }
+
+                  const grouped = filteredHistory.reduce((acc, item) => {
                     const dateStr = new Date(item.timestamp).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
                     if (!acc[dateStr]) acc[dateStr] = { items: [], totalBnb: 0, totalUsd: 0 };
                     acc[dateStr].items.push(item);
