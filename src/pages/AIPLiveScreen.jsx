@@ -53,7 +53,7 @@ const CHAT_MSGS = [
   { user: '0x1d2...', msg: 'Just earned my Attendance NFT 🏅', time: '5s' },
 ];
 
-export default function AIPLiveScreen({ onBack }) {
+export default function AIPLiveScreen({ onBack, onEnterHall }) {
   const { hasNode, nodeTier } = useGameStore();
   const [activeSession, setActiveSession] = useState(1);
   const [tab, setTab] = useState('live');
@@ -75,6 +75,11 @@ export default function AIPLiveScreen({ onBack }) {
     if (!hasNode) return toast.error('🔒 Activate your node to join live sessions', { duration: 4000 });
     setJoined(true);
     toast.success('🎙️ Joined live session! You\'ll earn 500 $AIP on completion.', { duration: 5000 });
+  };
+
+  const handleEnterHall = () => {
+    if (!hasNode) return toast.error('🔒 Activate your node to enter the Virtual Hall', { duration: 4000 });
+    if (onEnterHall) onEnterHall(session);
   };
 
   const handleVote = (optId) => {
@@ -179,12 +184,24 @@ export default function AIPLiveScreen({ onBack }) {
               <div style={{ fontSize: 48, marginBottom: 10 }}>🤖</div>
               <div style={{ fontSize: 14, fontWeight: 900, color: '#fff', marginBottom: 6 }}>{session.title}</div>
               {!joined ? (
-                <button onClick={handleJoin} style={{ background: '#FF4444', border: 'none', color: '#fff', padding: '10px 24px', borderRadius: 12, fontSize: 13, fontWeight: 900, cursor: 'pointer', marginTop: 6 }}>
-                  ▶ Join Live Session
-                </button>
+                <div style={{ display:'flex', flexDirection:'column', gap:10, alignItems:'center' }}>
+                  <button onClick={handleJoin} style={{ background: '#FF4444', border: 'none', color: '#fff', padding: '10px 24px', borderRadius: 12, fontSize: 13, fontWeight: 900, cursor: 'pointer' }}>
+                    ▶ Join Live Session
+                  </button>
+                  <button onClick={handleEnterHall}
+                    style={{ background:'linear-gradient(135deg,#A3FF12,#4FC3F7)', border:'none', color:'#000', padding:'11px 28px', borderRadius:12, fontSize:13, fontWeight:900, cursor:'pointer', boxShadow:'0 4px 20px rgba(163,255,18,0.4)' }}>
+                    🌐 Enter Virtual Hall
+                  </button>
+                </div>
               ) : (
-                <div style={{ background: 'rgba(163,255,18,0.1)', border: '1px solid rgba(163,255,18,0.3)', borderRadius: 10, padding: '8px 16px', fontSize: 12, fontWeight: 800, color: '#A3FF12' }}>
-                  ✅ You are live! Earn {session.reward} $AIP on completion
+                <div style={{ display:'flex', flexDirection:'column', gap:10, alignItems:'center' }}>
+                  <div style={{ background: 'rgba(163,255,18,0.1)', border: '1px solid rgba(163,255,18,0.3)', borderRadius: 10, padding: '8px 16px', fontSize: 12, fontWeight: 800, color: '#A3FF12' }}>
+                    ✅ You are live! Earn {session.reward} $AIP on completion
+                  </div>
+                  <button onClick={handleEnterHall}
+                    style={{ background:'linear-gradient(135deg,#A3FF12,#4FC3F7)', border:'none', color:'#000', padding:'11px 28px', borderRadius:12, fontSize:13, fontWeight:900, cursor:'pointer', boxShadow:'0 4px 20px rgba(163,255,18,0.35)' }}>
+                    🌐 Enter Virtual Hall →
+                  </button>
                 </div>
               )}
             </div>

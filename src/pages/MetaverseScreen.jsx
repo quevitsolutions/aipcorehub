@@ -174,13 +174,18 @@ export default function MetaverseScreen({ onNavigate }) {
             AI-powered decentralized webinar ecosystem. Learn, earn BNB & govern with DAO.
           </p>
           {hasNode ? (
-            <div style={{ marginTop: 12, display: 'flex', gap: 8, alignItems: 'center' }}>
+            <div style={{ marginTop: 12, display: 'flex', gap: 8, alignItems: 'center', flexWrap:'wrap' }}>
               <div style={{ background: 'rgba(163,255,18,0.1)', border: '1px solid rgba(163,255,18,0.3)', borderRadius: 8, padding: '5px 12px', fontSize: 11, fontWeight: 800, color: '#A3FF12' }}>
                 ⬡ NODE #{nodeId} · T{nodeTier}
               </div>
               <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 8, padding: '5px 12px', fontSize: 11, fontWeight: 700, color: '#fff' }}>
                 🌐 Full Access
               </div>
+              <button
+                onClick={() => onNavigate && onNavigate('hall', { title: 'AI + Passive BNB Income Masterclass' })}
+                style={{ background:'linear-gradient(135deg,#A3FF12,#4FC3F7)', border:'none', color:'#000', padding:'6px 16px', borderRadius:8, fontSize:11, fontWeight:900, cursor:'pointer', boxShadow:'0 4px 16px rgba(163,255,18,0.4)' }}>
+                🌀 Enter Virtual Hall
+              </button>
             </div>
           ) : (
             <div style={{ marginTop: 12, background: 'rgba(255,82,82,0.1)', border: '1px solid rgba(255,82,82,0.3)', borderRadius: 8, padding: '8px 12px', fontSize: 11, fontWeight: 700, color: '#FF8A80', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
