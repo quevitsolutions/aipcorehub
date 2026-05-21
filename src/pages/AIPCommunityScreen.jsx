@@ -3,13 +3,23 @@ import { motion } from 'framer-motion';
 import { useGameStore } from '../store/gameStore.js';
 import toast from 'react-hot-toast';
 
+// Meeting link config — update these URLs as needed
+const ROOM_LINKS = {
+  auditorium:  { type: 'jitsi',    url: 'https://meet.jit.si/AIPCoreAuditorium',      label: 'Join Live Auditorium' },
+  networking:  { type: 'jitsi',    url: 'https://meet.jit.si/AIPCoreNetworking',      label: 'Join Networking Lounge' },
+  'vip-hall':  { type: 'telegram', url: 'https://t.me/+aipcore_vip',                  label: 'Join VIP Telegram Room' },
+  'dao-room':  { type: 'telegram', url: 'https://t.me/+aipcore_dao',                  label: 'Join DAO Meeting' },
+  'nft-gallery': { type: 'jitsi', url: 'https://meet.jit.si/AIPCoreNFTGallery',       label: 'Enter NFT Gallery' },
+  'sponsor-expo': { type: 'jitsi', url: 'https://meet.jit.si/AIPCoreSponsorExpo',     label: 'Visit Sponsor Expo' },
+};
+
 const ROOMS = [
-  { id: 'auditorium', name: 'Main Auditorium', icon: '🎭', capacity: 500, online: 342, desc: 'Live AI presentations & webinars', locked: false, color: '#FF4444' },
-  { id: 'networking', name: 'Networking Lounge', icon: '🤝', capacity: 200, online: 87, desc: 'Meet community members', locked: false, color: '#4FC3F7' },
-  { id: 'vip-hall', name: 'VIP Hall', icon: '👑', capacity: 50, online: 12, desc: 'Exclusive Tier 3+ members only', locked: true, color: '#FFD700' },
-  { id: 'dao-room', name: 'DAO Meeting Room', icon: '🏛️', capacity: 100, online: 28, desc: 'Governance discussions & proposals', locked: false, color: '#A3FF12' },
-  { id: 'nft-gallery', name: 'NFT Gallery', icon: '🖼️', capacity: 150, online: 44, desc: 'Browse & showcase NFT collections', locked: false, color: '#CE93D8' },
-  { id: 'sponsor-expo', name: 'Sponsor Expo', icon: '🏢', capacity: 300, online: 61, desc: 'Partner booths & product demos', locked: false, color: '#80CBC4' },
+  { id: 'auditorium',   name: 'Main Auditorium',    icon: '🎭', capacity: 500, online: 342, desc: 'Live AI presentations & webinars',      locked: false, color: '#FF4444' },
+  { id: 'networking',   name: 'Networking Lounge',  icon: '🤝', capacity: 200, online: 87,  desc: 'Meet community members',               locked: false, color: '#4FC3F7' },
+  { id: 'vip-hall',     name: 'VIP Hall',           icon: '👑', capacity: 50,  online: 12,  desc: 'Exclusive Tier 3+ members only',       locked: true,  color: '#FFD700' },
+  { id: 'dao-room',     name: 'DAO Meeting Room',   icon: '🏛️', capacity: 100, online: 28,  desc: 'Governance discussions & proposals',   locked: false, color: '#A3FF12' },
+  { id: 'nft-gallery',  name: 'NFT Gallery',        icon: '🖼️', capacity: 150, online: 44,  desc: 'Browse & showcase NFT collections',    locked: false, color: '#CE93D8' },
+  { id: 'sponsor-expo', name: 'Sponsor Expo',       icon: '🏢', capacity: 300, online: 61,  desc: 'Partner booths & product demos',       locked: false, color: '#80CBC4' },
 ];
 
 const MEMBERS = [
@@ -45,6 +55,7 @@ export default function AIPCommunityScreen({ onBack }) {
   const { hasNode, nodeId, nodeTier, walletAddress } = useGameStore();
   const [tab, setTab] = useState('rooms');
   const [activeRoom, setActiveRoom] = useState(null);
+  const [joinModal, setJoinModal] = useState(null); // room object shown in modal
   const [chatRoom, setChatRoom] = useState('general');
   const [chatMsg, setChatMsg] = useState('');
   const [messages, setMessages] = useState(GLOBAL_CHAT);
@@ -54,13 +65,27 @@ export default function AIPCommunityScreen({ onBack }) {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleEnterRoom = (room) => {
+  const handleRoomClick = (room) => {
     if (room.locked && (!hasNode || nodeTier < 3)) {
       return toast.error(`👑 ${room.name} requires Tier 3+ Node`, { duration: 3500 });
     }
     if (!hasNode) return toast.error('🔒 Activate your node to enter the MetaVerse rooms', { duration: 4000 });
+    setJoinModal(room);
+  };
+
+  const handleJoinMeeting = (room) => {
+    const link = ROOM_LINKS[room.id];
+    if (link?.url) {
+      window.open(link.url, '_blank', 'noopener,noreferrer');
+    }
     setActiveRoom(room.id);
-    toast.success(`🌐 Entered ${room.name}! Spatial audio enabled.`, { duration: 3000 });
+    setJoinModal(null);
+    toast.success(`🌐 Joined ${room.name}!`, { duration: 3000 });
+  };
+
+  const handleLeaveRoom = () => {
+    setActiveRoom(null);
+    toast('👋 Left the room.', { duration: 2000 });
   };
 
   const handleSend = (e) => {
@@ -111,30 +136,103 @@ export default function AIPCommunityScreen({ onBack }) {
         ))}
       </div>
 
+      {/* JOIN MEETING MODAL */}
+      {joinModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+          onClick={() => setJoinModal(null)}>
+          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+            onClick={e => e.stopPropagation()}
+            style={{ background: '#161B22', border: `1px solid ${joinModal.color}60`, borderRadius: 24, padding: 28, width: '100%', maxWidth: 380, textAlign: 'center' }}>
+            {/* Room icon */}
+            <div style={{ width: 72, height: 72, borderRadius: 20, background: `${joinModal.color}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, margin: '0 auto 16px', boxShadow: `0 0 30px ${joinModal.color}40` }}>
+              {joinModal.icon}
+            </div>
+            <div style={{ fontSize: 20, fontWeight: 900, color: '#fff', marginBottom: 6 }}>{joinModal.name}</div>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 6 }}>{joinModal.desc}</div>
+            <div style={{ fontSize: 11, color: joinModal.color, fontWeight: 700, marginBottom: 20 }}>
+              {joinModal.online} members online · {ROOM_LINKS[joinModal.id]?.type === 'telegram' ? '📩 Telegram Group' : '🎥 Jitsi Meet'}
+            </div>
+            {/* How it works */}
+            <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: '12px 16px', marginBottom: 20, textAlign: 'left' }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.5)', marginBottom: 8 }}>HOW TO ENTER</div>
+              {ROOM_LINKS[joinModal.id]?.type === 'telegram' ? (
+                <>
+                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', marginBottom: 4 }}>1. Click <strong style={{color:'#fff'}}>Join Meeting</strong> below</div>
+                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', marginBottom: 4 }}>2. Telegram opens automatically</div>
+                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>3. Tap <strong style={{color:'#fff'}}>Join Group</strong> in Telegram</div>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', marginBottom: 4 }}>1. Click <strong style={{color:'#fff'}}>Join Meeting</strong> below</div>
+                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', marginBottom: 4 }}>2. A new tab opens with the meeting room</div>
+                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>3. Allow microphone/camera if prompted</div>
+                </>
+              )}
+            </div>
+            <button onClick={() => handleJoinMeeting(joinModal)}
+              style={{ width: '100%', padding: '14px', borderRadius: 14, border: 'none', background: joinModal.color, color: '#000', fontSize: 15, fontWeight: 900, cursor: 'pointer', marginBottom: 10, boxShadow: `0 4px 20px ${joinModal.color}50` }}>
+              {ROOM_LINKS[joinModal.id]?.label || 'Join Meeting'} →
+            </button>
+            <button onClick={() => setJoinModal(null)}
+              style={{ width: '100%', padding: '10px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: 'rgba(255,255,255,0.4)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+              Cancel
+            </button>
+          </motion.div>
+        </div>
+      )}
+
       {/* ROOMS */}
       {tab === 'rooms' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {/* Active room banner */}
+          {activeRoom && (() => {
+            const r = ROOMS.find(r => r.id === activeRoom);
+            const link = ROOM_LINKS[activeRoom];
+            return r ? (
+              <div style={{ background: `${r.color}15`, border: `1px solid ${r.color}50`, borderRadius: 14, padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 20 }}>{r.icon}</span>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 900, color: r.color }}>● You are in {r.name}</div>
+                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>Meeting is open in another tab</div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button onClick={() => window.open(link?.url, '_blank', 'noopener,noreferrer')}
+                    style={{ background: r.color, border: 'none', color: '#000', padding: '6px 12px', borderRadius: 8, fontSize: 10, fontWeight: 900, cursor: 'pointer' }}>Rejoin</button>
+                  <button onClick={handleLeaveRoom}
+                    style={{ background: 'rgba(255,255,255,0.06)', border: 'none', color: '#fff', padding: '6px 12px', borderRadius: 8, fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>Leave</button>
+                </div>
+              </div>
+            ) : null;
+          })()}
+
           {ROOMS.map((room, i) => {
             const fillPct = Math.round((room.online / room.capacity) * 100);
             const isActive = activeRoom === room.id;
+            const isLocked = room.locked && (!hasNode || nodeTier < 3);
             return (
               <motion.div key={room.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
-                onClick={() => handleEnterRoom(room)}
+                onClick={() => handleRoomClick(room)}
                 style={{
-                  background: isActive ? `${room.color}10` : 'rgba(22,27,34,0.9)',
-                  border: isActive ? `1px solid ${room.color}60` : room.locked ? '1px solid rgba(255,215,0,0.1)' : '1px solid rgba(255,255,255,0.05)',
+                  background: isActive ? `${room.color}12` : 'rgba(22,27,34,0.9)',
+                  border: isActive ? `1px solid ${room.color}60` : isLocked ? '1px solid rgba(255,215,0,0.1)' : '1px solid rgba(255,255,255,0.05)',
                   borderRadius: 16, padding: 14, cursor: 'pointer', transition: 'all 0.2s',
                   boxShadow: isActive ? `0 0 20px ${room.color}20` : 'none',
+                  opacity: isLocked ? 0.55 : 1,
                 }}>
                 <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                  <div style={{ width: 44, height: 44, borderRadius: 12, background: `${room.color}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>
-                    {room.locked && (!hasNode || nodeTier < 3) ? '🔒' : room.icon}
+                  <div style={{ width: 48, height: 48, borderRadius: 12, background: `${room.color}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0 }}>
+                    {isLocked ? '🔒' : room.icon}
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                      <span style={{ fontSize: 13, fontWeight: 900, color: room.locked && (!hasNode || nodeTier < 3) ? 'rgba(255,255,255,0.3)' : '#fff' }}>{room.name}</span>
+                      <span style={{ fontSize: 13, fontWeight: 900, color: isLocked ? 'rgba(255,255,255,0.35)' : '#fff' }}>{room.name}</span>
                       {room.locked && <span style={{ background: 'rgba(255,215,0,0.15)', color: '#FFD700', fontSize: 8, fontWeight: 900, padding: '2px 6px', borderRadius: 6 }}>T3+</span>}
                       {isActive && <span style={{ background: 'rgba(163,255,18,0.15)', color: '#A3FF12', fontSize: 8, fontWeight: 900, padding: '2px 6px', borderRadius: 6 }}>● HERE</span>}
+                      <span style={{ marginLeft: 'auto', fontSize: 9, color: ROOM_LINKS[room.id]?.type === 'telegram' ? '#4FC3F7' : '#CE93D8', fontWeight: 700 }}>
+                        {ROOM_LINKS[room.id]?.type === 'telegram' ? '📩 Telegram' : '🎥 Jitsi'}
+                      </span>
                     </div>
                     <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', marginBottom: 8 }}>{room.desc}</div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, fontWeight: 700, marginBottom: 4 }}>
@@ -146,6 +244,12 @@ export default function AIPCommunityScreen({ onBack }) {
                     </div>
                   </div>
                 </div>
+                {/* Enter button shown inline */}
+                {!isLocked && !isActive && (
+                  <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'flex-end' }}>
+                    <span style={{ fontSize: 11, fontWeight: 800, color: room.color }}>Tap to Enter →</span>
+                  </div>
+                )}
               </motion.div>
             );
           })}
