@@ -31,7 +31,7 @@ const NAV_ITEMS = [
   { id: 'dash',      icon: '📊',  label: 'Stats' },
   { id: 'contracts', icon: '📄',  label: 'Docs' },
   { id: 'tasks',     icon: '✅',  label: 'Tasks' },
-  { id: 'events',    icon: '📅',  label: 'Events' },
+  { id: 'events',    icon: '🌀',  label: 'MetaVerse' },
 ];
 
 function DesktopSidebar({ activeTab, setActiveTab, nodeId, nodeTier, isAdmin, hasNode }) {
