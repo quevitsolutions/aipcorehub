@@ -17,8 +17,10 @@ export default defineConfig({
   build: {
     target: 'es2022',
     minify: 'esbuild',
+    sourcemap: false,
     chunkSizeWarningLimit: 1000,
     rollupOptions: {
+      maxParallelFileOps: 2,
       output: {
         // Letting Vite handle chunks automatically to avoid React instance conflicts
       },
