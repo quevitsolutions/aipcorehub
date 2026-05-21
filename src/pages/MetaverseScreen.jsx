@@ -186,6 +186,11 @@ export default function MetaverseScreen({ onNavigate }) {
                 style={{ background:'linear-gradient(135deg,#A3FF12,#4FC3F7)', border:'none', color:'#000', padding:'6px 16px', borderRadius:8, fontSize:11, fontWeight:900, cursor:'pointer', boxShadow:'0 4px 16px rgba(163,255,18,0.4)' }}>
                 🌀 Enter Virtual Hall
               </button>
+              <button
+                onClick={() => onNavigate && onNavigate('lobby')}
+                style={{ background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.15)', color:'#fff', padding:'6px 16px', borderRadius:8, fontSize:11, fontWeight:900, cursor:'pointer' }}>
+                🏢 Enter Virtual Lobby
+              </button>
             </div>
           ) : (
             <div style={{ marginTop: 12, background: 'rgba(255,82,82,0.1)', border: '1px solid rgba(255,82,82,0.3)', borderRadius: 8, padding: '8px 12px', fontSize: 11, fontWeight: 700, color: '#FF8A80', display: 'inline-flex', alignItems: 'center', gap: 6 }}>

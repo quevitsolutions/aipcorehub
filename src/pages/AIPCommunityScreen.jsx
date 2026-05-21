@@ -51,7 +51,7 @@ const GLOBAL_CHAT = [
   { user: '🤖 AI Host', msg: 'Welcome to AIP Community Hub! Tonight\'s masterclass starts at 8PM UTC 🎙️', time: '10m', isAI: true },
 ];
 
-export default function AIPCommunityScreen({ onBack }) {
+export default function AIPCommunityScreen({ onBack, onNavigate }) {
   const { hasNode, nodeId, nodeTier, walletAddress } = useGameStore();
   const [tab, setTab] = useState('rooms');
   const [activeRoom, setActiveRoom] = useState(null);
@@ -66,6 +66,10 @@ export default function AIPCommunityScreen({ onBack }) {
   }, [messages]);
 
   const handleRoomClick = (room) => {
+    if (room.id === 'sponsor-expo') {
+      if (!hasNode) return toast.error('🔒 Activate your node to enter the Sponsor Expo', { duration: 4000 });
+      if (onNavigate) return onNavigate('lobby');
+    }
     if (room.locked && (!hasNode || nodeTier < 3)) {
       return toast.error(`👑 ${room.name} requires Tier 3+ Node`, { duration: 3500 });
     }
