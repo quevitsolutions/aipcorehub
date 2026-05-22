@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { ExternalLink, GraduationCap, Image as ImageIcon, Bot } from 'lucide-react';
+import { openLink } from '../utils/openLink.js';
 
 export default function MarketingScreen() {
   return (
@@ -39,20 +40,21 @@ export default function MarketingScreen() {
             </div>
           </div>
 
-          <a href="https://promo.aipcore.online" target="_blank" rel="noreferrer"
+          <button
+            onClick={() => openLink('https://promo.aipcore.online')}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 10, background: '#fff', color: '#000',
-              padding: '16px 32px', borderRadius: 20, fontSize: 16, fontWeight: 900, textDecoration: 'none',
+              padding: '16px 32px', borderRadius: 20, fontSize: 16, fontWeight: 900,
+              border: 'none', cursor: 'pointer',
               boxShadow: '0 0 30px rgba(255,255,255,0.2)', transition: 'transform 0.2s'
             }}
             onMouseOver={e => e.currentTarget.style.transform = 'scale(1.05)'}
             onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}>
             Launch Marketing Hub <ExternalLink size={18} />
-          </a>
+          </button>
 
         </motion.div>
       </div>
     </div>
   );
 }
-

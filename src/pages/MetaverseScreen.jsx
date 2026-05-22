@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../store/gameStore.js';
+import { openLink } from '../utils/openLink.js';
 
 const MODULES = [
   {
@@ -277,7 +278,7 @@ export default function MetaverseScreen({ onNavigate }) {
                       <button
                         onClick={(e) => { 
                           e.stopPropagation(); 
-                          if (mod.href) { window.open(mod.href, '_blank'); }
+                          if (mod.href) { openLink(mod.href); }
                           else { onNavigate && onNavigate(mod.id); }
                         }}
                         style={{

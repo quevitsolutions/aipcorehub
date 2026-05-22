@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useGameStore } from '../store/gameStore.js';
 import { formatNumber } from '../utils/format.js';
 import toast from 'react-hot-toast';
+import { openLink } from '../utils/openLink.js';
 
 export default function TaskScreen() {
   const { tasks, claimTaskAction, setActiveTab, fetchTasksData, directRefs } = useGameStore();
@@ -16,7 +17,7 @@ export default function TaskScreen() {
     if (task.is_completed || claimingId) return;
     
     if (task.url) {
-      window.open(task.url, '_blank');
+      openLink(task.url);
       // Adding a small mandatory delay to simulate they actually checked the link
       setClaimingId(task.id);
       toast('Verifying task...', { icon: '⏳', duration: 2000 });

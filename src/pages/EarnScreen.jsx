@@ -7,6 +7,7 @@ import { ethers } from 'ethers';
 import { config } from '../config/wagmi.js';
 import { AIPCORE_ABI } from '../../contracts/abi.js';
 import { CONTRACTS } from '../config/constants.js';
+import { openLink } from '../utils/openLink.js';
 
 const MAX_SESSION = 86400000; // 24h
 
@@ -510,7 +511,7 @@ export default function EarnScreen() {
 
   const handleTaskClaim = (task) => {
     if (claimedTasks.includes(task.id)) return;
-    window.open(task.url, '_blank');
+    openLink(task.url);
     const updated = [...claimedTasks, task.id];
     setClaimedTasks(updated);
     localStorage.setItem('aip-tasks', JSON.stringify(updated));
