@@ -2627,7 +2627,7 @@ Keep responses relatively concise (under 250 words unless specifically asked for
         { role: 'system', content: systemInstruction },
         { role: 'user', content: prompt },
       ],
-      model: 'llama3-70b-8192',
+      model: 'llama-3.3-70b-versatile',
       temperature: 0.7,
       max_tokens: 1024,
     });
