@@ -29,14 +29,27 @@ export default function AIAgentPage() {
     setInput('')
     setIsTyping(true)
 
-    // Simulate AI generation
-    setTimeout(() => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'https://aipcore.online/api'}/ai/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: msgText })
+      });
+      const data = await response.json();
+      
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: `Here's a great draft for your marketing campaign! 🚀\n\n"Tired of complex DeFi? AIP Core just launched an automated BNB mining node. Activate once, earn across 4 income streams instantly.\n\n✅ 10% Direct Referrals\n✅ 70% Binary Matrix\n✅ Global Pool Share\n\nJoin my node now: [YOUR LINK]"\n\nLet me know if you want this tweaked to be longer or shorter!` 
-      }])
-      setIsTyping(false)
-    }, 2000)
+        content: data.result || 'Sorry, I encountered an error. Please try again.'
+      }]);
+    } catch (error) {
+      console.error('AI Gen Error:', error);
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: 'I am offline or encountering an issue reaching the server.'
+      }]);
+    } finally {
+      setIsTyping(false);
+    }
   }
 
   const handleCopy = (text) => {

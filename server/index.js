@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { ethers } from 'ethers';
 import axios from 'axios';
+import Groq from 'groq-sdk';
 import { query } from './db.js';
 import { initTelegramBot, sendNotification, broadcastToUsers, verifyTelegramMembership, checkExpiringTrials } from './telegramBot.js';
 
@@ -2594,6 +2595,47 @@ app.get('/api/telegram/status/:walletAddress', async (req, res) => {
     res.json({ connected, telegramId: connected ? result.rows[0].telegram_id : null });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ── AI Marketing Agent Endpoint ──────────────────────────────────────────────────
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+
+app.post('/api/ai/generate', async (req, res) => {
+  const { prompt } = req.body;
+  if (!prompt) return res.status(400).json({ error: 'Prompt is required' });
+
+  try {
+    const systemInstruction = `You are Bella, the official AI Marketing Agent for AIP Core.
+Your goal is to help users write highly engaging, emoji-heavy marketing content for social media (Twitter, Telegram, WhatsApp, etc.).
+You can interact and respond in ANY language the user speaks. You must reply in the exact language the user used to ask their question.
+
+About AIP Core:
+- It is a 100% decentralized Web3 Mining Node protocol on the Binance Smart Chain (BNB).
+- Users activate a "Mining Node" to earn AIP tokens and BNB simultaneously.
+- 4 Income Streams:
+  1) 10% Direct Referral Income (instant, unlimited width, lifetime)
+  2) 70% Binary Matrix Income (18 levels deep, auto-spillover)
+  3) ~15% Level Income (earn from nodes in your tree 18 levels down)
+  4) 5% Global Pool Income (daily revenue share for top builders)
+- 18 Upgrade Tiers (from Tier 1 "Genesis" at 0.05 BNB up to Tier 18 "Sovereign"). Higher tiers unlock faster mining and deeper matrix earnings.
+
+Keep responses relatively concise (under 250 words unless specifically asked for a long thread). Always be extremely enthusiastic, professional, and persuasive. Include placeholders like [YOUR REF LINK] when generating copy.`;
+
+    const chatCompletion = await groq.chat.completions.create({
+      messages: [
+        { role: 'system', content: systemInstruction },
+        { role: 'user', content: prompt },
+      ],
+      model: 'llama3-70b-8192',
+      temperature: 0.7,
+      max_tokens: 1024,
+    });
+
+    res.json({ result: chatCompletion.choices[0]?.message?.content || 'No response generated.' });
+  } catch (err) {
+    console.error('Groq AI Error:', err.message);
+    res.status(500).json({ error: 'Failed to generate AI response' });
   }
 });
 
