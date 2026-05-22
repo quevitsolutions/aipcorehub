@@ -1,0 +1,80 @@
+# ═══════════════════════════════════════════════════════════════════
+#  AIP CORE — MARKETING PORTAL — docker-compose.yml
+#
+#  ⚡ STANDALONE — Fully independent from the main core app stack.
+#     Does NOT share networks, volumes or containers with the core.
+#     Run on a separate server or a separate port on the same host.
+#
+#  Quick start:
+#    cp .env.example .env   # fill in your values
+#    docker compose up -d
+#
+#  Ports used (configurable via .env):
+#    HTTP  → 8080  (redirects to HTTPS)
+#    HTTPS → 8443
+# ═══════════════════════════════════════════════════════════════════
+
+services:
+
+  # ── Marketing Frontend (Static SPA) ─────────────────────────────
+  marketing:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - VITE_APP_URL=${VITE_APP_URL:-https://aipcore.online}
+        - VITE_API_URL=${VITE_API_URL:-https://aipcore.online/api}
+    image: aipcore-marketing:latest
+    container_name: aipcore-marketing
+    ports:
+      - "${MARKETING_HTTP_PORT:-8080}:80"
+      - "${MARKETING_HTTPS_PORT:-8443}:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /var/www/certbot:/var/www/certbot:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
+    labels:
+      - "com.aipcore.service=marketing-portal"
+      - "com.aipcore.version=1.0.0"
+      - "traefik.enable=true"
+      - "traefik.http.routers.marketing.rule=Host(`promo.aipcore.online`)"
+      - "traefik.http.routers.marketing.entrypoints=websecure"
+      - "traefik.http.routers.marketing.tls.certresolver=letsencrypt"
+
+  # ── Certbot SSL auto-renewal ─────────────────────────────────────
+  certbot-marketing:
+    image: certbot/certbot:latest
+    container_name: aipcore-certbot-marketing
+    volumes:
+      - certbot-mkt-etc:/etc/letsencrypt
+      - certbot-mkt-var:/var/www/certbot
+    entrypoint: >
+      /bin/sh -c "trap exit TERM;
+      while :; do
+        certbot renew --webroot -w /var/www/certbot --quiet;
+        sleep 12h & wait $${!};
+      done;"
+    restart: unless-stopped
+
+volumes:
+  certbot-mkt-etc:
+    name: aipcore_certbot_mkt_etc
+  certbot-mkt-var:
+    name: aipcore_certbot_mkt_var
+
+networks:
+  default:
+    name: aipcore-marketing-net
+    driver: bridge

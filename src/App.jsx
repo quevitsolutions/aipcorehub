@@ -12,7 +12,7 @@ import TabBar from './components/TabBar.jsx';
 import EarnScreen from './pages/EarnScreen.jsx';
 import UpgradeScreen from './pages/UpgradeScreen.jsx';
 import TaskScreen from './pages/TaskScreen.jsx';
-import EventsScreen from './pages/EventsScreen.jsx';
+import MarketingScreen from './pages/MarketingScreen.jsx';
 import ReferralScreen from './pages/ReferralScreen.jsx';
 import DashboardScreen from './pages/DashboardScreen.jsx';
 import ContractsScreen from './pages/ContractsScreen.jsx';
@@ -31,7 +31,7 @@ const NAV_ITEMS = [
   { id: 'dash',      icon: '📊',  label: 'Stats' },
   { id: 'contracts', icon: '📄',  label: 'Docs' },
   { id: 'tasks',     icon: '✅',  label: 'Tasks' },
-  { id: 'events',    icon: '🌀',  label: 'MetaVerse' },
+  { id: 'marketing', icon: '🚀',  label: 'Promo' },
 ];
 
 function DesktopSidebar({ activeTab, setActiveTab, nodeId, nodeTier, isAdmin, hasNode }) {
@@ -231,7 +231,7 @@ export default function App() {
             {activeTab === 'team'      && <TeamScreen />}
             {activeTab === 'dash'      && <DashboardScreen />}
             {activeTab === 'contracts' && <ContractsScreen />}
-            {activeTab === 'events'    && <EventsScreen />}
+            {activeTab === 'marketing' && <MarketingScreen />}
             {activeTab === 'admin'     && <AdminScreen />}
           </motion.div>
         </AnimatePresence>

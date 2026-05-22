@@ -9,7 +9,7 @@ export default function TabBar() {
     { id: 'earn',      icon: '⛏️', label: 'Earn' },
     { id: 'mine',      icon: '🚀', label: hasNode ? 'Boost' : 'Upgrade' },
     { id: 'contracts', icon: '📄', label: 'Docs' },
-    { id: 'events',    icon: '📅', label: 'Events' },
+    { id: 'marketing', icon: '🚀', label: 'Promo' },
     { id: 'dash',      icon: '👤', label: 'Stats' },
   ];
 

@@ -75,6 +75,19 @@ const MODULES = [
     stat: 'Always online',
     statIcon: '⚡',
   },
+  {
+    id: 'marketing-portal',
+    icon: '🚀',
+    name: 'AIP Marketing Portal',
+    tag: 'PROMO',
+    tagColor: '#CBFF01',
+    desc: 'Standalone external portal for marketing and referrals',
+    gradient: 'linear-gradient(135deg, #1B3300 0%, #CBFF01 100%)',
+    glow: 'rgba(203,255,1,0.3)',
+    stat: 'Live at promo.aipcore.online',
+    statIcon: '🌐',
+    href: 'https://promo.aipcore.online'
+  },
 ];
 
 const LIVE_STATS = [
@@ -262,7 +275,11 @@ export default function MetaverseScreen({ onNavigate }) {
                         <span style={{ fontSize: 10, color: mod.tagColor, fontWeight: 800 }}>DECENTRALIZED</span>
                       </div>
                       <button
-                        onClick={(e) => { e.stopPropagation(); onNavigate && onNavigate(mod.id); }}
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          if (mod.href) { window.open(mod.href, '_blank'); }
+                          else { onNavigate && onNavigate(mod.id); }
+                        }}
                         style={{
                           width: '100%', padding: '11px', borderRadius: 10, border: 'none',
                           background: mod.gradient, color: '#fff', fontSize: 13, fontWeight: 900, cursor: 'pointer',
