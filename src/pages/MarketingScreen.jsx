@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useGameStore } from '../store/gameStore.js';
 import { useContract } from '../hooks/useContract.js';
-import TopBar from '../components/TopBar.jsx';
 
 /* ─── Live Stat Counter ─── */
 function AnimatedNumber({ target, format }) {
@@ -126,9 +125,6 @@ export default function MarketingScreen() {
       {/* Ambient Glows */}
       <div style={{ position: 'fixed', top: '-20%', left: '-15%', width: '55%', height: '55%', background: 'radial-gradient(circle, rgba(203,255,1,0.07) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
       <div style={{ position: 'fixed', bottom: '-20%', right: '-15%', width: '60%', height: '60%', background: 'radial-gradient(circle, rgba(79,255,255,0.05) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
-
-      <TopBar onConnect={onConnect} onDisconnect={onDisconnect} />
-
       <div style={{ position: 'relative', zIndex: 1, paddingTop: 80, paddingBottom: 120 }}>
 
         {/* ─ RESTRICTED BADGE ─ */}
