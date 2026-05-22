@@ -3,6 +3,8 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { ethers } from 'ethers';
 import axios from 'axios';
+import fs from 'fs';
+import path from 'path';
 import Groq from 'groq-sdk';
 import { query } from './db.js';
 import { initTelegramBot, sendNotification, broadcastToUsers, verifyTelegramMembership, checkExpiringTrials } from './telegramBot.js';
@@ -2600,6 +2602,12 @@ app.get('/api/telegram/status/:walletAddress', async (req, res) => {
 
 // ── AI Marketing Agent Endpoint ──────────────────────────────────────────────────
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+let contractCode = '';
+try {
+  contractCode = fs.readFileSync(path.join(process.cwd(), 'contracts_context.txt'), 'utf8');
+} catch (e) {
+  console.warn('Failed to load contracts_context.txt for AI agent.');
+}
 
 app.post('/api/ai/generate', async (req, res) => {
   const { prompt } = req.body;
@@ -2622,7 +2630,10 @@ About AIP Core:
   4) 5% Global Pool Income (daily revenue share for top builders)
 - 18 Upgrade Tiers (from Tier 1 "Genesis" at 0.05 BNB up to Tier 18 "Sovereign"). Higher tiers unlock faster mining and deeper matrix earnings.
 
-Keep responses relatively concise (under 250 words unless specifically asked for a long thread). Always be extremely enthusiastic, professional, and persuasive. Include placeholders like [YOUR REF LINK] when generating copy.`;
+Keep responses relatively concise (under 250 words unless specifically asked for a long thread). Always be extremely enthusiastic, professional, and persuasive. Include placeholders like [YOUR REF LINK] when generating copy.
+
+Here is the exact smart contract code for AIP Core and Reward Pool for absolute accuracy. Use this logic as the source of truth if technical questions are asked:
+${contractCode}`;
 
     const chatCompletion = await groq.chat.completions.create({
       messages: [
