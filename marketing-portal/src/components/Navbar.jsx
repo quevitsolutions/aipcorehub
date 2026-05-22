@@ -6,8 +6,9 @@ import { Menu, X, ExternalLink } from 'lucide-react'
 const NAV_LINKS = [
   { label: 'Features',  to: '/features' },
   { label: 'Earnings',  to: '/earnings' },
-  { label: 'Roadmap',   to: '/roadmap' },
-  { label: 'Press Kit', to: '/press' },
+  { label: 'Academy',   to: '/academy' },
+  { label: 'Assets',    to: '/assets' },
+  { label: 'AI Agent',  to: '/ai-agent' },
 ]
 
 export default function Navbar() {

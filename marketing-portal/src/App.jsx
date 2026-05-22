@@ -8,6 +8,9 @@ import EarningsPage from './pages/EarningsPage.jsx'
 import RoadmapPage from './pages/RoadmapPage.jsx'
 import PressPage from './pages/PressPage.jsx'
 import JoinPage from './pages/JoinPage.jsx'
+import AcademyPage from './pages/AcademyPage.jsx'
+import AssetsPage from './pages/AssetsPage.jsx'
+import AIAgentPage from './pages/AIAgentPage.jsx'
 import TickerBar from './components/TickerBar.jsx'
 
 export default function App() {
@@ -24,6 +27,9 @@ export default function App() {
         <Route path="/earnings"  element={<EarningsPage />} />
         <Route path="/roadmap"   element={<RoadmapPage />} />
         <Route path="/press"     element={<PressPage />} />
+        <Route path="/academy"   element={<AcademyPage />} />
+        <Route path="/assets"    element={<AssetsPage />} />
+        <Route path="/ai-agent"  element={<AIAgentPage />} />
         <Route path="/join"      element={<JoinPage />} />
         <Route path="/join/:ref" element={<JoinPage />} />
       </Routes>
