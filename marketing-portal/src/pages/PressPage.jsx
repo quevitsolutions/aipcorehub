@@ -136,7 +136,7 @@ export default function PressPage() {
       {/* Social / Contact */}
       <section className="section">
         <div className="container">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 48, alignItems: 'start' }}>
+          <div className="grid-2" style={{ gap: 48, alignItems: 'start' }}>
             <div>
               <div style={{ fontSize: 11, fontWeight: 900, color: 'var(--text-muted)', letterSpacing: 2, marginBottom: 8 }}>◈ OFFICIAL CHANNELS</div>
               <h2 style={{ fontSize: 28, fontWeight: 900, marginBottom: 24 }}>Connect & Follow</h2>

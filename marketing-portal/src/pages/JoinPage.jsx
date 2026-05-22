@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ExternalLink, Copy, Check } from 'lucide-react'
@@ -26,14 +26,12 @@ const FAQS = [
 export default function JoinPage() {
   const { ref } = useParams()
   const [copied, setCopied] = useState(false)
-  const [referralLink, setReferralLink] = useState('')
 
-  useEffect(() => {
-    const link = ref
-      ? `${APP_URL}?ref=${ref}`
-      : APP_URL
-    setReferralLink(link)
-  }, [ref])
+  // Compute synchronously so the href is never empty on first render
+  const referralLink = useMemo(
+    () => (ref ? `${APP_URL}?ref=${ref}` : APP_URL),
+    [ref]
+  )
 
   const handleCopy = () => {
     navigator.clipboard.writeText(referralLink)

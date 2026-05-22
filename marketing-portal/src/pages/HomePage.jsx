@@ -36,7 +36,7 @@ export default function HomePage() {
         <ParticleField count={40} />
 
         <div className="container" style={{ position: 'relative', zIndex: 1 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 64, alignItems: 'center' }}>
+          <div className="grid-2" style={{ gap: 64, alignItems: 'center' }}>
             {/* Left */}
             <div>
               <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
@@ -76,7 +76,7 @@ export default function HomePage() {
             </div>
 
             {/* Right — hero visual */}
-            <motion.div initial={{ opacity: 0, scale: 0.88 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2, duration: 0.8 }}
+            <motion.div className="hero-diagram" initial={{ opacity: 0, scale: 0.88 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2, duration: 0.8 }}
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', minHeight: 460 }}>
               {/* Orbiting ring */}
               <div style={{
@@ -135,6 +135,10 @@ export default function HomePage() {
         <style>{`
           @media (max-width: 860px) {
             .hero-grid { grid-template-columns: 1fr !important; }
+            .hero-diagram { transform: scale(0.7); transform-origin: left center; }
+          }
+          @media (max-width: 480px) {
+            .hero-diagram { transform: scale(0.6); transform-origin: center center; margin: 0 auto; }
           }
         `}</style>
       </section>
@@ -199,7 +203,7 @@ export default function HomePage() {
       {/* ═══ DISTRIBUTION BAR ═══ */}
       <section className="section" style={{ background: 'rgba(255,255,255,0.01)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
         <div className="container">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 64, alignItems: 'center' }}>
+          <div className="grid-2" style={{ gap: 64, alignItems: 'center' }}>
             <motion.div initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
               <div className="section-label">◈ 100% DISTRIBUTED</div>
               <h2 className="section-title" style={{ fontSize: 'clamp(30px, 4vw, 52px)' }}>

@@ -114,7 +114,7 @@ export default function EarningsPage() {
                     <div style={{ fontSize: 36, fontWeight: 900, color: s.color }}>{s.pct}</div>
                   </div>
                   {/* Data rows */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  <div className="grid-2" style={{ gap: 8 }}>
                     {s.rows.map((row, j) => (
                       <div key={j} style={{
                         padding: '10px 14px', background: 'rgba(255,255,255,0.03)',
@@ -195,7 +195,7 @@ export default function EarningsPage() {
               <div style={{ fontSize: 22, fontWeight: 900, color: TIERS[activeTier].color, marginBottom: 4 }}>
                 Tier {TIERS[activeTier].level} — {TIERS[activeTier].label}
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 24 }}>
+              <div className="grid-2" style={{ gap: 12, marginTop: 24 }}>
                 <div style={{ padding: 16, background: 'rgba(255,255,255,0.03)', borderRadius: 12 }}>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, marginBottom: 6 }}>UPGRADE COST</div>
                   <div style={{ fontSize: 20, fontWeight: 900, color: TIERS[activeTier].color }}>{TIERS[activeTier].price}</div>
