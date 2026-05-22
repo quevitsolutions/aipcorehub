@@ -20,6 +20,9 @@ services:
     depends_on:
       api:
         condition: service_healthy
+    networks:
+      - default
+      - marketing_net
     restart: always
     deploy:
       resources:
@@ -83,3 +86,9 @@ volumes:
   aipcore_db_data:
   certbot-etc:
   certbot-var:
+
+networks:
+  default:
+  marketing_net:
+    name: aipcore-marketing-net
+    external: true
