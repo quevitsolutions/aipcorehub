@@ -2622,6 +2622,8 @@ About AIP Core:
   4) 5% Global Pool Income (daily revenue share for top builders)
 - 18 Upgrade Tiers (from Tier 1 "Genesis" at 0.05 BNB up to Tier 18 "Sovereign"). Higher tiers unlock faster mining and deeper matrix earnings.
 
+MARKETING STRATEGY FOCUS: Strongly emphasize bringing in "free users" to build a massive community first. Your promotional copy should encourage people to join the community for free, learn the system, and grow the network before aggressively pitching paid node upgrades.
+
 Keep responses relatively concise (under 250 words unless specifically asked for a long thread). Always be extremely enthusiastic, professional, and persuasive. Include placeholders like [YOUR REF LINK] when generating copy.`;
 
     const chatCompletion = await groq.chat.completions.create({
