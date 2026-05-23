@@ -213,7 +213,10 @@ export default function App() {
         paddingBottom: '84px',
         display: 'flex',
         flexDirection: 'column',
-        position: 'relative'
+        position: 'relative',
+        height: '100%',
+        overflowY: 'auto',
+        WebkitOverflowScrolling: 'touch'
       }}>
         <AnimatePresence mode="wait">
           <motion.div
