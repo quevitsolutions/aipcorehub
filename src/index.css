@@ -26,153 +26,95 @@
 
 html, body, #root {
   min-height: 100%;
-  background: var(--bg-dark);
+  background: #080c14;
   font-family: var(--font-main);
   color: var(--text-white);
   -webkit-tap-highlight-color: transparent;
-  user-select: auto;
-  overflow-x: hidden;
-  overflow-y: auto;
+  user-select: none;
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+/* Futuristic Cyber Grid Background behind the Phone Shell on Desktop */
+body {
+  background-image: 
+    radial-gradient(circle at 15% 15%, rgba(163, 255, 18, 0.04) 0%, transparent 50%),
+    radial-gradient(circle at 85% 85%, rgba(79, 195, 247, 0.04) 0%, transparent 50%),
+    linear-gradient(rgba(255, 255, 255, 0.007) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.007) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 36px 36px, 36px 36px;
+  background-attachment: fixed;
 }
 
 /* ══════════════════════════════════════════
-   MOBILE — default (≤ 640px)
-   Single column, bottom TabBar, TopBar fixed
-══════════════════════════════════════════ */
+   MOBILE APP VIEWPORT CONTAINER
+   Centers the TMA shell on desktop, full screen on mobile
+   ══════════════════════════════════════════ */
 .app-container {
-  max-width: 500px;
+  width: 100%;
+  height: 100%;
   min-height: 100vh;
   margin: 0 auto;
   position: relative;
-  background: var(--bg-dark);
+  background: linear-gradient(180deg, #090e18 0%, #05080f 100%);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+}
+
+@media (min-width: 481px) {
+  .app-container {
+    max-width: 450px;
+    height: 94vh;
+    min-height: 94vh;
+    margin: 3vh auto;
+    border-radius: 40px;
+    border: 8px solid #161b22;
+    box-shadow: 0 35px 80px rgba(0,0,0,0.9), 
+                0 0 30px rgba(163,255,18,0.06),
+                inset 0 0 0 2px rgba(255,255,255,0.05);
+  }
 }
 
 .top-bar-fixed {
-  position: fixed;
+  position: absolute;
   top: 0; left: 0; right: 0;
   z-index: 1000;
+  height: var(--topbar-h);
 }
 
 .page {
   flex: 1;
   padding: 16px;
-  padding-top: calc(var(--topbar-h) + 10px);
-  padding-bottom: calc(var(--tabbar-h) + 40px);
+  padding-top: calc(var(--topbar-h) + 12px);
+  padding-bottom: calc(var(--tabbar-h) + 12px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  scrollbar-width: none; /* Firefox */
 }
-.page::-webkit-scrollbar { display: none; }
+.page::-webkit-scrollbar { display: none; } /* Chrome/Safari */
 .no-scrollbar { scrollbar-width: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 
 /* ══════════════════════════════════════════
-   TABLET (641px – 1024px)
-   Wider card, 2-column grids, top NavBar
-══════════════════════════════════════════ */
+   TABLET/DESKTOP TWEAKS (Unified Mobile UX)
+   ══════════════════════════════════════════ */
 @media (min-width: 641px) {
-  html, body, #root { overflow: auto; }
-
-  .app-container {
-    max-width: 700px;
-    height: 100vh;
-    margin: 0 auto;
-    border-left: 1px solid rgba(255,255,255,0.05);
-    border-right: 1px solid rgba(255,255,255,0.05);
-  }
-
-  .page { padding: 20px 28px; padding-bottom: 110px; }
-
-  /* Denser grids on tablet */
-  .boosters-grid { grid-template-columns: repeat(3, 1fr); gap: 14px; }
-
-  .balance-value { font-size: 56px; }
-  .balance-coin  { width: 60px; height: 60px; }
-
-  .mobile-tabs { padding: 0 40px; }
+  /* Denser booster grid for phone shell */
+  .boosters-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .balance-value { font-size: 40px; }
+  .balance-coin  { width: 44px; height: 44px; }
 }
 
-/* ══════════════════════════════════════════
-   DESKTOP (≥ 1025px)
-   Sidebar nav + scrollable content area
-   TopBar spans full width at top
-══════════════════════════════════════════ */
 @media (min-width: 1025px) {
-  html, body, #root { overflow: hidden; }
-
-  /* Full-screen layout */
-  .app-container {
-    max-width: 100%;
-    width: 100%;
-    height: 100vh;
-    display: grid;
-    grid-template-columns: var(--sidebar-w) 1fr;
-    grid-template-rows: var(--topbar-h) 1fr;
-    grid-template-areas:
-      "sidebar topbar"
-      "sidebar content";
-    border: none;
-    margin: 0;
-  }
-
-  /* TopBar spans the right column */
-  .top-bar-fixed {
-    grid-area: topbar;
-    position: relative !important;
-    top: auto !important;
-    left: auto !important;
-    right: auto !important;
-    width: 100% !important;
-    border-bottom: 1px solid rgba(163,255,18,0.1);
-    border-left: 1px solid rgba(255,255,255,0.04);
-  }
-
-  /* Sidebar: replaces bottom TabBar */
-  .desktop-sidebar {
-    grid-area: sidebar;
-    display: flex !important;
-    flex-direction: column;
-    background: #080C14;
-    border-right: 1px solid rgba(255,255,255,0.05);
-    padding: 24px 0;
-    gap: 4px;
-    height: 100vh;
-    position: sticky;
-    top: 0;
-  }
-
-  /* Hide bottom TabBar on desktop */
-  .mobile-tabs { display: none !important; }
-
-  /* Main content area */
-  .page {
-    grid-area: content;
-    max-width: var(--content-max);
-    width: 100%;
-    margin: 0 auto;
-    padding: 28px 40px;
-    padding-bottom: 40px;
-    overflow-y: auto;
-    height: calc(100vh - var(--topbar-h));
-  }
-
-  /* Wider content grids on desktop */
-  .boosters-grid { grid-template-columns: repeat(4, 1fr); gap: 16px; }
-
-  /* Bigger balance on desktop */
-  .balance-value { font-size: 64px; }
-  .balance-coin  { width: 72px; height: 72px; }
-
-  /* Bigger cards */
-  .booster-card  { border-radius: 20px; padding: 20px; }
-  .partner-card  { border-radius: 20px; }
-
-  /* 2-col stat sections */
-  .desktop-2col {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 24px;
-    align-items: start;
-  }
+  /* Hide the old desktop sidebar - purely mobile view shell now */
+  .desktop-sidebar { display: none !important; }
+  .mobile-tabs { display: flex !important; }
 }
 
 /* Sidebar nav item (desktop only) */
@@ -665,3 +607,566 @@ html, body, #root {
   scrollbar-width: none;
 }
 .h-scroll-noscroll::-webkit-scrollbar { display: none; }
+
+/* ══════════════════════════════════════════
+   PREMIUM TELEGRAM MINI APP STYLING
+   ══════════════════════════════════════════ */
+
+/* Floating Tap Particles */
+.score-particle {
+  position: absolute;
+  pointer-events: none;
+  font-weight: 950;
+  font-size: 26px;
+  color: #fff;
+  z-index: 2000;
+  text-shadow: 0 0 10px rgba(163, 255, 18, 0.8), 0 0 20px rgba(163, 255, 18, 0.4);
+  font-family: var(--font-main);
+  animation: floatParticle 0.8s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
+}
+
+@keyframes floatParticle {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) translateY(0) scale(1.2) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) translateY(-140px) scale(0.7) rotate(15deg);
+  }
+}
+
+/* The Giant 3D Interactive Coin */
+.tma-coin-wrapper {
+  position: relative;
+  width: 250px;
+  height: 250px;
+  margin: 20px auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.tma-coin {
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #202d44 0%, #0d131f 70%, #080c14 100%);
+  border: 6px solid #161b22;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.6), 
+              0 0 35px rgba(163, 255, 18, 0.15),
+              inset 0 10px 20px rgba(255,255,255,0.08),
+              inset 0 -10px 20px rgba(0,0,0,0.6);
+  position: relative;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275), border-color 0.2s;
+  overflow: hidden;
+}
+
+.tma-coin:active {
+  transform: scale(0.94);
+}
+
+.tma-coin::before {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  border: 2px dashed rgba(163, 255, 18, 0.25);
+  animation: rotateDashed 25s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes rotateDashed {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.tma-coin-inner {
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(163, 255, 18, 0.12) 0%, rgba(5, 8, 15, 0.9) 100%);
+  border: 1px solid rgba(163, 255, 18, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 80px;
+  color: var(--neon-lime);
+  text-shadow: 0 0 25px rgba(163, 255, 18, 0.6);
+  font-weight: 900;
+  box-shadow: inset 0 0 20px rgba(163, 255, 18, 0.1),
+              0 0 15px rgba(0,0,0,0.5);
+  position: relative;
+}
+
+/* Embossed Shield logo style for coin */
+.tma-coin-inner span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #ffffff 0%, #a3ff12 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.6));
+}
+
+/* Ambient rotating neon ring */
+.tma-ambient-glow {
+  position: absolute;
+  width: 270px;
+  height: 270px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(163, 255, 18, 0.08) 0%, transparent 65%);
+  z-index: 1;
+  pointer-events: none;
+  animation: ambientPulse 3s ease-in-out infinite alternate;
+}
+
+@keyframes ambientPulse {
+  0% { transform: scale(0.95); opacity: 0.7; }
+  100% { transform: scale(1.08); opacity: 1; }
+}
+
+/* League & Ranks Badge */
+.league-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.league-bronze {
+  background: linear-gradient(135deg, #cd7f32 0%, #a05822 100%);
+  color: #fff;
+  border: 1px solid rgba(205, 127, 50, 0.3);
+}
+
+.league-silver {
+  background: linear-gradient(135deg, #c0c0c0 0%, #808080 100%);
+  color: #fff;
+  border: 1px solid rgba(192, 192, 192, 0.3);
+}
+
+.league-gold {
+  background: linear-gradient(135deg, #ffd700 0%, #d4af37 100%);
+  color: #000;
+  border: 1px solid rgba(255, 215, 0, 0.4);
+  box-shadow: 0 4px 15px rgba(255, 215, 0, 0.2);
+}
+
+.league-platinum {
+  background: linear-gradient(135deg, #e5e4e2 0%, #a6a6a6 100%);
+  color: #000;
+  border: 1px solid rgba(229, 228, 226, 0.5);
+  box-shadow: 0 4px 15px rgba(79, 195, 247, 0.25);
+}
+
+/* Modern Taping Energy Display */
+.tma-energy-hud {
+  width: 100%;
+  padding: 10px 14px;
+  background: rgba(22, 27, 34, 0.6);
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  margin-top: 10px;
+}
+
+.tma-energy-bar {
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 8px;
+  position: relative;
+}
+
+.tma-energy-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #a3ff12 0%, #45a20d 100%);
+  border-radius: 4px;
+  box-shadow: 0 0 10px rgba(163, 255, 18, 0.7);
+  transition: width 0.15s ease-out;
+}
+
+/* Glowing Portal Claim Screen (Active Node State) */
+.tma-node-portal {
+  background: linear-gradient(135deg, rgba(22, 27, 34, 0.9) 0%, rgba(8, 12, 20, 0.95) 100%);
+  border: 1px solid rgba(163, 255, 18, 0.25);
+  box-shadow: 0 15px 40px rgba(0,0,0,0.5), 
+              inset 0 0 20px rgba(163, 255, 18, 0.05);
+  border-radius: 24px;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.tma-portal-ring {
+  position: absolute;
+  top: -40px;
+  right: -40px;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  border: 2px dashed rgba(163, 255, 18, 0.15);
+  animation: rotateDashed 30s linear infinite;
+  pointer-events: none;
+}
+
+/* Premium bottom tabs styled for TMAs */
+.tma-tabbar {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: var(--tabbar-h);
+  background: rgba(9, 14, 24, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 10px;
+  z-index: 1000;
+  box-shadow: 0 -5px 25px rgba(0, 0, 0, 0.5);
+}
+
+.tma-tab-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #7b889b;
+  font-family: var(--font-main);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  height: 100%;
+}
+
+.tma-tab-item.active {
+  color: var(--neon-lime);
+}
+
+.tma-tab-icon {
+  font-size: 22px;
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.tma-tab-item.active .tma-tab-icon {
+  transform: translateY(-2px) scale(1.15);
+}
+
+.tma-tab-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+/* ══════════════════════════════════════════
+   DOGIATORS GAMIFIED INTERFACE STYLING
+   ══════════════════════════════════════════ */
+
+/* RPG Character Status Plate */
+.tma-rpg-hud {
+  background: linear-gradient(135deg, #1e2433 0%, #0d121e 100%);
+  border: 3px solid #ffd700;
+  border-radius: 18px;
+  padding: 12px 14px;
+  position: relative;
+  box-shadow: 0 6px 0 #b49300, 0 12px 25px rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  border-bottom: 6px solid #b49300;
+}
+
+.tma-rpg-level-badge {
+  width: 42px;
+  height: 42px;
+  background: #ffd700;
+  border: 3px solid #ffffff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 950;
+  color: #000;
+  box-shadow: 0 4px 0 #b49300, 0 0 10px rgba(255, 215, 0, 0.4);
+  flex-shrink: 0;
+  position: relative;
+}
+
+.tma-rpg-level-badge::before {
+  content: '★';
+  position: absolute;
+  top: -4px;
+  font-size: 8px;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+.tma-rpg-info-bar {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tma-rpg-username {
+  font-size: 13px;
+  font-weight: 900;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.6);
+}
+
+.tma-rpg-xp-container {
+  width: 100%;
+  height: 12px;
+  background: #080c14;
+  border: 2px solid #334155;
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+}
+
+.tma-rpg-xp-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4fc3f7 0%, #0288d1 100%);
+  border-radius: 4px;
+  box-shadow: 0 0 8px rgba(79, 195, 247, 0.6);
+  transition: width 0.3s ease;
+}
+
+/* Floating Interactive Game Widgets (Left/Right Sides) */
+.tma-floating-panel {
+  position: absolute;
+  top: 48%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  z-index: 100;
+}
+
+.tma-floating-panel.left {
+  left: 12px;
+}
+
+.tma-floating-panel.right {
+  right: 12px;
+}
+
+.tma-game-widget {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.tma-game-widget:hover {
+  transform: scale(1.1);
+}
+
+.tma-game-widget:active {
+  transform: scale(0.95);
+}
+
+.tma-widget-circle {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  border: 3px solid #ffd700;
+  box-shadow: 0 4px 0 #b49300, 0 8px 15px rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  color: #fff;
+  border-bottom: 5px solid #b49300;
+  position: relative;
+}
+
+.tma-widget-circle.blue {
+  border-color: #4fc3f7;
+  border-bottom-color: #0288d1;
+  box-shadow: 0 4px 0 #0288d1, 0 8px 15px rgba(0,0,0,0.5);
+}
+
+.tma-widget-circle.lime {
+  border-color: var(--neon-lime);
+  border-bottom-color: #45a20d;
+  box-shadow: 0 4px 0 #45a20d, 0 8px 15px rgba(0,0,0,0.5);
+}
+
+.tma-widget-circle.orange {
+  border-color: #ff9800;
+  border-bottom-color: #b45f00;
+  box-shadow: 0 4px 0 #b45f00, 0 8px 15px rgba(0,0,0,0.5);
+}
+
+.tma-widget-label {
+  font-size: 8px;
+  font-weight: 900;
+  color: #fff;
+  text-transform: uppercase;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.8), 0 0 4px rgba(0,0,0,0.8);
+  letter-spacing: 0.3px;
+  background: rgba(8, 12, 20, 0.7);
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+/* Custom Interactive Egg Incubator */
+.tma-egg-incubator {
+  position: relative;
+  width: 250px;
+  height: 250px;
+  margin: 15px auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.tma-egg-stand {
+  position: absolute;
+  bottom: 10px;
+  width: 140px;
+  height: 30px;
+  background: radial-gradient(ellipse at center, rgba(163, 255, 18, 0.25) 0%, transparent 70%);
+  border-radius: 50%;
+  animation: incubatorGlow 2s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes incubatorGlow {
+  0% { transform: scale(0.9); opacity: 0.6; }
+  100% { transform: scale(1.1); opacity: 1; }
+}
+
+.tma-incubated-egg {
+  width: 200px;
+  height: 200px;
+  object-fit: contain;
+  cursor: pointer;
+  z-index: 10;
+  transition: transform 0.08s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.tma-incubated-egg:active {
+  transform: scale(0.92) translateY(5px);
+}
+
+/* Chunky Game-like bottom tabs */
+.rpg-chunky-tabs {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 88px;
+  background: linear-gradient(180deg, #1e2433 0%, #0d121e 100%);
+  border-top: 4px solid #ffd700;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 6px;
+  z-index: 1000;
+  box-shadow: 0 -8px 0 #b49300, 0 -15px 30px rgba(0,0,0,0.5);
+}
+
+.rpg-chunky-tab-item {
+  flex: 1;
+  height: 72px;
+  max-width: 78px;
+  margin: 0 2px;
+  background: linear-gradient(180deg, #334155 0%, #1e293b 100%);
+  border: 2px solid #475569;
+  border-radius: 14px;
+  box-shadow: 0 4px 0 #0f172a;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  border-bottom: 4px solid #0f172a;
+}
+
+.rpg-chunky-tab-item.active {
+  background: linear-gradient(180deg, #ffd700 0%, #f59e0b 100%);
+  border-color: #ffffff;
+  color: #000;
+  box-shadow: 0 4px 0 #b45f00;
+  border-bottom: 5px solid #b45f00;
+  transform: translateY(-2px);
+}
+
+.rpg-chunky-tab-item:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #0f172a;
+  border-bottom-width: 2px;
+}
+
+.rpg-chunky-tab-icon {
+  font-size: 20px;
+  transition: transform 0.2s;
+}
+
+.rpg-chunky-tab-item.active .rpg-chunky-tab-icon {
+  transform: scale(1.2);
+}
+
+.rpg-chunky-tab-label {
+  font-size: 9px;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  text-shadow: 0 1px 1px rgba(0,0,0,0.2);
+}
+
+.rpg-chunky-tab-item.active .rpg-chunky-tab-label {
+  color: #000;
+  font-weight: 950;
+}
+
+/* Vibrant Multi-color Scenery Game Background for Earn Screen */
+.page-earn {
+  background-image: url('/assets/game_bg.png');
+  background-size: cover;
+  background-position: center bottom;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+
+

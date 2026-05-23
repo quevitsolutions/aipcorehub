@@ -117,7 +117,8 @@ export default function DashboardScreen() {
     walletAddress, hasNode, nodeId, nodeActive, nodeTier,
     totalEarned, pendingReward, teamSize, directRefs,
     poolClaimable, poolQual, localReward, streak, isConnected,
-    conversionHistory, isFreeActive, globalStats
+    conversionHistory, isFreeActive, globalStats,
+    taps, energy, maxEnergy, handleTap
   } = useGameStore();
   
   const { loadNodeData, connectWallet, claimPool, claimRewards, fetchTeamCounts, registerPool } = useContract();
@@ -238,7 +239,11 @@ export default function DashboardScreen() {
           {[
             { label: 'SELF LEVEL',  val: `TIER ${nodeTier}`, sub: formatBNB(poolQual.totalDeposited), color: '#FFB74D', glowKey: null },
             { label: 'AIP COINS',   val: formatNumber(localReward), sub: 'Mining Asset',  color: '#FFD700', glowKey: null },
-            { 
+            !hasNode ? { 
+              label: 'FREE SPARKS', val: (taps || 0).toLocaleString(), sub: `ENERGY ${energy}/${maxEnergy}`, color: '#A3FF12',
+              glowKey: energy > 0 ? 'tap' : null,
+              action: energy > 0 ? 'TAP TO COLLECT' : 'RECHARGING...',
+            } : { 
               label: 'UNCLAIMED', val: formatBNB(pendingReward), sub: 'Node Balance', color: 'var(--neon-lime)',
               glowKey: parseFloat(pendingReward) > 0 ? 'lime' : null,
               action: parseFloat(pendingReward) > 0 ? 'TAP TO CLAIM' : null,
@@ -254,17 +259,21 @@ export default function DashboardScreen() {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: i * 0.05 }}
-              onClick={() => {
+              onClick={(e) => {
+                if (item.glowKey === 'tap') {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  handleTap();
+                }
                 if (item.glowKey === 'lime' && nodeId)  claimRewards();
                 if (item.glowKey === 'blue' && nodeId) claimPool(nodeId);
               }}
               className="partner-card" 
               style={{ 
                 flexDirection: 'column', alignItems: 'flex-start', margin: 0, padding: 16,
-                border: item.glowKey === 'lime' ? '1px solid rgba(163,255,18,0.5)' 
+                border: item.glowKey === 'lime' || item.glowKey === 'tap' ? '1px solid rgba(163,255,18,0.5)' 
                       : item.glowKey === 'blue' ? '1px solid rgba(79,195,247,0.5)' 
                       : '1px solid rgba(255,255,255,0.05)',
-                boxShadow: item.glowKey === 'lime' ? '0 0 12px rgba(163,255,18,0.15)' 
+                boxShadow: item.glowKey === 'lime' || item.glowKey === 'tap' ? '0 0 12px rgba(163,255,18,0.15)' 
                          : item.glowKey === 'blue' ? '0 0 12px rgba(79,195,247,0.15)' 
                          : 'none',
                 cursor: item.glowKey ? 'pointer' : 'default',
@@ -273,10 +282,21 @@ export default function DashboardScreen() {
             >
               <span style={{ fontSize: '10px', fontWeight: 800, color: item.color, letterSpacing: 0.5 }}>{item.label}</span>
               <span style={{ fontSize: '18px', fontWeight: 900, color: '#fff', marginTop: 4 }}>{item.val}</span>
-              {item.action 
-                ? <span style={{ fontSize: '9px', color: item.color, fontWeight: 900, marginTop: 3, letterSpacing: 1, animation: 'pulse 1.5s infinite' }}>{item.action} →</span>
-                : <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 700 }}>{item.sub}</span>
-              }
+              {item.action ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
+                  {item.glowKey === 'tap' && (
+                    <div style={{
+                      width: 14, height: 14, background: 'var(--neon-lime)',
+                      borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 9, color: '#000', fontWeight: 900,
+                      boxShadow: '0 0 8px rgba(163,255,18,0.5)'
+                    }}>A</div>
+                  )}
+                  <span style={{ fontSize: '9px', color: item.color, fontWeight: 900, letterSpacing: 1, animation: 'pulse 1.5s infinite' }}>{item.action} →</span>
+                </div>
+              ) : (
+                <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 700 }}>{item.sub}</span>
+              )}
             </motion.div>
           ))}
         </div>

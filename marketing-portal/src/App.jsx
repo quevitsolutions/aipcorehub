@@ -11,6 +11,7 @@ import JoinPage from './pages/JoinPage.jsx'
 import AcademyPage from './pages/AcademyPage.jsx'
 import AssetsPage from './pages/AssetsPage.jsx'
 import AIAgentPage from './pages/AIAgentPage.jsx'
+import PlayPage from './pages/PlayPage.jsx'
 import TickerBar from './components/TickerBar.jsx'
 
 export default function App() {
@@ -30,6 +31,7 @@ export default function App() {
         <Route path="/academy"   element={<AcademyPage />} />
         <Route path="/assets"    element={<AssetsPage />} />
         <Route path="/ai-agent"  element={<AIAgentPage />} />
+        <Route path="/play"      element={<PlayPage />} />
         <Route path="/join"      element={<JoinPage />} />
         <Route path="/join/:ref" element={<JoinPage />} />
       </Routes>

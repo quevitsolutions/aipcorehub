@@ -33,105 +33,115 @@ function IncomeCalcPanel({ nodeTier }) {
   const totBnb    = bnbPrice > 0 ? totUsd/bnbPrice : 0;
 
   return (
-    <div style={{ flex:1, overflowY:'auto', paddingBottom:20 }}>
+    <div style={{ 
+      flex: 1, 
+      overflowY: 'auto', 
+      paddingBottom: 20, 
+      background: 'linear-gradient(135deg, #111827 0%, #030712 100%)', 
+      borderRadius: '24px', 
+      padding: '20px', 
+      border: '2px solid rgba(255, 183, 77, 0.25)', 
+      boxShadow: '0 15px 35px rgba(0, 0, 0, 0.7)', 
+      margin: '10px 0 30px' 
+    }}>
       {/* Formula */}
-      <div style={{ background:'rgba(255,183,77,0.06)', border:'1px solid rgba(255,183,77,0.15)', borderRadius:12, padding:'10px 14px', marginBottom:14, fontSize:10, color:'rgba(255,255,255,0.5)', lineHeight:1.8 }}>
-        <span style={{ color:acc, fontWeight:900 }}>FORMULA: </span>
-        People = <span style={{ color:'#4FC3F7' }}>2<sup>L</sup></span>&nbsp;·&nbsp;
-        Earn/person = <span style={{ color:'#A3FF12' }}>Level Cost × 70%</span>&nbsp;·&nbsp;
-        Matrix = <span style={{ color:'#FFD700' }}>BINARY</span>
+      <div style={{ background: '#1e293b', border: '1px solid rgba(255,183,77,0.3)', borderRadius: 12, padding: '10px 14px', marginBottom: 14, fontSize: 10, color: 'rgba(255,255,255,0.85)', lineHeight: 1.8 }}>
+        <span style={{ color: acc, fontWeight: 900 }}>FORMULA: </span>
+        People = <span style={{ color: '#4FC3F7' }}>2<sup>L</sup></span>&nbsp;·&nbsp;
+        Earn/person = <span style={{ color: '#A3FF12' }}>Level Cost × 70%</span>&nbsp;·&nbsp;
+        Matrix = <span style={{ color: '#FFD700' }}>BINARY</span>
       </div>
 
       {/* Controls */}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:14 }}>
-        <div style={{ background:'rgba(255,255,255,0.04)', borderRadius:12, padding:'10px 14px', border:'1px solid rgba(255,255,255,0.08)' }}>
-          <div style={{ fontSize:8, fontWeight:900, color:'#888', letterSpacing:1, marginBottom:5 }}>BNB PRICE ($)</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
+        <div style={{ background: '#1f2937', borderRadius: 12, padding: '10px 14px', border: '1px solid rgba(255,255,255,0.15)' }}>
+          <div style={{ fontSize: 8, fontWeight: 900, color: '#9ca3af', letterSpacing: 1, marginBottom: 5 }}>BNB PRICE ($)</div>
           <input type="number" value={bnbPrice} onChange={e => setBnbPrice(Number(e.target.value)||0)} min={0}
-            style={{ width:'100%', background:'transparent', border:'none', outline:'none', color:'#fff', fontWeight:900, fontSize:16, fontFamily:'monospace' }} />
+            style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', color: '#fff', fontWeight: 900, fontSize: 16, fontFamily: 'monospace' }} />
         </div>
-        <div style={{ background:'rgba(255,255,255,0.04)', borderRadius:12, padding:'10px 14px', border:`1px solid ${TC_E[myTier-1]}40` }}>
-          <div style={{ fontSize:8, fontWeight:900, color:'#888', letterSpacing:1, marginBottom:5 }}>YOUR LEVEL</div>
+        <div style={{ background: '#1f2937', borderRadius: 12, padding: '10px 14px', border: `1px solid ${TC_E[myTier-1]}` }}>
+          <div style={{ fontSize: 8, fontWeight: 900, color: '#9ca3af', letterSpacing: 1, marginBottom: 5 }}>YOUR LEVEL</div>
           <select value={myTier} onChange={e => setMyTier(Number(e.target.value))}
-            style={{ width:'100%', background:'transparent', border:'none', outline:'none', color:TC_E[myTier-1], fontWeight:900, fontSize:14, cursor:'pointer' }}>
-            {LVL_USD_E.map((usd,i) => <option key={i} value={i+1} style={{ background:'#111' }}>L{i+1} — ${usd}</option>)}
+            style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', color: TC_E[myTier-1], fontWeight: 900, fontSize: 14, cursor: 'pointer' }}>
+            {LVL_USD_E.map((usd,i) => <option key={i} value={i+1} style={{ background: '#111827' }}>L{i+1} — ${usd}</option>)}
           </select>
         </div>
       </div>
 
       {/* Summary cards */}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8, marginBottom:14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 14 }}>
         {[
-          { label:'MATRIX NODES', val:fmtE(totPeople), color:'#4FC3F7' },
-          { label:'EST. BNB',     val:totBnb.toFixed(3), color:'#FFD700' },
-          { label:'EST. USD',     val:'$'+fmtE(totUsd), color:'#A3FF12' },
+          { label: 'MATRIX NODES', val: fmtE(totPeople), color: '#4FC3F7' },
+          { label: 'EST. BNB',     val: totBnb.toFixed(3), color: '#FFD700' },
+          { label: 'EST. USD',     val: '$'+fmtE(totUsd), color: '#A3FF12' },
         ].map((c,i) => (
-          <div key={i} style={{ background:'rgba(255,255,255,0.04)', borderRadius:12, padding:'10px 6px', textAlign:'center', border:`1px solid ${c.color}20` }}>
-            <div style={{ fontSize:15, fontWeight:900, color:c.color }}>{c.val}</div>
-            <div style={{ fontSize:7, color:'#444', fontWeight:900, marginTop:2 }}>{c.label}</div>
+          <div key={i} style={{ background: '#111827', borderRadius: 12, padding: '10px 6px', textAlign: 'center', border: `1.5px solid ${c.color}60` }}>
+            <div style={{ fontSize: 15, fontWeight: 900, color: c.color }}>{c.val}</div>
+            <div style={{ fontSize: 7, color: '#9ca3af', fontWeight: 900, marginTop: 2 }}>{c.label}</div>
           </div>
         ))}
       </div>
 
       {/* Level table */}
-      <div style={{ fontSize:10, fontWeight:900, color:'#4FC3F7', letterSpacing:1, marginBottom:8 }}>📊 LEVEL-WISE 70% INCOME</div>
-      <div style={{ background:'rgba(0,0,0,0.3)', borderRadius:12, overflow:'hidden', marginBottom:14 }}>
-        <div style={{ display:'grid', gridTemplateColumns:'36px 50px 58px 60px 1fr 44px', gap:3, padding:'7px 10px', background:'rgba(255,255,255,0.03)', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
-          {['LVL','PEOPLE','COST $','70% EA','TOTAL $',''].map(h => <span key={h} style={{ fontSize:7, fontWeight:900, color:'#555' }}>{h}</span>)}
+      <div style={{ fontSize: 10, fontWeight: 900, color: '#4FC3F7', letterSpacing: 1, marginBottom: 8 }}>📊 LEVEL-WISE 70% INCOME</div>
+      <div style={{ background: '#030712', borderRadius: 12, overflow: 'hidden', marginBottom: 14, border: '1px solid rgba(255,255,255,0.08)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '36px 50px 58px 60px 1fr 44px', gap: 3, padding: '7px 10px', background: '#1f2937', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+          {['LVL','PEOPLE','COST $','70% EA','TOTAL $',''].map(h => <span key={h} style={{ fontSize: 7, fontWeight: 900, color: '#d1d5db' }}>{h}</span>)}
         </div>
-        <div style={{ maxHeight:300, overflowY:'auto' }}>
+        <div style={{ maxHeight: 300, overflowY: 'auto' }}>
           {levels.map(({ lv, people, costUsd, earnPer, totalEarn, locked }) => {
             const color = TC_E[(lv-1)%18];
             return (
-              <div key={lv} style={{ display:'grid', gridTemplateColumns:'36px 50px 58px 60px 1fr 44px', gap:3, padding:'7px 10px', borderBottom:'1px solid rgba(255,255,255,0.03)', alignItems:'center', opacity:locked?0.3:1, background:locked?'transparent':`${color}04` }}>
-                <span style={{ fontSize:9, fontWeight:900, color, background:`${color}18`, borderRadius:4, padding:'2px 4px', textAlign:'center' }}>L{lv}</span>
-                <span style={{ fontSize:9, color:'#ccc' }}>{fmtE(people)}</span>
-                <span style={{ fontSize:9, color:'#FFB74D', fontWeight:700 }}>${costUsd}</span>
-                <span style={{ fontSize:9, color:'#FFD700', fontWeight:800 }}>${earnPer.toFixed(2)}</span>
-                <span style={{ fontSize:9, color:'#A3FF12', fontWeight:900 }}>${fmtE(totalEarn)}</span>
-                <span style={{ fontSize:9, textAlign:'center' }}>{locked?'🔒':'✅'}</span>
+              <div key={lv} style={{ display: 'grid', gridTemplateColumns: '36px 50px 58px 60px 1fr 44px', gap: 3, padding: '7px 10px', borderBottom: '1px solid rgba(255,255,255,0.05)', alignItems: 'center', opacity: locked?0.35:1, background: locked?'transparent':`${color}10` }}>
+                <span style={{ fontSize: 9, fontWeight: 900, color, background: `${color}25`, borderRadius: 4, padding: '2px 4px', textAlign: 'center' }}>L{lv}</span>
+                <span style={{ fontSize: 9, color: '#e5e7eb', fontWeight: 700 }}>{fmtE(people)}</span>
+                <span style={{ fontSize: 9, color: '#FFB74D', fontWeight: 800 }}>${costUsd}</span>
+                <span style={{ fontSize: 9, color: '#FFD700', fontWeight: 900 }}>${earnPer.toFixed(2)}</span>
+                <span style={{ fontSize: 9, color: '#A3FF12', fontWeight: 950 }}>${fmtE(totalEarn)}</span>
+                <span style={{ fontSize: 9, textAlign: 'center' }}>{locked?'🔒':'✅'}</span>
               </div>
             );
           })}
-          <div style={{ display:'grid', gridTemplateColumns:'36px 50px 58px 60px 1fr 44px', gap:3, padding:'8px 10px', background:'rgba(255,183,77,0.07)', borderTop:`1px solid ${acc}30`, alignItems:'center' }}>
-            <span style={{ fontSize:8, fontWeight:900, color:acc }}>ALL</span>
-            <span style={{ fontSize:9, color:'#ccc', fontWeight:900 }}>{fmtE(totPeople)}</span>
-            <span style={{ fontSize:9, color:'#888' }}>—</span>
-            <span style={{ fontSize:9, color:'#888' }}>—</span>
-            <span style={{ fontSize:9, color:'#A3FF12', fontWeight:900 }}>${fmtE(totUsd)}</span>
-            <span style={{ fontSize:8, color:acc }}>L{myTier}</span>
+          <div style={{ display: 'grid', gridTemplateColumns: '36px 50px 58px 60px 1fr 44px', gap: 3, padding: '8px 10px', background: 'rgba(255,183,77,0.15)', borderTop: `1.5px solid ${acc}40`, alignItems: 'center' }}>
+            <span style={{ fontSize: 8, fontWeight: 900, color: acc }}>ALL</span>
+            <span style={{ fontSize: 9, color: '#fff', fontWeight: 900 }}>{fmtE(totPeople)}</span>
+            <span style={{ fontSize: 9, color: '#888' }}>—</span>
+            <span style={{ fontSize: 9, color: '#888' }}>—</span>
+            <span style={{ fontSize: 9, color: '#A3FF12', fontWeight: 950 }}>${fmtE(totUsd)}</span>
+            <span style={{ fontSize: 8, color: acc, fontWeight: 900 }}>L{myTier}</span>
           </div>
         </div>
       </div>
 
       {/* Tier comparison toggle */}
       <button onClick={() => setShowTiers(v => !v)}
-        style={{ width:'100%', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:10, padding:'10px', color:'#888', fontWeight:900, fontSize:10, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8, marginBottom:10 }}>
+        style={{ width: '100%', background: '#1f2937', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '12px', color: '#e5e7eb', fontWeight: 950, fontSize: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 10 }}>
         🎯 {showTiers?'HIDE':'SHOW'} TIER-WISE COMPARISON
       </button>
       {showTiers && (
-        <div style={{ background:'rgba(0,0,0,0.3)', borderRadius:12, overflow:'hidden' }}>
-          <div style={{ display:'grid', gridTemplateColumns:'36px 60px 58px 60px 1fr', gap:3, padding:'7px 10px', background:'rgba(255,255,255,0.03)', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
-            {['LVL','COST $','BNB~','AIP/hr','L1 EARN $'].map(h => <span key={h} style={{ fontSize:7, fontWeight:900, color:'#555' }}>{h}</span>)}
+        <div style={{ background: '#030712', borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '36px 60px 58px 60px 1fr', gap: 3, padding: '7px 10px', background: '#1f2937', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+            {['LVL','COST $','BNB~','AIP/hr','L1 EARN $'].map(h => <span key={h} style={{ fontSize: 7, fontWeight: 900, color: '#d1d5db' }}>{h}</span>)}
           </div>
-          <div style={{ maxHeight:250, overflowY:'auto' }}>
+          <div style={{ maxHeight: 250, overflowY: 'auto' }}>
             {LVL_USD_E.map((costUsd, i) => {
               const color = TC_E[i];
               const l1Earn = 2 * costUsd * 0.70;
               const costBnb = bnbPrice > 0 ? (costUsd/bnbPrice).toFixed(4) : '—';
               return (
-                <div key={i} style={{ display:'grid', gridTemplateColumns:'36px 60px 58px 60px 1fr', gap:3, padding:'7px 10px', borderBottom:'1px solid rgba(255,255,255,0.03)', alignItems:'center', background:i+1===myTier?`${color}10`:'transparent' }}>
-                  <span style={{ fontSize:9, fontWeight:900, color, background:`${color}20`, borderRadius:4, padding:'2px 4px', textAlign:'center' }}>L{i+1}</span>
-                  <span style={{ fontSize:9, color:'#FFB74D', fontWeight:700 }}>${costUsd}</span>
-                  <span style={{ fontSize:9, color:'#FFD700' }}>{costBnb}</span>
-                  <span style={{ fontSize:9, color:'#4FC3F7' }}>{AIP_E[i]}</span>
-                  <span style={{ fontSize:9, color:'#A3FF12', fontWeight:800 }}>${l1Earn.toFixed(2)}</span>
+                <div key={i} style={{ display: 'grid', gridTemplateColumns: '36px 60px 58px 60px 1fr', gap: 3, padding: '7px 10px', borderBottom: '1px solid rgba(255,255,255,0.05)', alignItems: 'center', background: i+1===myTier?`${color}20`:'transparent' }}>
+                  <span style={{ fontSize: 9, fontWeight: 900, color, background: `${color}25`, borderRadius: 4, padding: '2px 4px', textAlign: 'center' }}>L{i+1}</span>
+                  <span style={{ fontSize: 9, color: '#FFB74D', fontWeight: 800 }}>${costUsd}</span>
+                  <span style={{ fontSize: 9, color: '#FFD700', fontWeight: 900 }}>{costBnb}</span>
+                  <span style={{ fontSize: 9, color: '#4FC3F7', fontWeight: 900 }}>{AIP_E[i]}</span>
+                  <span style={{ fontSize: 9, color: '#A3FF12', fontWeight: 950 }}>${l1Earn.toFixed(2)}</span>
                 </div>
               );
             })}
           </div>
         </div>
       )}
-      <div style={{ fontSize:8, color:'#333', fontWeight:700, marginTop:12, textAlign:'center' }}>⚠️ ESTIMATES ONLY · BINARY MATRIX · 70% DISTRIBUTION · BNB PRICE VARIABLE</div>
+      <div style={{ fontSize: 8, color: '#9ca3af', fontWeight: 700, marginTop: 12, textAlign: 'center' }}>⚠️ ESTIMATES ONLY · BINARY MATRIX · 70% DISTRIBUTION · BNB PRICE VARIABLE</div>
     </div>
   );
 }
@@ -343,7 +353,7 @@ export default function EarnScreen() {
     isFreeActive, createdAt, globalHistory, fetchGlobalHistory,
     initialLoaded, pendingMined, lastSyncTime,
     claimedMilestones, claimSignupBonusAction, miningRate,
-    isNewUser  // FIX: needed to guard welcome bonus modal for returning users
+    isNewUser, taps, energy, maxEnergy
   } = useGameStore();
 
   const [view, setView] = useState('mining'); // 'mining' | 'history'
@@ -362,6 +372,51 @@ export default function EarnScreen() {
   const [visibleDays, setVisibleDays] = useState(3);
   const [liveRewards, setLiveRewards] = useState([]);
   const latestIncomeRef = useRef(null);
+  
+  // Floating Tap Score Particles state and click handlers
+  const [particles, setParticles] = useState([]);
+  
+  const triggerTap = (e) => {
+    if (isExpired) return;
+    const state = useGameStore.getState();
+    if (state.energy <= 0) {
+      toast.error("Out of energy! Recharging...", { id: 'energy-empty' });
+      return;
+    }
+
+    const res = state.handleTap();
+    if (res.status === "LOCKED") {
+      toast.error("Tap limit reached! Activate a Node to unlock unlimited taps.", { id: 'tap-locked' });
+      return;
+    }
+
+    // Get touch / click coordinates relative to standard viewport coin layout
+    const rect = e.currentTarget.getBoundingClientRect();
+    let clientX = 0;
+    let clientY = 0;
+
+    if (e.touches && e.touches.length > 0) {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
+
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    const id = Date.now() + Math.random();
+    
+    // Node holders get 10 sparks visual feedback, free players get 1
+    const tapValue = hasNode ? 10 : 1;
+
+    setParticles((prev) => [...prev, { id, x, y, value: `+${tapValue}` }]);
+    
+    setTimeout(() => {
+      setParticles((prev) => prev.filter((p) => p.id !== id));
+    }, 800);
+  };
+
 
   // Live On-Chain Reward Poller
   useEffect(() => {
@@ -632,237 +687,245 @@ export default function EarnScreen() {
             />
           )}
 
-          {/* ── Balance (Static — only updates on Claim) ── */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 8 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: '20px', fontWeight: 900, color: '#FFD700', letterSpacing: '2px' }}>$AIP</span>
-            <motion.span 
-              key={Math.floor(localReward)}
-              initial={{ scale: 1 }}
-              animate={{ scale: [1, 1.05, 1] }}
-              transition={{ duration: 0.3 }}
-              className="balance-value" 
-              style={{ fontSize: 44, fontWeight: 900, color: '#fff', textShadow: '0 0 20px rgba(255,255,255,0.1)' }}
-            >
-              {Number(localReward || 0) >= 1 ? Math.floor(localReward).toLocaleString('en-US') : Number(localReward || 0).toFixed(4)}
-            </motion.span>
+          {/* ── Immersive RPG Status Bar HUD ── */}
+          <div className="tma-rpg-hud" style={{ cursor: 'pointer' }} onClick={() => setActiveTab('dash')}>
+            <div className="tma-rpg-level-badge">
+              {hasNode ? nodeTier || 1 : '1'}
             </div>
-
-            {/* ── Pending Mined Ticker (ticks up, clears on Claim) ── */}
-            {totalMined > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
-                <motion.div
-                  animate={{ opacity: [0.6, 1, 0.6] }}
-                  transition={{ duration: 1.5, repeat: Infinity }}
-                  style={{ width: 6, height: 6, borderRadius: '50%', background: isCapReached ? '#FF3D00' : 'var(--neon-lime)' }}
-                />
-                <span style={{ fontSize: 13, fontWeight: 800, color: isCapReached ? '#FF5252' : 'var(--neon-lime)' }}>
-                  +{totalMined >= 1 ? Math.floor(totalMined).toLocaleString('en-US') : totalMined.toFixed(4)} PENDING
+            <div className="tma-rpg-info-bar">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span className="tma-rpg-username">
+                  {hasNode ? `OPERATIVE #${nodeId}` : 'FREE TRIAL AGENT'}
                 </span>
-                <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.4)' }}>→ CLAIM TO CREDIT</span>
+                <span style={{ fontSize: '11px', fontWeight: 950, color: '#ffd700', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>
+                  {taps.toLocaleString()} SPARKS
+                </span>
               </div>
-            )}
-
-            {/* ── 24h Cap Warning Banner ── */}
-            {(isCapWarning || isCapCritical || isCapReached) && !isExpired && totalMined > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: -6 }}
-                animate={{ opacity: 1, y: 0 }}
-                style={{
-                  marginTop: 10,
-                  padding: '8px 14px',
-                  borderRadius: 12,
-                  background: isCapReached
-                    ? 'linear-gradient(90deg, rgba(255,61,0,0.35), rgba(183,28,28,0.5))'
-                    : isCapCritical
-                    ? 'linear-gradient(90deg, rgba(255,87,34,0.25), rgba(255,61,0,0.35))'
-                    : 'linear-gradient(90deg, rgba(255,143,0,0.2), rgba(255,111,0,0.3))',
-                  border: `1px solid ${isCapReached ? 'rgba(255,61,0,0.6)' : isCapCritical ? 'rgba(255,87,34,0.5)' : 'rgba(255,143,0,0.4)'}`,
-                  display: 'flex', alignItems: 'center', gap: 8,
-                }}
-              >
-                <motion.span
-                  animate={{ scale: isCapReached ? [1, 1.3, 1] : [1, 1.1, 1] }}
-                  transition={{ duration: isCapReached ? 0.6 : 1.2, repeat: Infinity }}
-                  style={{ fontSize: 16 }}
-                >
-                  {isCapReached ? '🚨' : isCapCritical ? '🔥' : '⏱️'}
-                </motion.span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 10, fontWeight: 900, color: isCapReached ? '#FF5252' : '#FF7043', letterSpacing: 0.5 }}>
-                    {isCapReached ? 'CAP REACHED — COINS WASTING!' : isCapCritical ? `CLAIM IN ${Math.floor(hoursLeft)}h ${Math.floor((hoursLeft % 1) * 60)}m` : `24H CAP: ${Math.floor(capPercent)}% FULL`}
-                  </div>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#fff', marginTop: 2 }}>
-                    {isCapReached
-                      ? 'Mining paused — claim now or lose new coins'
-                      : `~${Math.floor(hoursLeft)}h ${Math.floor((hoursLeft % 1) * 60)}m left before daily reset`}
-                  </div>
-                </div>
-              </motion.div>
-            )}
+              <div className="tma-rpg-xp-container">
+                <div className="tma-rpg-xp-fill" style={{ width: `${(energy / maxEnergy) * 100}%` }} />
+              </div>
+            </div>
           </div>
 
-          {/* ── Egg Zone ── */}
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', minHeight: 240 }}>
-            <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          {/* ── Active Node: Passive Mining Terminal ── */}
+          {hasNode && (
+            <div className="w-full" style={{ marginBottom: 12 }}>
+              <div className="tma-node-portal">
+                <div className="tma-portal-ring" />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+                  <div>
+                    <span style={{ fontSize: '9px', fontWeight: 900, color: 'var(--neon-lime)', letterSpacing: '1px', display: 'block' }}>⚙️ PASSIVE TERMINAL</span>
+                    <span style={{ fontSize: '15px', fontWeight: 950, color: '#fff', marginTop: 2, display: 'block' }}>NODE #{nodeId}</span>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <span style={{ fontSize: '9px', fontWeight: 900, color: '#4FC3F7', letterSpacing: '0.5px', display: 'block' }}>SPEED</span>
+                    <span style={{ fontSize: '12px', fontWeight: 900, color: '#fff', marginTop: 2, display: 'block' }}>+{ratePerHour} AIP/HR</span>
+                  </div>
+                </div>
 
-              {/* Maturity circle ring */}
-              <svg style={{ position: 'absolute', top: '50%', left: '50%', width: 260, height: 260, transform: 'translate(-50%, -50%) rotate(-90deg)', pointerEvents: 'none' }}>
-                <circle cx="130" cy="130" r="120" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="3" />
-                <motion.circle cx="130" cy="130" r="120" fill="none" stroke="var(--neon-lime)" strokeWidth="3"
-                  strokeDasharray="754"
-                  animate={{ strokeDashoffset: 754 * (1 - maturity) }}
-                  transition={{ duration: 1, ease: 'linear' }}
-                  strokeLinecap="round" />
-              </svg>
+                <div style={{ background: 'rgba(0, 0, 0, 0.25)', borderRadius: 12, padding: '12px', border: '1px solid rgba(255, 255, 255, 0.03)', textAlign: 'center', marginBottom: 12 }}>
+                  <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', fontWeight: 800 }}>ACCUMULATED PASSIVE REWARDS</span>
+                  <div style={{ fontSize: '26px', fontWeight: 950, color: 'var(--neon-lime)', marginTop: 4, textShadow: '0 0 15px rgba(163, 255, 18, 0.4)' }}>
+                    +{totalMined.toFixed(4)} $AIP
+                  </div>
+                  {isCapReached ? (
+                    <span style={{ fontSize: '8px', color: '#FF3B30', fontWeight: 900, letterSpacing: 0.5 }}>⚠️ MAX LIMIT REACHED (CLAIM NOW)</span>
+                  ) : (
+                    <span style={{ fontSize: '9px', color: '#4FC3F7', fontWeight: 700 }}>Ends in: {formatTime(timeRemaining)}</span>
+                  )}
+                </div>
 
+                <motion.button 
+                  whileTap={{ scale: 0.96 }}
+                  disabled={isClaiming || totalMined <= 0}
+                  onClick={onClaim}
+                  style={{
+                    width: '100%',
+                    background: totalMined > 0 ? 'linear-gradient(135deg, var(--neon-lime), #7BFF00)' : 'rgba(255,255,255,0.03)',
+                    color: totalMined > 0 ? '#000' : 'rgba(255,255,255,0.15)',
+                    border: 'none',
+                    borderRadius: 16,
+                    padding: '14px',
+                    fontSize: '12px',
+                    fontWeight: 950,
+                    cursor: totalMined > 0 ? 'pointer' : 'not-allowed',
+                    boxShadow: totalMined > 0 ? '0 8px 25px rgba(163,255,18,0.35)' : 'none',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  {isClaiming ? '⏳ SYNCING REWARDS...' : `🥚 CLAIM PASSIVE YIELD (${totalMined.toFixed(4)})`}
+                </motion.button>
+              </div>
+            </div>
+          )}
+
+          {/* ── CENTRAL TAPPING VIEW (Interactive Egg Incubation Deck) ── */}
+          <div style={{ flex: 1, display: 'flex', position: 'relative', width: '100%', alignItems: 'center', justifyContent: 'center' }}>
+            
+            {/* Left Column Floating Widgets */}
+            <div className="tma-floating-panel left">
+              <button className="tma-game-widget" onClick={() => setActiveTab('friends')}>
+                <div className="tma-widget-circle orange">🏆</div>
+                <span className="tma-widget-label">Rating</span>
+              </button>
+              <button className="tma-game-widget" onClick={() => setActiveTab('team')}>
+                <div className="tma-widget-circle blue">🕸️</div>
+                <span className="tma-widget-label">Clans</span>
+              </button>
+            </div>
+
+            {/* Right Column Floating Widgets */}
+            <div className="tma-floating-panel right">
+              <button className="tma-game-widget" onClick={() => setActiveTab('tasks')}>
+                <div className="tma-widget-circle lime">✅</div>
+                <span className="tma-widget-label">Quests</span>
+              </button>
+              <button className="tma-game-widget" onClick={() => setView('calculator')}>
+                <div className="tma-widget-circle">📊</div>
+                <span className="tma-widget-label">Calc</span>
+              </button>
+            </div>
+
+            {/* Central Custom Egg Incubator */}
+            <div className="tma-egg-incubator">
+              <div className="tma-egg-stand" />
+              
               <AnimatePresence>
                 {isExploding && (
-                  <motion.div initial={{ opacity: 1, scale: 0.8 }} animate={{ opacity: 0, scale: 2 }}
-                    style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle, var(--neon-lime) 0%, transparent 70%)', zIndex: 5, borderRadius: '50%' }} />
+                  <motion.div 
+                    initial={{ opacity: 1, scale: 0.8 }} 
+                    animate={{ opacity: 0, scale: 2.2 }}
+                    style={{ 
+                      position: 'absolute', 
+                      width: 200, 
+                      height: 200, 
+                      background: 'radial-gradient(circle, var(--neon-lime) 0%, transparent 70%)', 
+                      zIndex: 5, 
+                      borderRadius: '50%',
+                      pointerEvents: 'none'
+                    }} 
+                  />
                 )}
               </AnimatePresence>
 
-              {/* FLOATING LIVE REWARDS */}
-              <div style={{ position: 'absolute', top: '20%', left: 0, right: 0, bottom: 0, zIndex: 100, pointerEvents: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                <AnimatePresence>
-                  {liveRewards.map((reward) => (
-                    <motion.div
-                      key={reward.uniqueId}
-                      initial={{ opacity: 0, y: 0, scale: 0.5 }}
-                      animate={{ opacity: 1, y: -70, scale: 1 }}
-                      exit={{ opacity: 0, y: -110, scale: 0.8 }}
-                      transition={{ duration: 2.5, ease: 'easeOut' }}
-                      style={{
-                        position: 'absolute',
-                        background: 'rgba(0,0,0,0.85)',
-                        border: '1px solid rgba(255, 215, 0, 0.5)',
-                        boxShadow: '0 0 20px rgba(255, 215, 0, 0.3)',
-                        padding: '8px 16px',
-                        borderRadius: '20px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        whiteSpace: 'nowrap'
-                      }}
-                    >
-                      <span style={{ fontSize: 16 }}>✨</span>
-                      <span style={{ fontSize: 13, fontWeight: 900, color: '#A3FF12' }}>+{reward.amount_bnb} BNB</span>
-                      <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase' }}>({reward.event_type})</span>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
+              {/* Floating Multi-touch Score Particles */}
+              {particles.map((p) => (
+                <span
+                  key={p.id}
+                  className="score-particle"
+                  style={{ left: p.x, top: p.y }}
+                >
+                  {p.value}
+                </span>
+              ))}
+
+              <motion.img 
+                src="/assets/egg_orange.png"
+                className="tma-incubated-egg"
+                onClick={triggerTap}
+                onTouchStart={triggerTap}
+                whileTap={{ scale: 0.90, y: 5 }}
+                style={{
+                  filter: isExpired ? 'grayscale(1) brightness(0.4)' : 'none'
+                }}
+              />
+
+              {isExpired && (
+                <div style={{
+                  position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                  background: 'rgba(0,0,0,0.65)', borderRadius: '50%', textAlign: 'center', padding: 20, zIndex: 15
+                }}>
+                  <span style={{ fontSize: 13, fontWeight: 900, color: '#FF3B30', marginBottom: 8 }}>TRIAL EXPIRED</span>
+                  <button onClick={() => setActiveTab('mine')} style={{ background: 'var(--neon-lime)', border: 'none', padding: '8px 16px', borderRadius: 12, fontSize: 11, fontWeight: 900, color: '#000', cursor: 'pointer' }}>
+                    ACTIVATE NODE
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ── Footer Stats & Energy Controls ── */}
+          <div style={{ flexShrink: 0, padding: '16px 0 6px', background: 'linear-gradient(to top, rgba(5, 8, 15, 0.3) 70%, transparent)' }}>
+            
+            {/* Energy Bar Indicator */}
+            <div className="tma-energy-hud">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ fontSize: 13 }}>⚡</span>
+                  <span style={{ fontSize: 11, fontWeight: 900, color: '#fff' }}>
+                    {energy} <span style={{ color: 'rgba(255,255,255,0.4)', fontWeight: 700 }}>/ {maxEnergy}</span>
+                  </span>
+                </div>
+                <span style={{ fontSize: 9, fontWeight: 900, color: 'var(--neon-lime)', letterSpacing: 0.5 }}>
+                  {hasNode ? '3X BOOST ACTIVE' : `SPEED: ${effectiveRate} $AIP/HR`}
+                </span>
               </div>
-
-              {/* EGG */}
-              <div style={{
-                position: 'relative', width: 220, height: 220, zIndex: 10,
-                WebkitMaskImage: 'radial-gradient(circle, black 50%, transparent 95%)',
-                maskImage: 'radial-gradient(circle, black 50%, transparent 95%)'
-              }}>
-                <img src="/assets/egg_orange.png"
-                  loading="eager"
-                  style={{
-                    width: '100%', height: '100%', objectFit: 'contain',
-                    filter: isExpired ? 'grayscale(1) brightness(0.5)' : `drop-shadow(0 0 ${25 * maturity}px rgba(255,165,0,0.4))`
-                  }}
-                  alt="Mining Egg" />
-
-                {isExpired && (
-                  <div style={{
-                    position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                    background: 'rgba(0,0,0,0.6)', borderRadius: '50%', textAlign: 'center', padding: 20, zIndex: 15
-                  }}>
-                    <span style={{ fontSize: 13, fontWeight: 900, color: '#FF3B30', marginBottom: 8 }}>SESSION EXPIRED</span>
-                    <button onClick={() => setActiveTab('mine')} style={{ background: 'var(--neon-lime)', border: 'none', padding: '8px 16px', borderRadius: 12, fontSize: 11, fontWeight: 900, color: '#000', cursor: 'pointer' }}>
-                      ACTIVATE NODE
-                    </button>
-                  </div>
-                )}
+              <div className="tma-energy-bar">
+                <div 
+                  className="tma-energy-fill" 
+                  style={{ width: `${(energy / maxEnergy) * 100}%` }}
+                />
               </div>
             </div>
 
-            {/* TRIAL LEFT - Centered and subtle */}
-            {/* Bug #5 fix: guard with initialLoaded to prevent stale flash */}
-            {initialLoaded && !hasNode && isFreeActive && (
-              <div style={{ display: 'flex', justifyContent: 'center', marginTop: -10, marginBottom: 20 }}>
-                <div style={{ background: 'rgba(255,255,255,0.05)', padding: '6px 20px', borderRadius: 20, border: '1px solid rgba(255,255,255,0.1)' }}>
-                  <span style={{ fontSize: 11, fontWeight: 900, color: 'var(--neon-lime)', letterSpacing: 0.5 }}>{daysLeft} DAYS TRIAL LEFT</span>
-                </div>
+            {/* Free users: Action Boost & Claim Buttons */}
+            {!hasNode && (
+              <div style={{ display: 'flex', gap: 10, marginTop: 14, alignItems: 'stretch' }}>
+                <button
+                  onClick={() => setActiveTab('mine')}
+                  style={{
+                    flex: 0.65,
+                    background: 'var(--neon-lime)',
+                    border: 'none', borderRadius: 16, padding: '15px 10px', cursor: 'pointer',
+                    boxShadow: '0 0 20px rgba(163, 255, 18, 0.3)',
+                  }}
+                >
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                    <span style={{ fontSize: 13, fontWeight: 950, color: '#000', letterSpacing: 0.5 }}>⚡ ACTIVATE NODE</span>
+                    <span style={{ fontSize: 9, fontWeight: 900, color: 'rgba(0,0,0,0.6)' }}>UNLOCK 10X SPEED & PASSIVE YIELD</span>
+                  </div>
+                </button>
+
+                <button
+                  onClick={onClaim}
+                  disabled={isClaiming || isExpired || totalMined <= 0}
+                  style={{
+                    flex: 0.35,
+                    background: (totalMined > 0 && !isExpired) ? '#4FC3F7' : 'rgba(255,255,255,0.03)',
+                    border: 'none', borderRadius: 16, padding: '15px 5px',
+                    cursor: (totalMined > 0 && !isExpired) ? 'pointer' : 'not-allowed',
+                    opacity: isClaiming ? 0.6 : 1,
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                    <span style={{ fontSize: 13, fontWeight: 950, color: (totalMined > 0 && !isExpired) ? '#000' : 'rgba(255,255,255,0.15)' }}>
+                      {isClaiming ? '⏳' : 'CLAIM'}
+                    </span>
+                    <span style={{ fontSize: 9, fontWeight: 900, color: (totalMined > 0 && !isExpired) ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.1)' }}>
+                      +{totalMined.toFixed(2)} $AIP
+                    </span>
+                  </div>
+                </button>
               </div>
             )}
           </div>
-
-          <div style={{ flexShrink: 0, padding: '20px 0 10px', background: 'linear-gradient(to top, var(--bg-dark) 50%, transparent)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, padding: '0 8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                {/* Bug #3 fix: dot is grey and rate is 0 when expired */}
-                <div style={{ width: 6, height: 6, borderRadius: '50%', background: effectiveRate > 0 ? 'var(--neon-lime)' : '#666', boxShadow: effectiveRate > 0 ? '0 0 10px var(--neon-lime)' : 'none' }} />
-                <span style={{ fontSize: 10, fontWeight: 900, color: 'rgba(255,255,255,0.6)', letterSpacing: 0.5 }}>RATE: <span style={{ color: effectiveRate > 0 ? 'var(--neon-lime)' : '#666' }}>{effectiveRate} $AIP/HR</span></span>
-              </div>
-              {!isExpired && <span style={{ fontSize: 10, fontWeight: 900, color: 'rgba(255,255,255,0.4)', letterSpacing: 1 }}>ENDS IN: <span style={{ color: '#fff' }}>{formatTime(timeRemaining)}</span></span>}
-              {isExpired && <span style={{ fontSize: 10, fontWeight: 900, color: '#FF3B30', letterSpacing: 1 }}>TRIAL EXPIRED</span>}
-            </div>
-
-            <div style={{ display: 'flex', gap: 10, alignItems: 'stretch' }}>
-              {/* BOOST / UPGRADE (70%) */}
-              <button
-                onClick={() => setActiveTab('mine')}
-                style={{
-                  flex: 0.7,
-                  background: 'var(--neon-lime)',
-                  border: 'none', borderRadius: 16, padding: '16px 10px', cursor: 'pointer',
-                  boxShadow: '0 0 25px rgba(163, 255, 18, 0.4)',
-                  position: 'relative', overflow: 'hidden'
-                }}
-              >
-                <motion.div animate={{ opacity: [1, 0.6, 1] }} transition={{ duration: 2, repeat: Infinity }}
-                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                  <span style={{ fontSize: 15, fontWeight: 950, color: '#000', letterSpacing: 0.5 }}>{hasNode ? 'BOOST' : 'UPGRADE'} NODE</span>
-                  <span style={{ fontSize: 10, fontWeight: 900 }}>
-                    {hasNode 
-                      ? <span style={{ color: 'rgba(0,0,0,0.5)' }}>TIER {displayTier} → {displayTier + 1} 🚀</span> 
-                      : (!isExpired 
-                          ? <span style={{ color: '#000000', fontSize: 11, fontWeight: 950 }}>TRIAL EXPIRES IN {daysLeft} DAYS ⚡</span> 
-                          : <span style={{ color: 'rgba(0,0,0,0.5)' }}>ACTIVATE CORE ⚡</span>)
-                    }
-                  </span>
-                </motion.div>
-              </button>
-
-              {/* COLLECT (30%) */}
-              <button
-                onClick={onClaim}
-                disabled={isClaiming || isExpired}
-                style={{
-                  flex: 0.3,
-                  background: (!isClaiming && !isExpired) ? '#4FC3F7' : 'rgba(255,255,255,0.04)',
-                  border: 'none', borderRadius: 16, padding: '16px 5px',
-                  cursor: (!isClaiming && !isExpired) ? 'pointer' : 'default',
-                  transition: 'all 0.3s',
-                  opacity: isClaiming ? 0.6 : 1
-                }}
-              >
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                  <span style={{ fontSize: 13, fontWeight: 950, color: (!isClaiming && !isExpired) ? '#000' : 'rgba(255,255,255,0.2)' }}>
-                    {isClaiming ? '⏳' : maturity >= 1 ? '🥚' : 'CLAIM'}
-                  </span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                    <span style={{ fontSize: 9, fontWeight: 900, color: (!isClaiming && !isExpired) ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.1)' }}>$AIP</span>
-                    <span style={{ fontSize: 11, fontWeight: 950, color: (!isClaiming && !isExpired) ? '#000' : 'rgba(255,255,255,0.2)' }}>
-                      {isClaiming ? '...' : totalMined.toFixed(4)}
-                    </span>
-                  </div>
-                </div>
-              </button>
-            </div>
-          </div>
         </>
+
       ) : (
         /* ── HISTORY VIEW ── */
-        <div style={{ flex: 1, overflowY: 'auto' }}>
+        <div style={{ 
+          flex: 1, 
+          overflowY: 'auto', 
+          background: 'linear-gradient(135deg, #111827 0%, #030712 100%)', 
+          borderRadius: '24px', 
+          padding: '20px', 
+          border: '2px solid rgba(79, 195, 247, 0.25)', 
+          boxShadow: '0 15px 35px rgba(0, 0, 0, 0.7)', 
+          margin: '10px 0 30px' 
+        }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: 20, padding: 4 }}>
+            <div style={{ display: 'flex', background: '#1f2937', borderRadius: 20, padding: 4, border: '1px solid rgba(255,255,255,0.08)' }}>
               <div
                 onClick={() => setHistoryMode('personal')}
                 style={{
@@ -887,8 +950,8 @@ export default function EarnScreen() {
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
                 style={{
-                  background: 'rgba(255,255,255,0.1)',
-                  border: '1px solid rgba(255,255,255,0.2)',
+                  background: '#1f2937',
+                  border: '1px solid rgba(255,255,255,0.25)',
                   color: '#A3FF12',
                   borderRadius: 12,
                   padding: '6px 12px',
@@ -910,9 +973,9 @@ export default function EarnScreen() {
               </motion.div>
             ) : (historyMode === 'personal' ? teamHistory : globalHistory).length === 0 ? (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                style={{ height: 200, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, color: 'rgba(255,255,255,0.2)' }}>
+                style={{ height: 200, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, color: '#9ca3af' }}>
                 <div style={{ fontSize: 40 }}>💤</div>
-                <p style={{ fontSize: 12, fontWeight: 600 }}>No {historyMode} income found yet.</p>
+                <p style={{ fontSize: 12, fontWeight: 700, color: '#e5e7eb' }}>No {historyMode} income found yet.</p>
               </motion.div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>

@@ -1,35 +1,29 @@
 import { useGameStore } from '../store/gameStore.js';
 
 export default function TabBar() {
-  const { activeTab, setActiveTab, isAdmin, hasNode } = useGameStore();
+  const { activeTab, setActiveTab, hasNode } = useGameStore();
 
   const TABS = [
+    { id: 'earn',      icon: '⛏️', label: 'Tap' },
+    { id: 'mine',      icon: '🚀', label: hasNode ? 'Boost' : 'Nodes' },
+    { id: 'tasks',     icon: '✅', label: 'Tasks' },
     { id: 'friends',   icon: '👥', label: 'Friends' },
-    { id: 'team',      icon: '🕸️', label: 'Team' },
-    { id: 'earn',      icon: '⛏️', label: 'Earn' },
-    { id: 'mine',      icon: '🚀', label: hasNode ? 'Boost' : 'Upgrade' },
-    { id: 'contracts', icon: '📄', label: 'Docs' },
-    { id: 'marketing', icon: '🚀', label: 'Promo' },
-    { id: 'dash',      icon: '👤', label: 'Stats' },
+    { id: 'team',      icon: '🕸️', label: 'Network' },
   ];
 
-  if (isAdmin) {
-    TABS.push({ id: 'admin', icon: '⚡', label: 'Master' });
-  }
-
   return (
-    <nav className="mobile-tabs">
+    <nav className="rpg-chunky-tabs">
       {TABS.map(t => (
         <button
           key={t.id}
-          className={`tab-item ${activeTab === t.id ? 'active' : ''}`}
+          className={`rpg-chunky-tab-item ${activeTab === t.id ? 'active' : ''}`}
           onClick={() => setActiveTab(t.id)}
         >
-          {t.badge && <div className="badge-red">{t.badge}</div>}
-          <span className="tab-icon">{t.icon}</span>
-          <span className="tab-label">{t.label}</span>
+          <span className="rpg-chunky-tab-icon">{t.icon}</span>
+          <span className="rpg-chunky-tab-label">{t.label}</span>
         </button>
       ))}
     </nav>
   );
 }
+

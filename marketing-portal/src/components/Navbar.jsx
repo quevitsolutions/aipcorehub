@@ -7,6 +7,7 @@ const NAV_LINKS = [
   { label: 'Features',  to: '/features' },
   { label: 'Earnings',  to: '/earnings' },
   { label: 'Academy',   to: '/academy' },
+  { label: 'Play (Free)', to: '/play' },
   { label: 'Assets',    to: '/assets' },
   { label: 'AI Agent',  to: '/ai-agent' },
 ]
