@@ -1213,6 +1213,10 @@ body {
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }
+.page-earn.solid-bg {
+  background-image: none !important;
+  background: #090e18 !important;
+}
 .page-earn::-webkit-scrollbar { display: none; }
 
 /* Responsive Gaming Panels for Calculator and History */

@@ -627,7 +627,7 @@ export default function EarnScreen() {
   // This ensures users can always see their dashboard and balance.
 
   return (
-    <div className="page-earn">
+    <div className={`page-earn ${view !== 'mining' ? 'solid-bg' : ''}`}>
 
       {/* ── Total $AIP Balance Banner ── */}
       <div style={{
@@ -662,7 +662,7 @@ export default function EarnScreen() {
 
       {/* ── Tab Switcher Header ── */}
       <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0 6px', borderBottom: '1px solid rgba(255,255,255,0.05)', marginBottom: 8 }}>
-        <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: 4 }}>
+        <div style={{ display: 'flex', background: '#111827', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: 4 }}>
           <button
             onClick={() => setView('mining')}
             style={{
@@ -675,7 +675,7 @@ export default function EarnScreen() {
             onClick={() => { setView('history'); fetchTeamHistory(); }}
             style={{
               padding: '6px 16px', borderRadius: 10, border: 'none', fontSize: 11, fontWeight: 800, cursor: 'pointer',
-              background: view === 'history' ? 'var(--neon-lime)' : 'transparent',
+              background: view === 'history' ? '#4FC3F7' : 'transparent',
               color: view === 'history' ? '#000' : '#4FC3F7',
               transition: 'all 0.2s'
             }}>📜 HISTORY</button>
