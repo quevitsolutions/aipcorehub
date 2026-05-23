@@ -627,7 +627,7 @@ export default function EarnScreen() {
   // This ensures users can always see their dashboard and balance.
 
   return (
-    <div className="page-earn" style={{ display: 'flex', flexDirection: 'column', width: '100%', minHeight: '100%', overflowX: 'hidden' }}>
+    <div className="page-earn" style={{ display: 'flex', flexDirection: 'column', width: '100%', flex: 1 }}>
 
       {/* ── Tab Switcher Header ── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', marginBottom: 12 }}>

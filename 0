@@ -1,0 +1,3 @@
+ERROR:  argument of WHERE must be type boolean, not type integer
+LINE 1: SELECT wallet_address, node_tier FROM users WHERE node_tier ...
+                                                          ^

@@ -24,17 +24,29 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-html, body, #root {
-  min-height: 100%;
+html {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  height: 100%;
+  overflow: hidden;
   background: #080c14;
   font-family: var(--font-main);
   color: var(--text-white);
   -webkit-tap-highlight-color: transparent;
   user-select: none;
-  overflow: hidden;
   position: relative;
   width: 100%;
+}
+
+#root {
   height: 100%;
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Futuristic Cyber Grid Background behind the Phone Shell on Desktop */
@@ -55,7 +67,7 @@ body {
 .app-container {
   width: 100%;
   height: 100%;
-  min-height: 100vh;
+  min-height: 100svh;
   margin: 0 auto;
   position: relative;
   background: linear-gradient(180deg, #090e18 0%, #05080f 100%);
@@ -67,8 +79,8 @@ body {
 @media (min-width: 481px) {
   .app-container {
     max-width: 450px;
-    height: 94vh;
-    min-height: 94vh;
+    height: 94svh;
+    min-height: 94svh;
     margin: 3vh auto;
     border-radius: 40px;
     border: 8px solid #161b22;
@@ -89,12 +101,13 @@ body {
   flex: 1;
   padding: 16px;
   padding-top: calc(var(--topbar-h) + 12px);
-  padding-bottom: calc(var(--tabbar-h) + 12px);
+  padding-bottom: calc(var(--tabbar-h) + 20px);
   overflow-y: auto;
   overflow-x: hidden;
-  height: 100%;
+  min-height: 0; /* Critical: allows flex children to shrink and scroll */
   display: flex;
   flex-direction: column;
+  -webkit-overflow-scrolling: touch; /* iOS momentum scroll */
   scrollbar-width: none; /* Firefox */
 }
 .page::-webkit-scrollbar { display: none; } /* Chrome/Safari */
@@ -112,8 +125,8 @@ body {
 }
 
 @media (min-width: 1025px) {
-  /* Hide the old desktop sidebar - purely mobile view shell now */
-  .desktop-sidebar { display: none !important; }
+  /* Show desktop sidebar alongside the mobile shell */
+  .desktop-sidebar { display: flex !important; }
   .mobile-tabs { display: flex !important; }
 }
 
@@ -1086,15 +1099,20 @@ body {
 
 /* Chunky Game-like bottom tabs */
 .rpg-chunky-tabs {
-  position: absolute;
-  bottom: 0; left: 0; right: 0;
-  height: 88px;
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: var(--tabbar-h);
+  flex-shrink: 0;
   background: linear-gradient(180deg, #1e2433 0%, #0d121e 100%);
   border-top: 4px solid #ffd700;
   display: flex;
   align-items: center;
   justify-content: space-around;
   padding: 0 6px;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
   z-index: 1000;
   box-shadow: 0 -8px 0 #b49300, 0 -15px 30px rgba(0,0,0,0.5);
 }
@@ -1161,11 +1179,16 @@ body {
   background-image: url('/assets/game_bg.png');
   background-size: cover;
   background-position: center bottom;
+  background-attachment: local; /* Prevents parallax freeze on iOS */
   position: relative;
   width: 100%;
-  height: 100%;
+  min-height: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   overflow-y: auto;
   overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Responsive Gaming Panels for Calculator and History */

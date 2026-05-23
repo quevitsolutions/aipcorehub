@@ -210,11 +210,12 @@ export default function App() {
 
       {/* Main content area */}
       <main className="page" style={{
-        paddingBottom: '84px',
+        paddingBottom: 'calc(var(--tabbar-h) + 20px)',
         display: 'flex',
         flexDirection: 'column',
         position: 'relative',
-        height: '100%',
+        flex: 1,
+        minHeight: 0,
         overflowY: 'auto',
         WebkitOverflowScrolling: 'touch'
       }}>
@@ -225,7 +226,7 @@ export default function App() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.18, ease: 'easeOut' }}
-            style={{ width: '100%', height: '100%' }}
+            style={{ width: '100%', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 'min-content' }}
           >
             {activeTab === 'earn'      && <EarnScreen />}
             {activeTab === 'mine'      && <UpgradeScreen />}
