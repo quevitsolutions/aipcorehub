@@ -629,8 +629,39 @@ export default function EarnScreen() {
   return (
     <div className="page-earn">
 
+      {/* ── Total $AIP Balance Banner ── */}
+      <div style={{
+        flexShrink: 0,
+        background: 'linear-gradient(135deg, rgba(163,255,18,0.08) 0%, rgba(79,195,247,0.06) 100%)',
+        border: '1px solid rgba(163,255,18,0.15)',
+        borderRadius: 16,
+        padding: '10px 16px',
+        marginBottom: 8,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between'
+      }}>
+        <div>
+          <div style={{ fontSize: 9, fontWeight: 900, color: 'rgba(255,255,255,0.45)', letterSpacing: 1, textTransform: 'uppercase' }}>Total $AIP Balance</div>
+          <div style={{ fontSize: 22, fontWeight: 950, color: 'var(--neon-lime)', letterSpacing: -0.5, lineHeight: 1.1 }}>
+            {Math.floor(localReward).toLocaleString()}
+            <span style={{ fontSize: 11, fontWeight: 900, color: 'rgba(163,255,18,0.6)', marginLeft: 4 }}>$AIP</span>
+          </div>
+          {totalMined > 0 && (
+            <div style={{ fontSize: 9, fontWeight: 700, color: '#4FC3F7', marginTop: 1 }}>
+              +{totalMined.toFixed(2)} pending
+            </div>
+          )}
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontSize: 9, fontWeight: 900, color: 'rgba(255,255,255,0.35)', letterSpacing: 1 }}>MINING RATE</div>
+          <div style={{ fontSize: 14, fontWeight: 950, color: '#FFD700' }}>+{effectiveRate}</div>
+          <div style={{ fontSize: 8, fontWeight: 800, color: 'rgba(255,255,255,0.4)' }}>$AIP / HR</div>
+        </div>
+      </div>
+
       {/* ── Tab Switcher Header ── */}
-      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0 6px', borderBottom: '1px solid rgba(255,255,255,0.05)', marginBottom: 8 }}>
+      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0 6px', borderBottom: '1px solid rgba(255,255,255,0.05)', marginBottom: 8 }}>
         <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: 4 }}>
           <button
             onClick={() => setView('mining')}
@@ -665,7 +696,7 @@ export default function EarnScreen() {
       </div>
 
       {/* ── Conditional View Content ── */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflowY: view === 'mining' ? 'visible' : 'auto', WebkitOverflowScrolling: 'touch' }}>
       {view === 'calculator' ? (
         <IncomeCalcPanel nodeTier={nodeTier} />
       ) : view === 'mining' ? (
