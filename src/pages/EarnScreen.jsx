@@ -33,17 +33,7 @@ function IncomeCalcPanel({ nodeTier }) {
   const totBnb    = bnbPrice > 0 ? totUsd/bnbPrice : 0;
 
   return (
-    <div style={{ 
-      flex: 1, 
-      overflowY: 'auto', 
-      paddingBottom: 20, 
-      background: 'linear-gradient(135deg, #111827 0%, #030712 100%)', 
-      borderRadius: '24px', 
-      padding: '20px', 
-      border: '2px solid rgba(255, 183, 77, 0.25)', 
-      boxShadow: '0 15px 35px rgba(0, 0, 0, 0.7)', 
-      margin: '10px 0 30px' 
-    }}>
+    <div className="tma-calc-panel">
       {/* Formula */}
       <div style={{ background: '#1e293b', border: '1px solid rgba(255,183,77,0.3)', borderRadius: 12, padding: '10px 14px', marginBottom: 14, fontSize: 10, color: 'rgba(255,255,255,0.85)', lineHeight: 1.8 }}>
         <span style={{ color: acc, fontWeight: 900 }}>FORMULA: </span>
@@ -85,14 +75,14 @@ function IncomeCalcPanel({ nodeTier }) {
       {/* Level table */}
       <div style={{ fontSize: 10, fontWeight: 900, color: '#4FC3F7', letterSpacing: 1, marginBottom: 8 }}>📊 LEVEL-WISE 70% INCOME</div>
       <div style={{ background: '#030712', borderRadius: 12, overflow: 'hidden', marginBottom: 14, border: '1px solid rgba(255,255,255,0.08)' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '36px 50px 58px 60px 1fr 44px', gap: 3, padding: '7px 10px', background: '#1f2937', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+        <div className="tma-calc-grid" style={{ padding: '7px 10px', background: '#1f2937', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
           {['LVL','PEOPLE','COST $','70% EA','TOTAL $',''].map(h => <span key={h} style={{ fontSize: 7, fontWeight: 900, color: '#d1d5db' }}>{h}</span>)}
         </div>
         <div style={{ maxHeight: 300, overflowY: 'auto' }}>
           {levels.map(({ lv, people, costUsd, earnPer, totalEarn, locked }) => {
             const color = TC_E[(lv-1)%18];
             return (
-              <div key={lv} style={{ display: 'grid', gridTemplateColumns: '36px 50px 58px 60px 1fr 44px', gap: 3, padding: '7px 10px', borderBottom: '1px solid rgba(255,255,255,0.05)', alignItems: 'center', opacity: locked?0.35:1, background: locked?'transparent':`${color}10` }}>
+              <div key={lv} className="tma-calc-grid" style={{ padding: '7px 10px', borderBottom: '1px solid rgba(255,255,255,0.05)', opacity: locked?0.35:1, background: locked?'transparent':`${color}10` }}>
                 <span style={{ fontSize: 9, fontWeight: 900, color, background: `${color}25`, borderRadius: 4, padding: '2px 4px', textAlign: 'center' }}>L{lv}</span>
                 <span style={{ fontSize: 9, color: '#e5e7eb', fontWeight: 700 }}>{fmtE(people)}</span>
                 <span style={{ fontSize: 9, color: '#FFB74D', fontWeight: 800 }}>${costUsd}</span>
@@ -102,7 +92,7 @@ function IncomeCalcPanel({ nodeTier }) {
               </div>
             );
           })}
-          <div style={{ display: 'grid', gridTemplateColumns: '36px 50px 58px 60px 1fr 44px', gap: 3, padding: '8px 10px', background: 'rgba(255,183,77,0.15)', borderTop: `1.5px solid ${acc}40`, alignItems: 'center' }}>
+          <div className="tma-calc-grid" style={{ padding: '8px 10px', background: 'rgba(255,183,77,0.15)', borderTop: `1.5px solid ${acc}40` }}>
             <span style={{ fontSize: 8, fontWeight: 900, color: acc }}>ALL</span>
             <span style={{ fontSize: 9, color: '#fff', fontWeight: 900 }}>{fmtE(totPeople)}</span>
             <span style={{ fontSize: 9, color: '#888' }}>—</span>
@@ -120,7 +110,7 @@ function IncomeCalcPanel({ nodeTier }) {
       </button>
       {showTiers && (
         <div style={{ background: '#030712', borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '36px 60px 58px 60px 1fr', gap: 3, padding: '7px 10px', background: '#1f2937', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+          <div className="tma-comp-grid" style={{ padding: '7px 10px', background: '#1f2937', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
             {['LVL','COST $','BNB~','AIP/hr','L1 EARN $'].map(h => <span key={h} style={{ fontSize: 7, fontWeight: 900, color: '#d1d5db' }}>{h}</span>)}
           </div>
           <div style={{ maxHeight: 250, overflowY: 'auto' }}>
@@ -129,7 +119,7 @@ function IncomeCalcPanel({ nodeTier }) {
               const l1Earn = 2 * costUsd * 0.70;
               const costBnb = bnbPrice > 0 ? (costUsd/bnbPrice).toFixed(4) : '—';
               return (
-                <div key={i} style={{ display: 'grid', gridTemplateColumns: '36px 60px 58px 60px 1fr', gap: 3, padding: '7px 10px', borderBottom: '1px solid rgba(255,255,255,0.05)', alignItems: 'center', background: i+1===myTier?`${color}20`:'transparent' }}>
+                <div key={i} className="tma-comp-grid" style={{ padding: '7px 10px', borderBottom: '1px solid rgba(255,255,255,0.05)', background: i+1===myTier?`${color}20`:'transparent' }}>
                   <span style={{ fontSize: 9, fontWeight: 900, color, background: `${color}25`, borderRadius: 4, padding: '2px 4px', textAlign: 'center' }}>L{i+1}</span>
                   <span style={{ fontSize: 9, color: '#FFB74D', fontWeight: 800 }}>${costUsd}</span>
                   <span style={{ fontSize: 9, color: '#FFD700', fontWeight: 900 }}>{costBnb}</span>
@@ -914,17 +904,8 @@ export default function EarnScreen() {
 
       ) : (
         /* ── HISTORY VIEW ── */
-        <div style={{ 
-          flex: 1, 
-          overflowY: 'auto', 
-          background: 'linear-gradient(135deg, #111827 0%, #030712 100%)', 
-          borderRadius: '24px', 
-          padding: '20px', 
-          border: '2px solid rgba(79, 195, 247, 0.25)', 
-          boxShadow: '0 15px 35px rgba(0, 0, 0, 0.7)', 
-          margin: '10px 0 30px' 
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <div className="tma-history-panel">
+          <div className="tma-history-header">
             <div style={{ display: 'flex', background: '#1f2937', borderRadius: 20, padding: 4, border: '1px solid rgba(255,255,255,0.08)' }}>
               <div
                 onClick={() => setHistoryMode('personal')}
