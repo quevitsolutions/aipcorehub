@@ -820,7 +820,7 @@ export default function EarnScreen() {
               ))}
 
               <motion.img 
-                src="/assets/egg_orange.png"
+                src="/assets/egg_orange.png?v=3"
                 className="tma-incubated-egg"
                 onClick={triggerTap}
                 onTouchStart={triggerTap}
