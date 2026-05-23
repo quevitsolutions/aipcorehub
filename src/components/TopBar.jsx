@@ -34,7 +34,7 @@ export default function TopBar() {
       borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
       padding: '0 14px',
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      height: '68px', gap: 10,
+      height: '60px', gap: 10,
       boxShadow: '0 4px 20px rgba(0,0,0,0.2)'
     }}>
 

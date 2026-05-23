@@ -627,10 +627,10 @@ export default function EarnScreen() {
   // This ensures users can always see their dashboard and balance.
 
   return (
-    <div className="page-earn" style={{ display: 'flex', flexDirection: 'column', width: '100%', flex: 1 }}>
+    <div className="page-earn">
 
       {/* ── Tab Switcher Header ── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', marginBottom: 12 }}>
+      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0 6px', borderBottom: '1px solid rgba(255,255,255,0.05)', marginBottom: 8 }}>
         <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: 4 }}>
           <button
             onClick={() => setView('mining')}
@@ -665,10 +665,11 @@ export default function EarnScreen() {
       </div>
 
       {/* ── Conditional View Content ── */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       {view === 'calculator' ? (
         <IncomeCalcPanel nodeTier={nodeTier} />
       ) : view === 'mining' ? (
-        <>
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
           {/* Activation Alert (Triggered at Day 20) */}
           {shouldShowBanner && (
             <ActivationAlert 
@@ -678,7 +679,7 @@ export default function EarnScreen() {
           )}
 
           {/* ── Immersive RPG Status Bar HUD ── */}
-          <div className="tma-rpg-hud" style={{ cursor: 'pointer' }} onClick={() => setActiveTab('dash')}>
+          <div className="tma-rpg-hud" style={{ cursor: 'pointer', flexShrink: 0 }} onClick={() => setActiveTab('dash')}>
             <div className="tma-rpg-level-badge">
               {hasNode ? nodeTier || 1 : '1'}
             </div>
@@ -699,10 +700,10 @@ export default function EarnScreen() {
 
           {/* ── Active Node: Passive Mining Terminal ── */}
           {hasNode && (
-            <div className="w-full" style={{ marginBottom: 12 }}>
-              <div className="tma-node-portal">
+            <div className="w-full" style={{ marginBottom: 8, flexShrink: 0 }}>
+              <div className="tma-node-portal" style={{ padding: '12px 14px' }}>
                 <div className="tma-portal-ring" />
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
                   <div>
                     <span style={{ fontSize: '9px', fontWeight: 900, color: 'var(--neon-lime)', letterSpacing: '1px', display: 'block' }}>⚙️ PASSIVE TERMINAL</span>
                     <span style={{ fontSize: '15px', fontWeight: 950, color: '#fff', marginTop: 2, display: 'block' }}>NODE #{nodeId}</span>
@@ -713,9 +714,9 @@ export default function EarnScreen() {
                   </div>
                 </div>
 
-                <div style={{ background: 'rgba(0, 0, 0, 0.25)', borderRadius: 12, padding: '12px', border: '1px solid rgba(255, 255, 255, 0.03)', textAlign: 'center', marginBottom: 12 }}>
+                <div style={{ background: 'rgba(0, 0, 0, 0.25)', borderRadius: 12, padding: '8px', border: '1px solid rgba(255, 255, 255, 0.03)', textAlign: 'center', marginBottom: 8 }}>
                   <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', fontWeight: 800 }}>ACCUMULATED PASSIVE REWARDS</span>
-                  <div style={{ fontSize: '26px', fontWeight: 950, color: 'var(--neon-lime)', marginTop: 4, textShadow: '0 0 15px rgba(163, 255, 18, 0.4)' }}>
+                  <div style={{ fontSize: '22px', fontWeight: 950, color: 'var(--neon-lime)', marginTop: 2, textShadow: '0 0 15px rgba(163, 255, 18, 0.4)' }}>
                     +{totalMined.toFixed(4)} $AIP
                   </div>
                   {isCapReached ? (
@@ -735,7 +736,7 @@ export default function EarnScreen() {
                     color: totalMined > 0 ? '#000' : 'rgba(255,255,255,0.15)',
                     border: 'none',
                     borderRadius: 16,
-                    padding: '14px',
+                  padding: '11px',
                     fontSize: '12px',
                     fontWeight: 950,
                     cursor: totalMined > 0 ? 'pointer' : 'not-allowed',
@@ -750,7 +751,7 @@ export default function EarnScreen() {
           )}
 
           {/* ── CENTRAL TAPPING VIEW (Interactive Egg Incubation Deck) ── */}
-          <div style={{ flex: 1, minHeight: '320px', display: 'flex', position: 'relative', width: '100%', alignItems: 'center', justifyContent: 'center', margin: '15px 0' }}>
+          <div style={{ flex: 1, minHeight: '200px', maxHeight: '280px', display: 'flex', position: 'relative', width: '100%', alignItems: 'center', justifyContent: 'center', margin: '6px 0' }}>
             
             {/* Left Column Floating Widgets */}
             <div className="tma-floating-panel left">
@@ -835,7 +836,7 @@ export default function EarnScreen() {
           </div>
 
           {/* ── Footer Stats & Energy Controls ── */}
-          <div style={{ flexShrink: 0, padding: '16px 0 6px', background: 'linear-gradient(to top, rgba(5, 8, 15, 0.3) 70%, transparent)' }}>
+          <div style={{ flexShrink: 0, padding: '8px 0 4px', background: 'linear-gradient(to top, rgba(5, 8, 15, 0.3) 70%, transparent)' }}>
             
             {/* Energy Bar Indicator */}
             <div className="tma-energy-hud">
@@ -866,7 +867,7 @@ export default function EarnScreen() {
                   style={{
                     flex: 0.65,
                     background: 'var(--neon-lime)',
-                    border: 'none', borderRadius: 16, padding: '15px 10px', cursor: 'pointer',
+                    border: 'none', borderRadius: 16, padding: '12px 10px', cursor: 'pointer',
                     boxShadow: '0 0 20px rgba(163, 255, 18, 0.3)',
                   }}
                 >
@@ -882,7 +883,7 @@ export default function EarnScreen() {
                   style={{
                     flex: 0.35,
                     background: (totalMined > 0 && !isExpired) ? '#4FC3F7' : 'rgba(255,255,255,0.03)',
-                    border: 'none', borderRadius: 16, padding: '15px 5px',
+                    border: 'none', borderRadius: 16, padding: '12px 5px',
                     cursor: (totalMined > 0 && !isExpired) ? 'pointer' : 'not-allowed',
                     opacity: isClaiming ? 0.6 : 1,
                     transition: 'all 0.2s'
@@ -900,7 +901,7 @@ export default function EarnScreen() {
               </div>
             )}
           </div>
-        </>
+        </div>
 
       ) : (
         /* ── HISTORY VIEW ── */
@@ -1115,6 +1116,7 @@ export default function EarnScreen() {
           <div style={{ height: 40 }} /> {/* Spacer */}
         </div>
       )}
+      </div>{/* end conditional view wrapper */}
 
       {/* ── Welcome Bonus Modal ── */}
       {/* FIX: Added isNewUser guard — previously showed for ANY user who hadn't claimed,

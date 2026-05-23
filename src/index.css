@@ -17,8 +17,8 @@
   --radius-l:    24px;
   --font-main:   'Outfit', sans-serif;
   --sidebar-w:   220px;
-  --topbar-h:    64px;
-  --tabbar-h:    84px;
+  --topbar-h:    60px;
+  --tabbar-h:    80px;
   --content-max: 800px;
 }
 
@@ -1059,9 +1059,9 @@ body {
 /* Custom Interactive Egg Incubator */
 .tma-egg-incubator {
   position: relative;
-  width: 250px;
-  height: 250px;
-  margin: 15px auto;
+  width: 220px;
+  height: 220px;
+  margin: 8px auto;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1070,9 +1070,9 @@ body {
 
 .tma-egg-stand {
   position: absolute;
-  bottom: 10px;
-  width: 140px;
-  height: 30px;
+  bottom: 8px;
+  width: 120px;
+  height: 24px;
   background: radial-gradient(ellipse at center, rgba(163, 255, 18, 0.25) 0%, transparent 70%);
   border-radius: 50%;
   animation: incubatorGlow 2s ease-in-out infinite alternate;
@@ -1085,8 +1085,8 @@ body {
 }
 
 .tma-incubated-egg {
-  width: 200px;
-  height: 200px;
+  width: 175px;
+  height: 175px;
   object-fit: contain;
   cursor: pointer;
   z-index: 10;
@@ -1095,6 +1095,16 @@ body {
 
 .tma-incubated-egg:active {
   transform: scale(0.92) translateY(5px);
+}
+
+/* ── Responsive: very small phones (≤ 380px) ── */
+@media (max-width: 380px) {
+  .tma-egg-incubator { width: 180px; height: 180px; margin: 4px auto; }
+  .tma-incubated-egg { width: 145px; height: 145px; }
+  .tma-egg-stand { width: 100px; height: 20px; }
+  .tma-floating-panel { gap: 10px; }
+  .tma-widget-circle { width: 40px; height: 40px; font-size: 17px; }
+  .tma-widget-label { font-size: 7px; }
 }
 
 /* Chunky Game-like bottom tabs */
@@ -1119,7 +1129,7 @@ body {
 
 .rpg-chunky-tab-item {
   flex: 1;
-  height: 72px;
+  height: 64px;
   max-width: 78px;
   margin: 0 2px;
   background: linear-gradient(180deg, #334155 0%, #1e293b 100%);
@@ -1179,17 +1189,18 @@ body {
   background-image: url('/assets/game_bg.png');
   background-size: cover;
   background-position: center bottom;
-  background-attachment: local; /* Prevents parallax freeze on iOS */
+  background-attachment: local;
   position: relative;
   width: 100%;
-  min-height: 100%;
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }
+.page-earn::-webkit-scrollbar { display: none; }
 
 /* Responsive Gaming Panels for Calculator and History */
 .tma-calc-panel, .tma-history-panel {
