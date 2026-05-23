@@ -935,7 +935,37 @@ export default function EarnScreen() {
 
           {/* ── Footer Stats & Energy Controls ── */}
           <div style={{ flexShrink: 0, padding: '8px 0 4px', background: 'linear-gradient(to top, rgba(5, 8, 15, 0.3) 70%, transparent)' }}>
-            
+
+            {/* ── Total $AIP Balance Strip (above claim buttons) ── */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: 'linear-gradient(90deg, rgba(0,0,0,0.55) 0%, rgba(163,255,18,0.07) 100%)',
+              border: '1px solid rgba(163,255,18,0.2)',
+              borderRadius: 14,
+              padding: '7px 14px',
+              marginBottom: 8
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 16 }}>💰</span>
+                <div>
+                  <div style={{ fontSize: 8, fontWeight: 900, color: 'rgba(255,255,255,0.4)', letterSpacing: 1, textTransform: 'uppercase' }}>Total $AIP Balance</div>
+                  <div style={{ fontSize: 18, fontWeight: 950, color: 'var(--neon-lime)', lineHeight: 1.1 }}>
+                    {Math.floor(localReward).toLocaleString()}
+                    <span style={{ fontSize: 10, fontWeight: 900, color: 'rgba(163,255,18,0.6)', marginLeft: 3 }}>$AIP</span>
+                  </div>
+                </div>
+              </div>
+              {totalMined > 0 && (
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 8, fontWeight: 900, color: 'rgba(255,255,255,0.35)', letterSpacing: 0.8 }}>PENDING</div>
+                  <div style={{ fontSize: 13, fontWeight: 950, color: '#A3FF12' }}>+{totalMined.toFixed(4)}</div>
+                  <div style={{ fontSize: 8, color: '#4FC3F7', fontWeight: 700 }}>$AIP unclaimed</div>
+                </div>
+              )}
+            </div>
+
             {/* Energy Bar Indicator */}
             <div className="tma-energy-hud">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
