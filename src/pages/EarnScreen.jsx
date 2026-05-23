@@ -627,7 +627,7 @@ export default function EarnScreen() {
   // This ensures users can always see their dashboard and balance.
 
   return (
-    <div className="page-earn" style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', overflowY: 'auto', overflowX: 'hidden' }}>
+    <div className="page-earn" style={{ display: 'flex', flexDirection: 'column', width: '100%', minHeight: '100%', overflowX: 'hidden' }}>
 
       {/* ── Tab Switcher Header ── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', marginBottom: 12 }}>
@@ -750,7 +750,7 @@ export default function EarnScreen() {
           )}
 
           {/* ── CENTRAL TAPPING VIEW (Interactive Egg Incubation Deck) ── */}
-          <div style={{ flex: 1, display: 'flex', position: 'relative', width: '100%', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ flex: 1, minHeight: '320px', display: 'flex', position: 'relative', width: '100%', alignItems: 'center', justifyContent: 'center', margin: '15px 0' }}>
             
             {/* Left Column Floating Widgets */}
             <div className="tma-floating-panel left">
