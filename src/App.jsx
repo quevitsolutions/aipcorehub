@@ -87,6 +87,18 @@ export default function App() {
   // Real-time chain event listener — pushes DB updates + toast notifications
   useChainEvents();
 
+  // Initialize and expand Telegram WebApp if available
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
+      try {
+        window.Telegram.WebApp.ready();
+        window.Telegram.WebApp.expand();
+      } catch (e) {
+        console.error('Telegram WebApp init failed:', e);
+      }
+    }
+  }, []);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const ref = params.get('ref');

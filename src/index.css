@@ -76,6 +76,20 @@ body {
   overflow: hidden;
 }
 
+@media (max-width: 480px) {
+  .app-container {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 100% !important;
+    max-height: 100% !important;
+    min-height: 100% !important;
+    overflow: hidden !important;
+  }
+}
+
 @media (min-width: 481px) {
   .app-container {
     max-width: 450px;
@@ -1109,13 +1123,12 @@ body {
 
 /* Chunky Game-like bottom tabs */
 .rpg-chunky-tabs {
-  position: sticky;
+  position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
   width: 100%;
   height: var(--tabbar-h);
-  flex-shrink: 0;
   background: linear-gradient(180deg, #1e2433 0%, #0d121e 100%);
   border-top: 4px solid #ffd700;
   display: flex;
@@ -1195,9 +1208,7 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
   overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }
 .page-earn::-webkit-scrollbar { display: none; }
