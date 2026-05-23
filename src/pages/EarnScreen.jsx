@@ -366,6 +366,47 @@ export default function EarnScreen() {
   // Floating Tap Score Particles state and click handlers
   const [particles, setParticles] = useState([]);
   
+  // Random movement, rotation, and squish/stretch animation state for Shiba Inu character
+  const [shibaPos, setShibaPos] = useState({ x: 0, y: 0 });
+  const [shibaRotate, setShibaRotate] = useState(0);
+  const [shibaScaleX, setShibaScaleX] = useState(1);
+  const [shibaScaleY, setShibaScaleY] = useState(1);
+
+  useEffect(() => {
+    if (view !== 'mining') return;
+
+    const interval = setInterval(() => {
+      const roll = Math.random();
+      if (roll < 0.45) {
+        // Move character to a random hover offset on the stand
+        const maxRangeX = 35; // horizontal offset limit
+        const maxRangeY = 15; // vertical offset limit
+        setShibaPos({
+          x: (Math.random() - 0.5) * maxRangeX * 2,
+          y: (Math.random() - 0.5) * maxRangeY * 2
+        });
+        setShibaRotate((Math.random() - 0.5) * 20); // rotate character slightly
+      } else if (roll < 0.75) {
+        // Character does a squish-stretch bounce in place
+        setShibaScaleY(1.18);
+        setShibaScaleX(0.82);
+        setTimeout(() => {
+          setShibaScaleY(0.88);
+          setShibaScaleX(1.12);
+          setTimeout(() => {
+            setShibaScaleY(1);
+            setShibaScaleX(1);
+          }, 120);
+        }, 120);
+      } else {
+        // Cute idle tilt/wiggle
+        setShibaRotate((Math.random() - 0.5) * 35);
+      }
+    }, 2200 + Math.random() * 2000); // Random action every 2.2 to 4.2s
+
+    return () => clearInterval(interval);
+  }, [view]);
+  
   const triggerTap = (e) => {
     if (isExpired) return;
     const state = useGameStore.getState();
@@ -379,6 +420,18 @@ export default function EarnScreen() {
       toast.error("Tap limit reached! Activate a Node to unlock unlimited taps.", { id: 'tap-locked' });
       return;
     }
+
+    // Interactive physical feedback on tap
+    setShibaScaleY(0.78);
+    setShibaScaleX(1.22);
+    setTimeout(() => {
+      setShibaScaleY(1.12);
+      setShibaScaleX(0.88);
+      setTimeout(() => {
+        setShibaScaleY(1);
+        setShibaScaleX(1);
+      }, 100);
+    }, 70);
 
     // Get touch / click coordinates relative to standard viewport coin layout
     const rect = e.currentTarget.getBoundingClientRect();
@@ -846,9 +899,23 @@ export default function EarnScreen() {
                 className="tma-incubated-egg"
                 onClick={triggerTap}
                 onTouchStart={triggerTap}
-                whileTap={{ scale: 0.90, y: 5 }}
+                animate={{
+                  x: shibaPos.x,
+                  y: [shibaPos.y, shibaPos.y - 6, shibaPos.y], // Bobbing up and down + random translations
+                  rotate: shibaRotate,
+                  scaleX: shibaScaleX,
+                  scaleY: shibaScaleY
+                }}
+                transition={{
+                  x: { type: 'spring', stiffness: 55, damping: 11 },
+                  y: { repeat: Infinity, duration: 2.2, ease: "easeInOut" },
+                  rotate: { type: 'spring', stiffness: 50, damping: 10 },
+                  scaleX: { type: 'spring', stiffness: 220, damping: 12 },
+                  scaleY: { type: 'spring', stiffness: 220, damping: 12 }
+                }}
                 style={{
-                  filter: isExpired ? 'grayscale(1) brightness(0.4)' : 'none'
+                  filter: isExpired ? 'grayscale(1) brightness(0.4)' : 'none',
+                  transformOrigin: 'bottom center'
                 }}
               />
 
