@@ -9,6 +9,7 @@ export default function TabBar() {
     { id: 'tasks',     icon: '✅', label: 'Tasks' },
     { id: 'friends',   icon: '👥', label: 'Friends' },
     { id: 'team',      icon: '🕸️', label: 'Network' },
+    { id: 'marketing', icon: '📢', label: 'Promo' },
   ];
 
   return (

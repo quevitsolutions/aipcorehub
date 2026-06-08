@@ -767,11 +767,6 @@ export default function TeamScreen() {
           FREE ({freeTotalCount})
         </button>
         <button
-          onClick={() => setActiveTab('tree')}
-          style={{ flexShrink: 0, padding: '10px 16px', borderRadius: '8px', background: activeTab === 'tree' ? 'rgba(163,255,18,0.15)' : 'rgba(255,255,255,0.05)', color: activeTab === 'tree' ? '#A3FF12' : '#888', border: `1px solid ${activeTab === 'tree' ? 'rgba(163,255,18,0.3)' : 'transparent'}`, fontSize: '10px', fontWeight: 800 }}>
-          🌐 TREE
-        </button>
-        <button
           onClick={() => setActiveTab('graphical')}
           style={{ flexShrink: 0, padding: '10px 16px', borderRadius: '8px', background: activeTab === 'graphical' ? 'rgba(163,255,18,0.15)' : 'rgba(255,255,255,0.05)', color: activeTab === 'graphical' ? '#A3FF12' : '#888', border: `1px solid ${activeTab === 'graphical' ? 'rgba(163,255,18,0.3)' : 'transparent'}`, fontSize: '10px', fontWeight: 800 }}>
           🌲 GRAPHICAL
@@ -891,17 +886,6 @@ export default function TeamScreen() {
             </div>
           )}
         </div>
-      )}
-
-      {activeTab === 'tree' && (
-        <MatrixTreeView
-          nodeId={nodeId}
-          nodeTier={nodeTier}
-          walletAddress={walletAddress}
-          directRefs={directRefs}
-          teamSize={teamSize}
-          fetchFn={fetchTeamLevelMembers}
-        />
       )}
 
       {activeTab === 'graphical' && (

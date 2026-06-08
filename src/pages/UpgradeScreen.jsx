@@ -50,6 +50,17 @@ export default function UpgradeScreen() {
   const [tierCosts, setTierCosts] = useState(new Array(18).fill('0.00'));
   const [isLoading, setIsLoading] = useState(false);
 
+  const currentTier = nodeTier || 0;
+  const nextTier = nodeId ? TIERS.find(t => t.tier === currentTier + 1) : null;
+  const [explorerTier, setExplorerTier] = useState(1);
+  const [showAllTiers, setShowAllTiers] = useState(false);
+
+  useEffect(() => {
+    if (nodeId) {
+      setExplorerTier(nextTier ? nextTier.tier : currentTier > 0 ? currentTier : 1);
+    }
+  }, [nodeId, currentTier]);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -96,9 +107,7 @@ export default function UpgradeScreen() {
 
   const usdLabel = (bnb) => bnbPrice > 0 ? `≈ $${(parseFloat(bnb || 0) * bnbPrice).toFixed(2)}` : '';
 
-  const currentTier    = nodeTier || 0;
   const activeTiers    = TIERS.filter(t => nodeId && t.tier <= currentTier);
-  const nextTier       = nodeId ? TIERS.find(t => t.tier === currentTier + 1) : null;
   const lockedTiers    = TIERS.filter(t => t.tier > (nextTier ? nextTier.tier : currentTier));
   const currentMining  = TIERS.find(t => t.tier === currentTier)?.miningRate || 100;
 
@@ -207,114 +216,198 @@ export default function UpgradeScreen() {
             </div>
           </motion.div>
 
-          {/* ── NEXT UPGRADE featured card ── */}
-          {nextTier && (
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 28 }}>
-              <div style={{ fontSize: 10, fontWeight: 900, color: 'var(--neon-lime)', letterSpacing: 3, marginBottom: 10 }}>⚡ NEXT UPGRADE</div>
-              <motion.div
-                animate={{ boxShadow: [`0 0 15px ${nextTier.color}25`, `0 0 35px ${nextTier.color}45`, `0 0 15px ${nextTier.color}25`] }}
-                transition={{ duration: 2.5, repeat: Infinity }}
-                style={{ background: `linear-gradient(135deg, ${nextTier.color}12 0%, ${nextTier.color}04 100%)`, border: `2px solid ${nextTier.color}60`, borderRadius: 24, padding: 20 }}>
-                {/* Header row */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
-                  <TierHex tier={nextTier.tier} color={nextTier.color} size={60} next />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 18, fontWeight: 900, color: '#fff' }}>TIER {nextTier.tier}</div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: nextTier.color, marginTop: 2 }}>NODE UPGRADE</div>
-                    {/* Speed boost arrow */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
-                      <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', textDecoration: 'line-through' }}>{currentMining} $AIP/hr</span>
-                      <span style={{ fontSize: 11, color: '#A3FF12' }}>→</span>
-                      <span style={{ fontSize: 14, color: 'var(--neon-lime)', fontWeight: 900 }}>{nextTier.miningRate} $AIP/hr</span>
-                      <span style={{ fontSize: 9, background: `${nextTier.color}25`, color: nextTier.color, padding: '2px 7px', borderRadius: 20, fontWeight: 800 }}>
-                        +{nextTier.miningRate - currentMining}
-                      </span>
+          {/* ── INTERACTIVE TIER YIELD EXPLORER ── */}
+          {(() => {
+            const expTierData = TIERS[explorerTier - 1];
+            const expCost = tierCosts[explorerTier - 1] || '0.00';
+            const expIsActive = explorerTier <= currentTier;
+            const expIsNext = explorerTier === currentTier + 1;
+            const expIsLocked = explorerTier > currentTier + 1;
+
+            return (
+              <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '24px', padding: '20px', marginBottom: '24px', boxShadow: `0 10px 30px rgba(0,0,0,0.3)` }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 900, color: 'rgba(255,255,255,0.5)', letterSpacing: '2px', textTransform: 'uppercase' }}>Yield Explorer</span>
+                  <span style={{ fontSize: '10px', color: expTierData.color, fontWeight: 900, background: `${expTierData.color}15`, border: `1px solid ${expTierData.color}30`, padding: '4px 10px', borderRadius: '10px', letterSpacing: '0.5px' }}>
+                    {expIsActive ? 'ACTIVE ✓' : expIsNext ? 'NEXT UPGRADE ⚡' : 'LOCKED 🔒'}
+                  </span>
+                </div>
+
+                {/* Slider */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '22px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 900, color: 'rgba(255,255,255,0.3)' }}>T1</span>
+                  <input
+                    type="range"
+                    min="1"
+                    max="18"
+                    value={explorerTier}
+                    onChange={(e) => setExplorerTier(Number(e.target.value))}
+                    style={{
+                      flex: 1,
+                      accentColor: expTierData.color,
+                      height: '6px',
+                      borderRadius: '3px',
+                      background: 'rgba(255,255,255,0.1)',
+                      cursor: 'pointer',
+                      outline: 'none'
+                    }}
+                  />
+                  <span style={{ fontSize: '11px', fontWeight: 900, color: 'rgba(255,255,255,0.3)' }}>T18</span>
+                </div>
+
+                {/* Explorer Specs */}
+                <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '18px', padding: '16px', border: `1px dashed ${expTierData.color}30`, marginBottom: '18px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
+                    <TierHex tier={explorerTier} color={expTierData.color} size={56} active={expIsActive} next={expIsNext} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '16px', fontWeight: 900, color: '#fff' }}>TIER {explorerTier} NODE</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                        <span style={{ fontSize: '13px', color: 'var(--neon-lime)', fontWeight: 950 }}>{expTierData.miningRate} $AIP/hr</span>
+                        {expIsNext && currentTier > 0 && (
+                          <span style={{ fontSize: '9px', background: 'rgba(79,195,247,0.15)', color: '#4FC3F7', padding: '2px 6px', borderRadius: '6px', fontWeight: 800 }}>
+                            +{expTierData.miningRate - currentMining}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Projections */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '10px' }}>
+                      <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.4)', fontWeight: 800 }}>DAILY YIELD</div>
+                      <div style={{ fontSize: '13px', fontWeight: 900, color: '#fff', marginTop: '2px' }}>{expTierData.dailyMining.toLocaleString()}</div>
+                      <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.3)', fontWeight: 700 }}>$AIP / 24H</div>
+                    </div>
+                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '10px' }}>
+                      <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.4)', fontWeight: 800 }}>MONTHLY YIELD</div>
+                      <div style={{ fontSize: '13px', fontWeight: 900, color: '#fff', marginTop: '2px' }}>{expTierData.monthlyMining.toLocaleString()}</div>
+                      <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.3)', fontWeight: 700 }}>$AIP / 30D</div>
+                    </div>
+                  </div>
+
+                  {/* Cost Display */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.4)', borderRadius: '12px', padding: '12px 14px' }}>
+                    <span style={{ fontSize: '9px', fontWeight: 800, color: 'rgba(255,255,255,0.4)', letterSpacing: '1px' }}>UPGRADE COST</span>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '13px', fontWeight: 950, color: expTierData.color }}>{parseFloat(expCost).toFixed(3)} BNB</div>
+                      {bnbPrice > 0 && <div style={{ fontSize: '9px', color: '#4FC3F7', fontWeight: 800, marginTop: '2px' }}>{usdLabel(expCost)}</div>}
                     </div>
                   </div>
                 </div>
 
-                {/* Stats row */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 16 }}>
-                  {[
-                    { label: 'PER DAY',   val: `${nextTier.dailyMining.toLocaleString()} $AIP` },
-                    { label: 'PER MONTH', val: `${nextTier.monthlyMining.toLocaleString()} $AIP` },
-                    { label: 'COST',      val: `${parseFloat(tierCosts[nextTier.tier - 1] || 0).toFixed(3)} BNB`, sub: usdLabel(tierCosts[nextTier.tier - 1]) },
-                  ].map((s, i) => (
-                    <div key={i} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: '10px 8px', textAlign: 'center' }}>
-                      <div style={{ fontSize: 11, fontWeight: 900, color: '#fff' }}>{s.val}</div>
-                      {s.sub && <div style={{ fontSize: 9, color: '#4FC3F7', fontWeight: 700 }}>{s.sub}</div>}
-                      <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.35)', fontWeight: 700, marginTop: 2 }}>{s.label}</div>
+                {/* Explorer Action Button */}
+                {expIsActive ? (
+                  <div style={{ width: '100%', padding: '14px', borderRadius: '14px', border: '1.5px solid rgba(163,255,18,0.25)', background: 'rgba(163,255,18,0.06)', color: 'var(--neon-lime)', textAlign: 'center', fontSize: '13px', fontWeight: 950, letterSpacing: '0.5px' }}>
+                    ✓ TIER {explorerTier} IS ACTIVE
+                  </div>
+                ) : expIsNext ? (
+                  <motion.button
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => handleLevelUp(explorerTier)}
+                    disabled={isLoading}
+                    style={{ width: '100%', background: expTierData.color, color: '#000', border: 'none', borderRadius: '14px', padding: '15px', fontSize: '14px', fontWeight: 900, cursor: 'pointer', letterSpacing: '0.5px', boxShadow: `0 4px 15px ${expTierData.color}40` }}
+                  >
+                    {isLoading ? '⟳ PROCESSING...' : `⬆ UPGRADE TO TIER ${explorerTier}`}
+                  </motion.button>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <button disabled style={{ width: '100%', background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '14px', padding: '14px', fontSize: '13px', fontWeight: 900, cursor: 'not-allowed' }}>
+                      🔒 TIER LOCKED
+                    </button>
+                    <div style={{ fontSize: '9px', color: '#FFB74D', textAlign: 'center', fontWeight: 700 }}>
+                      You must upgrade to Tier {currentTier + 1} first.
                     </div>
-                  ))}
-                </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
-                <motion.button
-                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-                  onClick={() => handleLevelUp(nextTier.tier)}
-                  disabled={isLoading}
-                  style={{ width: '100%', background: nextTier.color, color: '#000', border: 'none', borderRadius: 14, padding: '16px', fontSize: 15, fontWeight: 900, cursor: 'pointer', letterSpacing: 0.5 }}>
-                  {isLoading ? '⟳ PROCESSING...' : `⬆ UPGRADE TO TIER ${nextTier.tier}`}
-                </motion.button>
-              </motion.div>
-            </motion.div>
-          )}
-
-          {/* ── ACTIVE TIERS grid ── */}
+          {/* ── COMPACT ACTIVE TIERS ── */}
           {activeTiers.length > 0 && (
-            <>
-              <div style={{ fontSize: 10, fontWeight: 900, color: '#A3FF12', letterSpacing: 3, marginBottom: 12 }}>
+            <div style={{ marginBottom: '24px' }}>
+              <div style={{ fontSize: '10px', fontWeight: 900, color: '#A3FF12', letterSpacing: '2px', marginBottom: '10px', textTransform: 'uppercase' }}>
                 ✅ ACTIVE TIERS ({activeTiers.length}/18)
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 28 }}>
-                {activeTiers.map((t, i) => (
-                  <motion.div key={t.tier}
-                    initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.04 }}
-                    style={{ background: `${t.color}0d`, border: `1px solid ${t.color}45`, borderRadius: 18, padding: '14px 12px', position: 'relative', overflow: 'hidden' }}>
-                    {/* Tick badge */}
-                    <div style={{ position: 'absolute', top: 8, right: 8, width: 20, height: 20, borderRadius: '50%', background: t.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 900, color: '#000' }}>✓</div>
-                    <div style={{ fontSize: 24, fontWeight: 900, color: t.color, marginBottom: 6 }}>T{t.tier}</div>
-                    <div style={{ fontSize: 11, fontWeight: 900, color: '#fff' }}>{t.miningRate} $AIP/hr</div>
-                    <div style={{ fontSize: 9, fontWeight: 700, color: t.color, marginTop: 3 }}>TIER {t.tier} ACTIVE</div>
-                  </motion.div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {activeTiers.map((t) => (
+                  <div key={t.tier} onClick={() => setExplorerTier(t.tier)}
+                    style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', background: `${t.color}12`, border: `1px solid ${t.color}35`, borderRadius: '12px', padding: '6px 12px', transition: 'all 0.2s' }}>
+                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: t.color }} />
+                    <span style={{ fontSize: '11px', fontWeight: 900, color: t.color }}>T{t.tier}</span>
+                    <span style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.6)' }}>{t.miningRate} AIP/h</span>
+                  </div>
                 ))}
               </div>
-            </>
+            </div>
           )}
 
-          {/* ── LOCKED TIERS grid ── */}
-          {lockedTiers.length > 0 && (
-            <>
-              <div style={{ fontSize: 10, fontWeight: 900, color: '#FFB74D', letterSpacing: 3, marginBottom: 12 }}>
-                🔒 LOCKED TIERS — UPGRADE TO UNLOCK
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                {lockedTiers.map((t, i) => (
-                  <motion.div key={t.tier}
-                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.05 + i * 0.03 }}
-                    style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 18, padding: '14px 12px', position: 'relative', opacity: 0.7 }}>
-                    <div style={{ position: 'absolute', top: 8, right: 8, fontSize: 11 }}>🔒</div>
-                    <div style={{ fontSize: 22, fontWeight: 900, color: t.color + '70', marginBottom: 6 }}>T{t.tier}</div>
-                    <div style={{ fontSize: 11, fontWeight: 800, color: '#FFD700' }}>{t.miningRate} $AIP/hr</div>
-                    <div style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>TIER {t.tier}</div>
-                    <div style={{ fontSize: 9, fontWeight: 700, color: '#A3FF12', marginTop: 6 }}>
-                      {parseFloat(tierCosts[t.tier - 1] || 0).toFixed(3)} BNB
-                    </div>
-                    {bnbPrice > 0 && <div style={{ fontSize: 9, fontWeight: 700, color: '#4FC3F7' }}>{usdLabel(tierCosts[t.tier - 1])}</div>}
-                  </motion.div>
-                ))}
-              </div>
-            </>
-          )}
-
-          {/* Max tier reached */}
+          {/* Max tier reached banner */}
           {currentTier >= 18 && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-              style={{ textAlign: 'center', padding: '40px 20px', background: 'linear-gradient(135deg, rgba(163,255,18,0.1), transparent)', border: '1px solid rgba(163,255,18,0.3)', borderRadius: 24 }}>
-              <div style={{ fontSize: 40, marginBottom: 12 }}>🏆</div>
-              <div style={{ fontSize: 18, fontWeight: 900, color: 'var(--neon-lime)', marginBottom: 6 }}>MAX TIER ACHIEVED!</div>
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', fontWeight: 600 }}>You have unlocked all 18 tiers. Mining at peak efficiency.</div>
-            </motion.div>
+            <div style={{ textAlign: 'center', padding: '30px 20px', background: 'linear-gradient(135deg, rgba(163,255,18,0.1), transparent)', border: '1px solid rgba(163,255,18,0.25)', borderRadius: '24px', marginBottom: '24px' }}>
+              <div style={{ fontSize: '32px', marginBottom: '8px' }}>🏆</div>
+              <div style={{ fontSize: '16px', fontWeight: 900, color: 'var(--neon-lime)', marginBottom: '4px' }}>MAX TIER UNLOCKED!</div>
+              <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', fontWeight: 600 }}>All 18 tiers activated. Mining at peak efficiency.</div>
+            </div>
           )}
+
+          {/* ── COLLAPSIBLE FULL LIST ── */}
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '20px', marginBottom: '20px' }}>
+            <button
+              onClick={() => setShowAllTiers(!showAllTiers)}
+              style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '14px', padding: '12px', color: '#fff', fontSize: '11px', fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', letterSpacing: '1px' }}
+            >
+              <span>{showAllTiers ? '👁️ HIDE ALL TIERS LIST' : '👁️ VIEW ALL 18 TIERS LIST'}</span>
+              <span>{showAllTiers ? '▲' : '▼'}</span>
+            </button>
+
+            <AnimatePresence>
+              {showAllTiers && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  style={{ overflow: 'hidden' }}
+                >
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '16px' }}>
+                    {TIERS.map((t, idx) => {
+                      const isActive = t.tier <= currentTier;
+                      const isNext = t.tier === currentTier + 1;
+                      const isLocked = t.tier > currentTier + 1;
+                      const cost = tierCosts[idx] || '0.00';
+                      
+                      return (
+                        <div
+                          key={t.tier}
+                          onClick={() => { setExplorerTier(t.tier); }}
+                          style={{
+                            background: isActive ? `${t.color}08` : 'rgba(255,255,255,0.02)',
+                            border: `1px solid ${isActive ? `${t.color}40` : isNext ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)'}`,
+                            borderRadius: '16px',
+                            padding: '12px',
+                            position: 'relative',
+                            cursor: 'pointer',
+                            opacity: isLocked ? 0.6 : 1
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
+                            <span style={{ fontSize: '18px', fontWeight: 950, color: t.color }}>T{t.tier}</span>
+                            <span style={{ fontSize: '10px' }}>{isActive ? '✓' : isNext ? '⚡' : '🔒'}</span>
+                          </div>
+                          <div style={{ fontSize: '11px', fontWeight: 900, color: '#fff' }}>{t.miningRate} $AIP/h</div>
+                          <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.3)', fontWeight: 700, marginTop: '2px' }}>{t.dailyMining.toLocaleString()} / day</div>
+                          <div style={{ fontSize: '9px', fontWeight: 800, color: t.color, marginTop: '6px' }}>
+                            {parseFloat(cost).toFixed(3)} BNB
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </>
       )}
     </div>

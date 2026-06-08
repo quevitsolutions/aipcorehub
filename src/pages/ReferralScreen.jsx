@@ -461,9 +461,9 @@ ${inviteLink}
 }
 
 // ── Referral Goal ─────────────────────────────────────────────────────────────
-function FreeInviteProjection({ directRefs }) {
+function FreeInviteProjection({ total }) {
   const [target, setTarget] = useState(10);
-  const current = directRefs || 0;
+  const current = total || 0;
   const pct     = target > 0 ? Math.min(100, (current / target) * 100) : 0;
 
   const milestones = [
@@ -1053,9 +1053,10 @@ export default function ReferralScreen() {
         ].map((m) => {
           // FIX: claimedMilestones and claimFreeMilestoneAction are now from top-level store
           // (was: useGameStore.getState() inside .map — React hooks rules violation + stale value)
+          const totalInvited = safeReferralList.length;
           const isClaimed = (claimedMilestones || []).includes(`free_${m.threshold}`);
-          const canClaim  = directRefs >= m.threshold && !isClaimed;
-          const progress  = Math.min((directRefs / m.threshold) * 100, 100);
+          const canClaim  = totalInvited >= m.threshold && !isClaimed;
+          const progress  = Math.min((totalInvited / m.threshold) * 100, 100);
           return (
             <div key={`free-${m.threshold}`} className="partner-card" style={{ padding: '16px', border: canClaim ? '1px solid #4FC3F7' : '1px solid rgba(255,255,255,0.05)', background: isClaimed ? 'rgba(79,195,247,0.05)' : 'var(--bg-card)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
@@ -1080,7 +1081,7 @@ export default function ReferralScreen() {
                 )}
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>
-                <span>{directRefs} / {m.threshold} friends</span><span>{Math.floor(progress)}%</span>
+                <span>{totalInvited} / {m.threshold} friends</span><span>{Math.floor(progress)}%</span>
               </div>
               <div style={{ height: 4, background: 'rgba(255,255,255,0.05)', borderRadius: 2, overflow: 'hidden' }}>
                 <div style={{ height: '100%', width: `${progress}%`, background: isClaimed ? '#4FC3F7' : 'linear-gradient(90deg, rgba(79,195,247,0.5), #4FC3F7)', transition: 'width 0.5s ease-out' }} />
@@ -1091,7 +1092,7 @@ export default function ReferralScreen() {
       </div>
 
       {/* ── FREE USER INVITATION PROJECTION ── */}
-      <FreeInviteProjection directRefs={directRefs} freeTrialList={freeTrialList} />
+      <FreeInviteProjection total={safeReferralList.length} />
 
           {/* ── Income Calculator ── */}
           <IncomeCalculator currentTier={nodeTier} />
