@@ -706,17 +706,28 @@ export default function EarnScreen() {
             </div>
 
             {/* Maturity Status & Timer */}
-            <div style={{ textAlign: 'center' }}>
+            <div style={{
+              textAlign: 'center',
+              background: 'rgba(0, 0, 0, 0.65)',
+              backdropFilter: 'blur(10px)',
+              WebkitBackdropFilter: 'blur(10px)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              borderRadius: 20,
+              padding: '10px 24px',
+              boxShadow: '0 4px 15px rgba(0, 0, 0, 0.5)',
+              margin: '0 auto',
+              maxWidth: 320
+            }}>
               {isExpired ? (
                 <div style={{ fontSize: 13, fontWeight: 900, color: '#FF3B30' }}>TRIAL EXPIRED — ACTIVATE MASTER NODE</div>
               ) : isCapReached ? (
                 <div style={{ fontSize: 13, fontWeight: 900, color: '#FF3B30', animation: 'pulse 1.5s infinite' }}>⚠️ ACCUMULATOR MATURED (24H LIMIT REACHED)</div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
-                  <span style={{ fontSize: 12, fontWeight: 800, color: 'rgba(255,255,255,0.7)' }}>
+                  <span style={{ fontSize: 12, fontWeight: 800, color: 'rgba(255,255,255,0.75)' }}>
                     24h Cap Maturity: <span style={{ color: '#4FC3F7', fontWeight: 900 }}>{capPercent.toFixed(1)}%</span>
                   </span>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af' }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: '#d1d5db' }}>
                     Accumulator stops in: <span style={{ color: '#fff', fontFamily: 'monospace', fontWeight: 900 }}>{formatTime(timeRemaining)}</span>
                   </span>
                 </div>
@@ -732,16 +743,19 @@ export default function EarnScreen() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              background: 'linear-gradient(90deg, rgba(0,0,0,0.55) 0%, rgba(163,255,18,0.07) 100%)',
-              border: '1px solid rgba(163,255,18,0.2)',
-              borderRadius: 14,
-              padding: '10px 14px',
-              marginBottom: 12
+              background: 'linear-gradient(90deg, rgba(0, 0, 0, 0.85) 0%, rgba(10, 15, 30, 0.8) 100%)',
+              backdropFilter: 'blur(10px)',
+              WebkitBackdropFilter: 'blur(10px)',
+              border: '1.5px solid rgba(163, 255, 18, 0.25)',
+              borderRadius: 16,
+              padding: '12px 16px',
+              marginBottom: 12,
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: 16 }}>💰</span>
                 <div>
-                  <div style={{ fontSize: 8, fontWeight: 900, color: 'rgba(255,255,255,0.4)', letterSpacing: 1, textTransform: 'uppercase' }}>Total $AIP Balance</div>
+                  <div style={{ fontSize: 8, fontWeight: 900, color: 'rgba(255,255,255,0.55)', letterSpacing: 1, textTransform: 'uppercase' }}>Total $AIP Balance</div>
                   <div style={{ fontSize: 18, fontWeight: 950, color: 'var(--neon-lime)', lineHeight: 1.1 }}>
                     {Math.floor(localReward).toLocaleString()}
                     <span style={{ fontSize: 10, fontWeight: 900, color: 'rgba(163,255,18,0.6)', marginLeft: 3 }}>$AIP</span>
@@ -749,7 +763,7 @@ export default function EarnScreen() {
                 </div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <span style={{ fontSize: 8, fontWeight: 900, color: 'rgba(255,255,255,0.35)', letterSpacing: 0.8, display: 'block' }}>MINING POWER</span>
+                <span style={{ fontSize: 8, fontWeight: 900, color: 'rgba(255,255,255,0.5)', letterSpacing: 0.8, display: 'block' }}>MINING POWER</span>
                 <span style={{ fontSize: 13, fontWeight: 950, color: '#A3FF12' }}>+{effectiveRate} AIP/HR</span>
                 <span style={{ fontSize: 8, color: '#4FC3F7', fontWeight: 700 }}>
                   {hasNode ? `Tier ${displayTier}` : 'Free Trial'}
@@ -790,19 +804,22 @@ export default function EarnScreen() {
                 onClick={() => setActiveTab('mine')}
                 style={{
                   width: '100%',
-                  background: 'rgba(255,255,255,0.03)',
-                  border: '1.5px solid rgba(163,255,18,0.3)',
+                  background: 'linear-gradient(135deg, rgba(17, 24, 39, 0.9) 0%, rgba(3, 7, 18, 0.95) 100%)',
+                  backdropFilter: 'blur(8px)',
+                  WebkitBackdropFilter: 'blur(8px)',
+                  border: '1.5px solid rgba(163,255,18,0.45)',
                   borderRadius: 18,
-                  padding: '12px 10px',
+                  padding: '14px 10px',
                   cursor: 'pointer',
                   color: 'var(--neon-lime)',
                   transition: 'all 0.2s',
-                  marginTop: 6
+                  marginTop: 6,
+                  boxShadow: '0 6px 20px rgba(0, 0, 0, 0.5)'
                 }}
               >
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
                   <span style={{ fontSize: 12, fontWeight: 950, letterSpacing: 0.5 }}>⚡ ACTIVATE MASTER NODE</span>
-                  <span style={{ fontSize: 8, fontWeight: 900, color: 'rgba(255,255,255,0.5)' }}>UPGRADE TO UNLOCK 10X PASSIVE SPEED (100+ AIP/HR) & REAL BNB</span>
+                  <span style={{ fontSize: 8, fontWeight: 900, color: 'rgba(255, 255, 255, 0.65)' }}>UPGRADE TO UNLOCK 10X PASSIVE SPEED (100+ AIP/HR) & REAL BNB</span>
                 </div>
               </button>
             )}
