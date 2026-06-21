@@ -8,8 +8,8 @@ export const BSC_CHAIN_ID = 56;
 
 export const RPC_NODES = [
   import.meta.env.VITE_BSC_MAINNET_RPC || "https://bsc-dataseed.binance.org",
-  "https://binance.llamarpc.com",
-  "https://bsc-dataseed1.defibit.io",
-  "https://1rpc.io/bnb",
-  "https://rpc.ankr.com/bsc"
+  "https://binance-smart-chain-public.nodies.app",
+  "https://bnb-mainnet.g.alchemy.com/public",
+  "https://bsc.drpc.org",
+  "https://bsc-dataseed1.defibit.io"
 ];

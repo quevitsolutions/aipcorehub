@@ -2089,6 +2089,33 @@ app.get('/api/user/income-history/:walletAddress', async (req, res) => {
   }
 });
 
+// GET Global Protocol Stats
+app.get('/api/stats/global', async (req, res) => {
+  try {
+    const [userStats, volStats] = await Promise.all([
+      query(`
+        SELECT 
+          COUNT(*) as total_users,
+          COUNT(*) FILTER (WHERE node_tier >= 1) as active_nodes
+        FROM users
+      `),
+      query(`
+        SELECT COALESCE(SUM(amount_bnb), 0) as total_volume_bnb
+        FROM income_history
+      `)
+    ]);
+
+    res.json({
+      total_users: parseInt(userStats.rows[0].total_users || 0),
+      active_nodes: parseInt(userStats.rows[0].active_nodes || 0),
+      total_volume_bnb: parseFloat(volStats.rows[0].total_volume_bnb || 0)
+    });
+  } catch (err) {
+    console.error('Failed to fetch global stats:', err.message);
+    res.status(500).json({ error: 'Failed to fetch global stats' });
+  }
+});
+
 // GET Global Leaderboard (Top Earners)
 app.get('/api/leaderboard', async (req, res) => {
   try {
