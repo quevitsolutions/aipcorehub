@@ -9,3 +9,5 @@ dist
 aipcore_db_data
 tests/
 server/node_modules
+scratch/
+
