@@ -5,12 +5,12 @@ import { useContract } from '../hooks/useContract.js';
 import toast from 'react-hot-toast';
 
 export default function NodePopup() {
-  const { setShowNodePopup, referrerId, sponsorNodeId, sponsorWallet, isConnected } = useGameStore();
+  const { setShowNodePopup, referrerId, sponsorNodeId, sponsorWallet, isWeb3Connected } = useGameStore();
   const { createNode, connectWallet } = useContract();
   const [loading, setLoading] = useState(false);
 
   const handleCreate = async () => {
-    if (!isConnected) {
+    if (!isWeb3Connected) {
       await connectWallet();
       return;
     }
@@ -109,7 +109,7 @@ export default function NodePopup() {
               boxShadow: '0 0 20px rgba(163, 255, 18, 0.3)'
             }}
           >
-            {loading ? 'PROCESSING...' : isConnected ? 'ACTIVATE NOW' : 'CONNECT WALLET'}
+            {loading ? 'PROCESSING...' : isWeb3Connected ? 'ACTIVATE NOW' : 'CONNECT WALLET'}
           </button>
 
           <button 

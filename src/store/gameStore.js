@@ -17,12 +17,27 @@ const RESET_STATE = {
   isFetchingUser: false, isSyncing: false, lastBackendSync: null
 };
 
+const getOrCreateGuestAddress = () => {
+  if (typeof window === 'undefined') return '0x0000000000000000000000000000000000000000';
+  let guest = localStorage.getItem('aipcore_guest_wallet');
+  if (!guest || guest.length !== 42 || !guest.startsWith('0x')) {
+    const chars = '0123456789abcdef';
+    guest = '0x';
+    for (let i = 0; i < 40; i++) {
+      guest += chars[Math.floor(Math.random() * 16)];
+    }
+    localStorage.setItem('aipcore_guest_wallet', guest);
+  }
+  return guest;
+};
+
 export const useGameStore = create(
   persist(
     (set, get) => ({
       // Wallet
-      walletAddress: null,
-      isConnected: false,
+      walletAddress: getOrCreateGuestAddress(),
+      isConnected: true,
+      isWeb3Connected: false,
       bnbBalance: "0.00",
       isAdmin: false,
       leaderboard: [],
@@ -120,8 +135,9 @@ export const useGameStore = create(
         const isSwitching = address && current && address.toLowerCase() !== current.toLowerCase();
 
         set({
-          walletAddress: address,
-          isConnected: !!address,
+          walletAddress: address || getOrCreateGuestAddress(),
+          isConnected: true,
+          isWeb3Connected: !!address,
           ...(address ? (isSwitching ? RESET_STATE : {}) : RESET_STATE),
         });
       },
@@ -129,13 +145,16 @@ export const useGameStore = create(
       setBnbBalance: (balance) => set({ bnbBalance: balance }),
 
       disconnectWallet: () => {
+        const guestAddress = getOrCreateGuestAddress();
         set({
-          walletAddress: null,
-          isConnected: false,
+          walletAddress: guestAddress,
+          isConnected: true,
+          isWeb3Connected: false,
           bnbBalance: "0.00",
           ...RESET_STATE
         });
-        localStorage.removeItem("aipcore-game-state");
+        // Instantly reload user data for guest address
+        get().fetchUserData().catch(() => {});
       },
 
       setProcessing: (isProcessing, processingLabel = "") =>
@@ -727,6 +746,7 @@ export const useGameStore = create(
       partialize: (s) => ({
         walletAddress: s.walletAddress,
         isConnected: s.isConnected,
+        isWeb3Connected: s.isWeb3Connected,
         hasNode: s.hasNode,
         nodeId: s.nodeId,
         nodeTier: s.nodeTier,

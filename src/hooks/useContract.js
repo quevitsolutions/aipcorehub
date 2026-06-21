@@ -16,6 +16,7 @@ export const useContract = () => {
   
   const { openConnectModal } = useConnectModal();
   const { disconnect } = useDisconnect();
+  const isWeb3Connected = useGameStore(s => s.isWeb3Connected);
 
   const loadNodeData = async (address, retries = 2) => {
     if (!address) return;
@@ -77,6 +78,11 @@ export const useContract = () => {
     connectWallet: () => openConnectModal?.(),
     disconnectWallet: () => disconnect(),
     createNode: async (sponsorId = 1) => {
+      if (!isWeb3Connected) {
+        toast.error("Please connect your Web3 wallet to activate a Node.");
+        openConnectModal?.();
+        return false;
+      }
       const tid = toast.loading("Activating Node...");
       setProcessing(true, "Activating Node...");
       try {
@@ -124,6 +130,11 @@ export const useContract = () => {
       }
     },
     claimRewards: async () => {
+      if (!isWeb3Connected) {
+        toast.error("Please connect your Web3 wallet to withdraw rewards.");
+        openConnectModal?.();
+        return false;
+      }
       const tid = toast.loading("Withdrawing rewards...");
       setProcessing(true, "Withdrawing Rewards...");
       try {
@@ -138,6 +149,11 @@ export const useContract = () => {
       }
     },
     claimPool: async (nodeId) => {
+      if (!isWeb3Connected) {
+        toast.error("Please connect your Web3 wallet to claim pool rewards.");
+        openConnectModal?.();
+        return false;
+      }
       if (!nodeId) return;
       const tid = toast.loading("Claiming Pool Rewards...");
       setProcessing(true, "Claiming Pool...");
@@ -155,6 +171,11 @@ export const useContract = () => {
       }
     },
     registerPool: async (nodeId) => {
+      if (!isWeb3Connected) {
+        toast.error("Please connect your Web3 wallet to register for the reward pool.");
+        openConnectModal?.();
+        return false;
+      }
       if (!nodeId) return;
       const tid = toast.loading("Registering into Reward Pool...");
       setProcessing(true, "Registering...");
@@ -174,6 +195,11 @@ export const useContract = () => {
       }
     },
     unlockTier: async (nodeId, toTier) => {
+      if (!isWeb3Connected) {
+        toast.error("Please connect your Web3 wallet to upgrade node tier.");
+        openConnectModal?.();
+        return false;
+      }
       if (!nodeId) return toast.error('Node ID missing — reconnect wallet') && false;
       const tid = toast.loading(`Upgrading to Tier ${toTier}...`);
       setProcessing(true, `Upgrading to Tier ${toTier}...`);

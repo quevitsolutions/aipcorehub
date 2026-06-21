@@ -4,7 +4,7 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useBnbPrice } from '../hooks/useBnbPrice.js';
 
 export default function TopBar() {
-  const { walletAddress, isConnected, nodeId, nodeTier, nodeActive, bnbBalance, setActiveTab, hasNode } = useGameStore();
+  const { walletAddress, isConnected, isWeb3Connected, nodeId, nodeTier, nodeActive, bnbBalance, setActiveTab, hasNode } = useGameStore();
   const { loadNodeData } = useContract();
   const bnbPrice = useBnbPrice();
   const bnbUsd = bnbPrice > 0 ? `≈ $${(parseFloat(bnbBalance || 0) * bnbPrice).toFixed(2)}` : null;
@@ -62,7 +62,7 @@ export default function TopBar() {
       </div>
 
       {/* ─ Center/Right: BNB balance or status info ─ */}
-      {isConnected ? (
+      {isWeb3Connected ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <div 
             onClick={() => setActiveTab('dash')}
@@ -85,7 +85,7 @@ export default function TopBar() {
 
       {/* ─ Right: Connect/Disconnect Wallet ─ */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-        {isConnected && (
+        {isWeb3Connected && (
           <button
             onClick={async (e) => {
               const icon = e.currentTarget.querySelector('span');

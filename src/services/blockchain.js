@@ -8,7 +8,8 @@ import {
 import { api } from "./api.js"; // zero-RPC post-tx DB confirm
 
 const MULTICALL_ABI = [
-  "function aggregate(tuple(address target, bytes callData)[] calls) view returns (uint256 blockNumber, bytes[] returnData)"
+  "function aggregate(tuple(address target, bytes callData)[] calls) view returns (uint256 blockNumber, bytes[] returnData)",
+  "function tryAggregate(bool requireSuccess, tuple(address target, bytes callData)[] calls) view returns (tuple(bool success, bytes returnData)[] returnData)"
 ];
 const MULTICALL_ADDRESS = "0xcA11bde05977b3631167028862bE2a173976CA11";
 import { config } from "../config/wagmi.js";
@@ -24,7 +25,9 @@ import { getEthersProvider, getEthersSigner } from "../utils/ethers-adapter.js";
  */
 class BlockchainService {
   constructor() {
-    this.staticProvider = new ethers.JsonRpcProvider(RPC_NODES[0]);
+    const bscChainId = 56;
+    const providers = RPC_NODES.map(url => new ethers.JsonRpcProvider(url, bscChainId, { staticNetwork: true }));
+    this.staticProvider = new ethers.FallbackProvider(providers);
     this.core = new ethers.Contract(
       CONTRACTS.AIPCORE,
       AIPCORE_ABI,
@@ -61,19 +64,30 @@ class BlockchainService {
       const nId = await this.core.nodeId(address);
       if (!nId || Number(nId) === 0) return { nodeId: 0, hasNode: false };
 
-      // All calls are isolated — one failure cannot break others
-      const [viewStats, coreStats, nodeRaw, isActive, pending, poolData, viewBreakdown, poolClaimableData, capInfo] =
-        await Promise.all([
-          this.view.getNodeStats(nId).catch(() => null),         // AIPVIEW  → [totalEarned, teamSize, directRefs, level]
-          this.core.getNodeStats(nId).catch(() => null),         // AIPCORE  → [tier, directCount, matrixCount, ...]
-          this.core.nodes(nId).catch(() => null),                // raw struct → index 5 = tier
-          this.core.isNodeActive(nId).catch(() => false),
-          this.core.pendingReward(address).catch(() => 0n),      // AIPCORE pending (by wallet)
-          this.pool.getPoolViewHelper(nId).catch(() => null),    // full pool view
-          this.view.getIncomeBreakdown(nId).catch(() => null),   // AIPVIEW → [direct,matrix,pool,pending] ← pool income
-          this.pool.getClaimable(nId).catch(() => null),         // REWARDPOOL → [fromCurrentPool,fromExited,total]
-          this.pool.getCapInfo(nId).catch(() => null),           // REWARDPOOL → [capMult,deposited,lifetimeCap,claimed,remaining]
-        ]);
+      // Batch all 9 calls into a single Multicall tryAggregate transaction
+      const calls = [
+        { target: CONTRACTS.AIPVIEW, callData: this.view.interface.encodeFunctionData("getNodeStats", [nId]) },
+        { target: CONTRACTS.AIPCORE, callData: this.core.interface.encodeFunctionData("getNodeStats", [nId]) },
+        { target: CONTRACTS.AIPCORE, callData: this.core.interface.encodeFunctionData("nodes", [nId]) },
+        { target: CONTRACTS.AIPCORE, callData: this.core.interface.encodeFunctionData("isNodeActive", [nId]) },
+        { target: CONTRACTS.AIPCORE, callData: this.core.interface.encodeFunctionData("pendingReward", [address]) },
+        { target: CONTRACTS.REWARDPOOL, callData: this.pool.interface.encodeFunctionData("getPoolViewHelper", [nId]) },
+        { target: CONTRACTS.AIPVIEW, callData: this.view.interface.encodeFunctionData("getIncomeBreakdown", [nId]) },
+        { target: CONTRACTS.REWARDPOOL, callData: this.pool.interface.encodeFunctionData("getClaimable", [nId]) },
+        { target: CONTRACTS.REWARDPOOL, callData: this.pool.interface.encodeFunctionData("getCapInfo", [nId]) }
+      ];
+
+      const results = await this.multicall.tryAggregate(false, calls);
+
+      const viewStats = results[0].success ? this.view.interface.decodeFunctionResult("getNodeStats", results[0].returnData) : null;
+      const coreStats = results[1].success ? this.core.interface.decodeFunctionResult("getNodeStats", results[1].returnData) : null;
+      const nodeRaw = results[2].success ? this.core.interface.decodeFunctionResult("nodes", results[2].returnData) : null;
+      const isActive = results[3].success ? this.core.interface.decodeFunctionResult("isNodeActive", results[3].returnData)[0] : false;
+      const pending = results[4].success ? this.core.interface.decodeFunctionResult("pendingReward", results[4].returnData)[0] : 0n;
+      const poolData = results[5].success ? this.pool.interface.decodeFunctionResult("getPoolViewHelper", results[5].returnData) : null;
+      const viewBreakdown = results[6].success ? this.view.interface.decodeFunctionResult("getIncomeBreakdown", results[6].returnData) : null;
+      const poolClaimableData = results[7].success ? this.pool.interface.decodeFunctionResult("getClaimable", results[7].returnData) : null;
+      const capInfo = results[8].success ? this.pool.interface.decodeFunctionResult("getCapInfo", results[8].returnData) : null;
 
       // ── 4-source tier waterfall ──
       const t1 = viewStats ? Number(viewStats[3]) : 0; // AIPVIEW  level   (index 3)

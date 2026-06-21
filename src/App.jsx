@@ -190,17 +190,6 @@ export default function App() {
     }
   }, [activeTab, isConnected]);
 
-  if (!isConnected) {
-    return (
-      <div className="app-container">
-        <DynamicPortal />
-        <LoginScreen onConnect={connectWallet} />
-        <Toaster position="top-center" toastOptions={{ style: TOAST_STYLE }} />
-      </div>
-    );
-  }
-
-  // Non-activated users go directly to full app (EarnScreen has a registration gate built-in)
 
   return (
     <div className="app-container">

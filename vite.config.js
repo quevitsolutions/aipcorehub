@@ -22,7 +22,21 @@ export default defineConfig({
     rollupOptions: {
       maxParallelFileOps: 2,
       output: {
-        // Letting Vite handle chunks automatically to avoid React instance conflicts
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('ethers') || id.includes('@ethersproject')) {
+              return 'ethers';
+            }
+            if (
+              id.includes('@rainbow-me/rainbowkit') ||
+              id.includes('wagmi') ||
+              id.includes('viem') ||
+              id.includes('@tanstack')
+            ) {
+              return 'web3-vendor';
+            }
+          }
+        }
       },
     },
   },

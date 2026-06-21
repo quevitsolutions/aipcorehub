@@ -116,7 +116,7 @@ export default function DashboardScreen() {
   const {
     walletAddress, hasNode, nodeId, nodeActive, nodeTier,
     totalEarned, pendingReward, teamSize, directRefs,
-    poolClaimable, poolQual, localReward, streak, isConnected,
+    poolClaimable, poolQual, localReward, streak, isConnected, isWeb3Connected,
     conversionHistory, isFreeActive, globalStats,
     taps, energy, maxEnergy, handleTap
   } = useGameStore();
@@ -172,10 +172,10 @@ export default function DashboardScreen() {
   }, [walletAddress, loadNodeData]);
 
   useEffect(() => {
-    if (isConnected && nodeId) {
+    if (isWeb3Connected && nodeId) {
       fetchTeamCounts(nodeId).then(setLevelCounts);
     }
-  }, [isConnected, nodeId, fetchTeamCounts]);
+  }, [isWeb3Connected, nodeId, fetchTeamCounts]);
 
   const calcDirects = levelCounts.length > 0 ? levelCounts[0] : (directRefs || 0);
   const calcTotal = levelCounts.length > 0 ? levelCounts.reduce((a, b) => a + b, 0) : (teamSize || 0);
@@ -213,9 +213,9 @@ export default function DashboardScreen() {
           background: 'rgba(255,255,255,0.05)', marginTop: 8, gap: 8, alignItems: 'center'
         }}>
           <span style={{ fontSize: '11px', fontWeight: 800, color: '#FF5252' }}>
-            {isConnected ? shortAddr(walletAddress) : 'NOT CONNECTED'}
+            {isWeb3Connected ? shortAddr(walletAddress) : `GUEST (${shortAddr(walletAddress)})`}
           </span>
-          {isConnected && <span style={{ color: 'var(--neon-lime)', fontSize: '10px' }}>●</span>}
+          {isWeb3Connected && <span style={{ color: 'var(--neon-lime)', fontSize: '10px' }}>●</span>}
         </div>
       </div>
 
@@ -614,7 +614,7 @@ export default function DashboardScreen() {
       <IncomeCalcMini nodeTier={nodeTier} />
 
       {/* Wallet Actions */}
-      {!isConnected ? (
+      {!isWeb3Connected ? (
         <button className="giant-btn" style={{ position: 'relative', bottom: 0, marginBottom: 32 }} onClick={connectWallet}>
           CONNECT BSC WALLET
         </button>
