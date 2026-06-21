@@ -105,6 +105,14 @@ export default function App() {
     }
   }, [setReferrerId]);
 
+  // On-demand Web3 bundle loading: trigger if user navigates to a Web3-dependent tab or popup
+  useEffect(() => {
+    const web3Tabs = ['mine', 'dash', 'team', 'contracts'];
+    if (web3Tabs.includes(activeTab) || showNodePopup) {
+      useGameStore.setState({ loadWeb3: true });
+    }
+  }, [activeTab, showNodePopup]);
+
   // Show "Referred by" banner once on first connect
   useEffect(() => {
     if (!isConnected || welcomeShown.current) return;

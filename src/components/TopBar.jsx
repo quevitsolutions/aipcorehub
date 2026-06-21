@@ -106,11 +106,14 @@ export default function TopBar() {
         )}
         <div style={{ transform: 'scale(0.85)', transformOrigin: 'right center' }}>
           <Suspense fallback={
-            <button style={{
-              background: 'var(--neon-lime)', border: 'none', borderRadius: '10px',
-              padding: '6px 14px', fontSize: '11px', fontWeight: 900, color: '#000',
-              cursor: 'pointer', boxShadow: '0 0 10px rgba(163,255,18,0.2)'
-            }}>
+            <button 
+              onClick={() => useGameStore.setState({ loadWeb3: true, triggerConnect: true })}
+              style={{
+                background: 'var(--neon-lime)', border: 'none', borderRadius: '10px',
+                padding: '6px 14px', fontSize: '11px', fontWeight: 900, color: '#000',
+                cursor: 'pointer', boxShadow: '0 0 10px rgba(163,255,18,0.2)'
+              }}
+            >
               CONNECT WALLET
             </button>
           }>
