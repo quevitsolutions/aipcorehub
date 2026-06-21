@@ -202,6 +202,9 @@ export const useWalletLifecycle = () => {
 
     // Set wallet first (synchronous)
     setWallet(address);
+    if (typeof document !== 'undefined') {
+      document.cookie = "wallet_connected=true; path=/; max-age=31536000; SameSite=Lax; Secure";
+    }
 
     // Parallel: fire all DB fetches immediately — no delay
     Promise.all([
@@ -222,6 +225,9 @@ export const useWalletLifecycle = () => {
   useEffect(() => {
     if (status === 'disconnected') {
       disconnectWallet();
+      if (typeof document !== 'undefined') {
+        document.cookie = "wallet_connected=; path=/; max-age=0; SameSite=Lax; Secure";
+      }
     }
   }, [status]);
 

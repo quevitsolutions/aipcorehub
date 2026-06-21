@@ -613,7 +613,7 @@ export default function ReferralScreen() {
   }, [walletAddress]);
 
   const refToken   = nodeId || walletAddress;
-  const inviteLink = walletAddress ? `${window.location.origin}/?ref=${refToken}` : 'Connect wallet to get link';
+  const inviteLink = walletAddress ? `https://aipcore.online/?ref=${refToken}` : 'Connect wallet to get link';
 
   const copyLink = (link) => {
     navigator.clipboard.writeText(link).then(() => {

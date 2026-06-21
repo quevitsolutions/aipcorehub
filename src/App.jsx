@@ -9,6 +9,7 @@ import TabBar from './components/TabBar.jsx';
 const NodePopup = lazy(() => import('./components/NodePopup.jsx'));
 import DailyPopup from './components/DailyPopup.jsx';
 import DynamicPortal from './components/DynamicPortal.jsx';
+import LoginScreen from './components/LoginScreen.jsx';
 
 // Lazy-loaded page components for progressive loading
 const EarnScreen = lazy(() => import('./pages/EarnScreen.jsx'));
@@ -71,7 +72,7 @@ const TOAST_STYLE = {
 export default function App() {
   const {
     activeTab, setActiveTab,
-    isConnected, hasNode,
+    isConnected, isWeb3Connected, hasNode,
     rechargeEnergy,
     showNodePopup, showDailyPopup, lastClaimDate,
     setShowDailyPopup, setReferrerId,
@@ -193,6 +194,16 @@ export default function App() {
     }
   }, [activeTab, isConnected]);
 
+
+  if (!isWeb3Connected) {
+    return (
+      <div className="app-container">
+        <DynamicPortal />
+        <LoginScreen />
+        <Toaster position="top-center" toastOptions={{ style: TOAST_STYLE }} />
+      </div>
+    );
+  }
 
   return (
     <div className="app-container">
