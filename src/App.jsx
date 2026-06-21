@@ -9,7 +9,7 @@ import TabBar from './components/TabBar.jsx';
 const NodePopup = lazy(() => import('./components/NodePopup.jsx'));
 import DailyPopup from './components/DailyPopup.jsx';
 import DynamicPortal from './components/DynamicPortal.jsx';
-import LoginScreen from './components/LoginScreen.jsx';
+const LoginScreen = lazy(() => import('./components/LoginScreen.jsx'));
 
 // Lazy-loaded page components for progressive loading
 const EarnScreen = lazy(() => import('./pages/EarnScreen.jsx'));
@@ -199,7 +199,9 @@ export default function App() {
     return (
       <div className="app-container">
         <DynamicPortal />
-        <LoginScreen />
+        <Suspense fallback={<LoginScreenSkeleton />}>
+          {web3Loaded ? <LoginScreen /> : <LoginScreenSkeleton />}
+        </Suspense>
         <Toaster position="top-center" toastOptions={{ style: TOAST_STYLE }} />
       </div>
     );
@@ -280,6 +282,34 @@ function ScreenSkeleton() {
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 12, color: 'rgba(255,255,255,0.4)', flex: 1, minHeight: '300px' }}>
       <div className="spinner" style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.1)', borderTopColor: 'var(--neon-lime)', animation: 'spin 1s linear infinite' }} />
       <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase' }}>Synchronizing Protocol...</div>
+    </div>
+  );
+}
+
+function LoginScreenSkeleton() {
+  return (
+    <div style={{
+      height: '100%',
+      width: '100%',
+      background: '#000000',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: '#fff',
+      fontFamily: 'Outfit, sans-serif',
+      gap: 16
+    }}>
+      <div className="spinner" style={{
+        width: 36, height: 36, borderRadius: '50%',
+        border: '3px solid rgba(255,255,255,0.1)',
+        borderTopColor: '#00D2FF',
+        animation: 'spin 1s linear infinite',
+        boxShadow: '0 0 15px rgba(0,210,255,0.3)'
+      }} />
+      <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: '1.5px', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase' }}>
+        Initializing Protocol...
+      </div>
     </div>
   );
 }
