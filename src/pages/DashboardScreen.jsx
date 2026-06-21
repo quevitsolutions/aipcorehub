@@ -237,21 +237,21 @@ export default function DashboardScreen() {
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 32 }}>
           {[
-            { label: 'SELF LEVEL',  val: `TIER ${nodeTier}`, sub: formatBNB(poolQual.totalDeposited), color: '#FFB74D', glowKey: null },
+            { label: 'SELF LEVEL',  val: hasNode ? `TIER ${nodeTier}` : 'FREE TRIAL', sub: formatBNB(poolQual.totalDeposited), color: '#FFB74D', glowKey: null },
             { label: 'AIP COINS',   val: formatNumber(localReward), sub: 'Mining Asset',  color: '#FFD700', glowKey: null },
-            !hasNode ? { 
-              label: 'FREE SPARKS', val: (taps || 0).toLocaleString(), sub: `ENERGY ${energy}/${maxEnergy}`, color: '#A3FF12',
-              glowKey: energy > 0 ? 'tap' : null,
-              action: energy > 0 ? 'TAP TO COLLECT' : 'RECHARGING...',
-            } : { 
+            hasNode ? { 
               label: 'UNCLAIMED', val: formatBNB(pendingReward), sub: 'Node Balance', color: 'var(--neon-lime)',
               glowKey: parseFloat(pendingReward) > 0 ? 'lime' : null,
               action: parseFloat(pendingReward) > 0 ? 'TAP TO CLAIM' : null,
+            } : { 
+              label: 'PENDING AIP', val: (pendingMined || 0).toFixed(2), sub: `Rate: ${miningRate || 10}/hr`, color: '#A3FF12', glowKey: null,
             },
-            { 
+            hasNode ? { 
               label: 'POOL ROI',   val: formatBNB(poolClaimable), sub: 'Global Payout', color: '#4FC3F7',
               glowKey: parseFloat(poolClaimable) > 0 ? 'blue' : null,
               action: parseFloat(poolClaimable) > 0 ? 'TAP TO CLAIM' : null,
+            } : {
+              label: 'TEAM SIZE', val: (teamSize || 0).toLocaleString(), sub: 'My Network', color: '#4FC3F7', glowKey: null
             }
           ].map((item, i) => (
             <motion.div 
@@ -259,21 +259,17 @@ export default function DashboardScreen() {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: i * 0.05 }}
-              onClick={(e) => {
-                if (item.glowKey === 'tap') {
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  handleTap();
-                }
+              onClick={() => {
                 if (item.glowKey === 'lime' && nodeId)  claimRewards();
                 if (item.glowKey === 'blue' && nodeId) claimPool(nodeId);
               }}
               className="partner-card" 
               style={{ 
                 flexDirection: 'column', alignItems: 'flex-start', margin: 0, padding: 16,
-                border: item.glowKey === 'lime' || item.glowKey === 'tap' ? '1px solid rgba(163,255,18,0.5)' 
+                border: item.glowKey === 'lime' ? '1px solid rgba(163,255,18,0.5)' 
                       : item.glowKey === 'blue' ? '1px solid rgba(79,195,247,0.5)' 
                       : '1px solid rgba(255,255,255,0.05)',
-                boxShadow: item.glowKey === 'lime' || item.glowKey === 'tap' ? '0 0 12px rgba(163,255,18,0.15)' 
+                boxShadow: item.glowKey === 'lime' ? '0 0 12px rgba(163,255,18,0.15)' 
                          : item.glowKey === 'blue' ? '0 0 12px rgba(79,195,247,0.15)' 
                          : 'none',
                 cursor: item.glowKey ? 'pointer' : 'default',

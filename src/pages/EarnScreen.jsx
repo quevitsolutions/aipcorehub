@@ -343,7 +343,7 @@ export default function EarnScreen() {
     isFreeActive, createdAt, globalHistory, fetchGlobalHistory,
     initialLoaded, pendingMined, lastSyncTime,
     claimedMilestones, claimSignupBonusAction, miningRate,
-    isNewUser, taps, energy, maxEnergy
+    isNewUser
   } = useGameStore();
 
   const [view, setView] = useState('mining'); // 'mining' | 'history'
@@ -363,102 +363,6 @@ export default function EarnScreen() {
   const [liveRewards, setLiveRewards] = useState([]);
   const latestIncomeRef = useRef(null);
   
-  // Floating Tap Score Particles state and click handlers
-  const [particles, setParticles] = useState([]);
-  
-  // Random movement, rotation, and squish/stretch animation state for Shiba Inu character
-  const [shibaPos, setShibaPos] = useState({ x: 0, y: 0 });
-  const [shibaRotate, setShibaRotate] = useState(0);
-  const [shibaScaleX, setShibaScaleX] = useState(1);
-  const [shibaScaleY, setShibaScaleY] = useState(1);
-
-  useEffect(() => {
-    if (view !== 'mining') return;
-
-    const interval = setInterval(() => {
-      const roll = Math.random();
-      if (roll < 0.45) {
-        // Move character to a random hover offset on the stand
-        const maxRangeX = 35; // horizontal offset limit
-        const maxRangeY = 15; // vertical offset limit
-        setShibaPos({
-          x: (Math.random() - 0.5) * maxRangeX * 2,
-          y: (Math.random() - 0.5) * maxRangeY * 2
-        });
-        setShibaRotate((Math.random() - 0.5) * 20); // rotate character slightly
-      } else if (roll < 0.75) {
-        // Character does a squish-stretch bounce in place
-        setShibaScaleY(1.18);
-        setShibaScaleX(0.82);
-        setTimeout(() => {
-          setShibaScaleY(0.88);
-          setShibaScaleX(1.12);
-          setTimeout(() => {
-            setShibaScaleY(1);
-            setShibaScaleX(1);
-          }, 120);
-        }, 120);
-      } else {
-        // Cute idle tilt/wiggle
-        setShibaRotate((Math.random() - 0.5) * 35);
-      }
-    }, 2200 + Math.random() * 2000); // Random action every 2.2 to 4.2s
-
-    return () => clearInterval(interval);
-  }, [view]);
-  
-  const triggerTap = (e) => {
-    if (isExpired) return;
-    const state = useGameStore.getState();
-    if (state.energy <= 0) {
-      toast.error("Out of energy! Recharging...", { id: 'energy-empty' });
-      return;
-    }
-
-    const res = state.handleTap();
-    if (res.status === "LOCKED") {
-      toast.error("Tap limit reached! Activate a Node to unlock unlimited taps.", { id: 'tap-locked' });
-      return;
-    }
-
-    // Interactive physical feedback on tap
-    setShibaScaleY(0.78);
-    setShibaScaleX(1.22);
-    setTimeout(() => {
-      setShibaScaleY(1.12);
-      setShibaScaleX(0.88);
-      setTimeout(() => {
-        setShibaScaleY(1);
-        setShibaScaleX(1);
-      }, 100);
-    }, 70);
-
-    // Get touch / click coordinates relative to standard viewport coin layout
-    const rect = e.currentTarget.getBoundingClientRect();
-    let clientX = 0;
-    let clientY = 0;
-
-    if (e.touches && e.touches.length > 0) {
-      clientX = e.touches[0].clientX;
-      clientY = e.touches[0].clientY;
-    } else {
-      clientX = e.clientX;
-      clientY = e.clientY;
-    }
-
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
-    const id = Date.now() + Math.random();
-    
-    // Node holders get 10 sparks visual feedback, free players get 1
-    const tapValue = hasNode ? 10 : 1;
-
-    setParticles((prev) => [...prev, { id, x, y, value: `+${tapValue}` }]);
-    
-    setTimeout(() => {
-      setParticles((prev) => prev.filter((p) => p.id !== id));
-    }, 800);
-  };
 
 
   // Live On-Chain Reward Poller
@@ -732,178 +636,95 @@ export default function EarnScreen() {
             />
           )}
 
-          {/* ── Immersive RPG Status Bar HUD ── */}
-          <div className="tma-rpg-hud" style={{ cursor: 'pointer', flexShrink: 0 }} onClick={() => setActiveTab('dash')}>
-            <div className="tma-rpg-level-badge">
-              {hasNode ? nodeTier || 1 : '1'}
-            </div>
-            <div className="tma-rpg-info-bar">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span className="tma-rpg-username">
-                  {hasNode ? `OPERATIVE #${nodeId}` : 'FREE TRIAL AGENT'}
-                </span>
-                <span style={{ fontSize: '11px', fontWeight: 950, color: '#ffd700', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>
-                  {taps.toLocaleString()} SPARKS
-                </span>
-              </div>
-              <div className="tma-rpg-xp-container">
-                <div className="tma-rpg-xp-fill" style={{ width: `${(energy / maxEnergy) * 100}%` }} />
-              </div>
-            </div>
-          </div>
-
-          {/* ── Active Node: Passive Mining Terminal ── */}
-          {hasNode && (
-            <div className="w-full" style={{ marginBottom: 8, flexShrink: 0 }}>
-              <div className="tma-node-portal" style={{ padding: '12px 14px' }}>
-                <div className="tma-portal-ring" />
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                  <div>
-                    <span style={{ fontSize: '9px', fontWeight: 900, color: 'var(--neon-lime)', letterSpacing: '1px', display: 'block' }}>⚙️ PASSIVE TERMINAL</span>
-                    <span style={{ fontSize: '15px', fontWeight: 950, color: '#fff', marginTop: 2, display: 'block' }}>NODE #{nodeId}</span>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <span style={{ fontSize: '9px', fontWeight: 900, color: '#4FC3F7', letterSpacing: '0.5px', display: 'block' }}>SPEED</span>
-                    <span style={{ fontSize: '12px', fontWeight: 900, color: '#fff', marginTop: 2, display: 'block' }}>+{ratePerHour} AIP/HR</span>
-                  </div>
-                </div>
-
-                <div style={{ background: 'rgba(0, 0, 0, 0.25)', borderRadius: 12, padding: '8px', border: '1px solid rgba(255, 255, 255, 0.03)', textAlign: 'center', marginBottom: 8 }}>
-                  <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', fontWeight: 800 }}>ACCUMULATED PASSIVE REWARDS</span>
-                  <div style={{ fontSize: '22px', fontWeight: 950, color: 'var(--neon-lime)', marginTop: 2, textShadow: '0 0 15px rgba(163, 255, 18, 0.4)' }}>
-                    +{totalMined.toFixed(4)} $AIP
-                  </div>
-                  {isCapReached ? (
-                    <span style={{ fontSize: '8px', color: '#FF3B30', fontWeight: 900, letterSpacing: 0.5 }}>⚠️ MAX LIMIT REACHED (CLAIM NOW)</span>
-                  ) : (
-                    <span style={{ fontSize: '9px', color: '#4FC3F7', fontWeight: 700 }}>Ends in: {formatTime(timeRemaining)}</span>
-                  )}
-                </div>
-
-                <motion.button 
-                  whileTap={{ scale: 0.96 }}
-                  disabled={isClaiming || totalMined <= 0}
-                  onClick={onClaim}
-                  style={{
-                    width: '100%',
-                    background: totalMined > 0 ? 'linear-gradient(135deg, var(--neon-lime), #7BFF00)' : 'rgba(255,255,255,0.03)',
-                    color: totalMined > 0 ? '#000' : 'rgba(255,255,255,0.15)',
-                    border: 'none',
-                    borderRadius: 16,
-                  padding: '11px',
-                    fontSize: '12px',
-                    fontWeight: 950,
-                    cursor: totalMined > 0 ? 'pointer' : 'not-allowed',
-                    boxShadow: totalMined > 0 ? '0 8px 25px rgba(163,255,18,0.35)' : 'none',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  {isClaiming ? '⏳ SYNCING REWARDS...' : `🥚 CLAIM PASSIVE YIELD (${totalMined.toFixed(4)})`}
-                </motion.button>
-              </div>
-            </div>
-          )}
-
-          {/* ── CENTRAL TAPPING VIEW (Interactive Egg Incubation Deck) ── */}
-          <div style={{ flex: 1, minHeight: '200px', maxHeight: '280px', display: 'flex', position: 'relative', width: '100%', alignItems: 'center', justifyContent: 'center', margin: '6px 0' }}>
-            
-            {/* Left Column Floating Widgets */}
-            <div className="tma-floating-panel left">
-              <button className="tma-game-widget" onClick={() => setActiveTab('friends')}>
-                <div className="tma-widget-circle orange">🏆</div>
-                <span className="tma-widget-label">Rating</span>
-              </button>
-              <button className="tma-game-widget" onClick={() => setActiveTab('team')}>
-                <div className="tma-widget-circle blue">🕸️</div>
-                <span className="tma-widget-label">Clans</span>
-              </button>
-            </div>
-
-            {/* Right Column Floating Widgets */}
-            <div className="tma-floating-panel right">
-              <button className="tma-game-widget" onClick={() => setActiveTab('tasks')}>
-                <div className="tma-widget-circle lime">✅</div>
-                <span className="tma-widget-label">Quests</span>
-              </button>
-              <button className="tma-game-widget" onClick={() => setView('calculator')}>
-                <div className="tma-widget-circle">📊</div>
-                <span className="tma-widget-label">Calc</span>
-              </button>
-            </div>
-
-            {/* Central Custom Egg Incubator */}
-            <div className="tma-egg-incubator">
-              <div className="tma-egg-stand" />
-              
-              <AnimatePresence>
-                {isExploding && (
-                  <motion.div 
-                    initial={{ opacity: 1, scale: 0.8 }} 
-                    animate={{ opacity: 0, scale: 2.2 }}
-                    style={{ 
-                      position: 'absolute', 
-                      width: 200, 
-                      height: 200, 
-                      background: 'radial-gradient(circle, var(--neon-lime) 0%, transparent 70%)', 
-                      zIndex: 5, 
-                      borderRadius: '50%',
-                      pointerEvents: 'none'
-                    }} 
-                  />
-                )}
-              </AnimatePresence>
-
-              {/* Floating Multi-touch Score Particles */}
-              {particles.map((p) => (
-                <span
-                  key={p.id}
-                  className="score-particle"
-                  style={{ left: p.x, top: p.y }}
-                >
-                  {p.value}
-                </span>
-              ))}
-
-              <motion.img 
-                src="/assets/egg_orange.png?v=3"
-                className="tma-incubated-egg"
-                onClick={triggerTap}
-                onTouchStart={triggerTap}
-                animate={{
-                  x: shibaPos.x,
-                  y: [shibaPos.y, shibaPos.y - 6, shibaPos.y], // Bobbing up and down + random translations
-                  rotate: shibaRotate,
-                  scaleX: shibaScaleX,
-                  scaleY: shibaScaleY
-                }}
-                transition={{
-                  x: { type: 'spring', stiffness: 55, damping: 11 },
-                  y: { repeat: Infinity, duration: 2.2, ease: "easeInOut" },
-                  rotate: { type: 'spring', stiffness: 50, damping: 10 },
-                  scaleX: { type: 'spring', stiffness: 220, damping: 12 },
-                  scaleY: { type: 'spring', stiffness: 220, damping: 12 }
-                }}
+          {/* ── CENTRAL REACTOR CORE VIEW ── */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', margin: '20px 0', gap: 20 }}>
+            {/* Reactor Core Ring */}
+            <div style={{ position: 'relative', width: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {/* Outer Glowing Circle */}
+              <motion.div 
+                animate={{ rotate: 360 }}
+                transition={{ duration: 15, repeat: Infinity, ease: 'linear' }}
                 style={{
-                  filter: isExpired ? 'grayscale(1) brightness(0.4)' : 'none',
-                  transformOrigin: 'bottom center'
+                  position: 'absolute',
+                  width: '100%',
+                  height: '100%',
+                  borderRadius: '50%',
+                  border: '3px dashed var(--neon-lime)',
+                  opacity: 0.35,
+                  boxShadow: '0 0 30px rgba(163, 255, 18, 0.15)'
                 }}
               />
+              {/* Inner animated ring */}
+              <motion.div 
+                animate={{ scale: [1, 1.04, 1], boxShadow: ['0 0 20px rgba(163,255,18,0.2)', '0 0 40px rgba(163,255,18,0.4)', '0 0 20px rgba(163,255,18,0.2)'] }}
+                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+                style={{
+                  position: 'absolute',
+                  width: '80%',
+                  height: '80%',
+                  borderRadius: '50%',
+                  background: 'radial-gradient(circle, rgba(163,255,18,0.08) 0%, rgba(9,14,24,0.95) 80%)',
+                  border: `3px solid ${isCapReached ? '#FF3B30' : 'var(--neon-lime)'}`,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  textAlign: 'center',
+                  padding: 10,
+                  zIndex: 2
+                }}
+              >
+                <span style={{ fontSize: '9px', fontWeight: 900, color: 'rgba(255,255,255,0.4)', letterSpacing: '1.5px', textTransform: 'uppercase' }}>PENDING YIELD</span>
+                <span style={{ fontSize: '24px', fontWeight: 950, color: '#fff', margin: '4px 0', textShadow: '0 0 10px rgba(255,255,255,0.2)' }}>
+                  +{totalMined.toFixed(4)}
+                </span>
+                <span style={{ fontSize: '9px', fontWeight: 900, color: 'var(--neon-lime)' }}>$AIP</span>
+              </motion.div>
 
-              {isExpired && (
-                <div style={{
-                  position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                  background: 'rgba(0,0,0,0.65)', borderRadius: '50%', textAlign: 'center', padding: 20, zIndex: 15
-                }}>
-                  <span style={{ fontSize: 13, fontWeight: 900, color: '#FF3B30', marginBottom: 8 }}>TRIAL EXPIRED</span>
-                  <button onClick={() => setActiveTab('mine')} style={{ background: 'var(--neon-lime)', border: 'none', padding: '8px 16px', borderRadius: 12, fontSize: 11, fontWeight: 900, color: '#000', cursor: 'pointer' }}>
-                    ACTIVATE NODE
-                  </button>
+              {/* Progress Indicator Arc (SVG representation) */}
+              <svg width="220" height="220" style={{ position: 'absolute', transform: 'rotate(-90deg)', zIndex: 1 }}>
+                <circle
+                  cx="110"
+                  cy="110"
+                  r="98"
+                  stroke="rgba(255,255,255,0.03)"
+                  strokeWidth="6"
+                  fill="transparent"
+                />
+                <circle
+                  cx="110"
+                  cy="110"
+                  r="98"
+                  stroke={isCapReached ? '#FF3B30' : 'var(--neon-lime)'}
+                  strokeWidth="6"
+                  fill="transparent"
+                  strokeDasharray={2 * Math.PI * 98}
+                  strokeDashoffset={2 * Math.PI * 98 * (1 - capPercent / 100)}
+                  style={{ transition: 'stroke-dashoffset 0.5s ease' }}
+                />
+              </svg>
+            </div>
+
+            {/* Maturity Status & Timer */}
+            <div style={{ textAlign: 'center' }}>
+              {isExpired ? (
+                <div style={{ fontSize: 13, fontWeight: 900, color: '#FF3B30' }}>TRIAL EXPIRED — ACTIVATE MASTER NODE</div>
+              ) : isCapReached ? (
+                <div style={{ fontSize: 13, fontWeight: 900, color: '#FF3B30', animation: 'pulse 1.5s infinite' }}>⚠️ ACCUMULATOR MATURED (24H LIMIT REACHED)</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
+                  <span style={{ fontSize: 12, fontWeight: 800, color: 'rgba(255,255,255,0.7)' }}>
+                    24h Cap Maturity: <span style={{ color: '#4FC3F7', fontWeight: 900 }}>{capPercent.toFixed(1)}%</span>
+                  </span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af' }}>
+                    Accumulator stops in: <span style={{ color: '#fff', fontFamily: 'monospace', fontWeight: 900 }}>{formatTime(timeRemaining)}</span>
+                  </span>
                 </div>
               )}
             </div>
           </div>
 
-          {/* ── Footer Stats & Energy Controls ── */}
+          {/* ── Footer Stats & Claims Controls ── */}
           <div style={{ flexShrink: 0, padding: '8px 0 4px', background: 'linear-gradient(to top, rgba(5, 8, 15, 0.3) 70%, transparent)' }}>
 
             {/* ── Total $AIP Balance Strip (above claim buttons) ── */}
@@ -914,8 +735,8 @@ export default function EarnScreen() {
               background: 'linear-gradient(90deg, rgba(0,0,0,0.55) 0%, rgba(163,255,18,0.07) 100%)',
               border: '1px solid rgba(163,255,18,0.2)',
               borderRadius: 14,
-              padding: '7px 14px',
-              marginBottom: 8
+              padding: '10px 14px',
+              marginBottom: 12
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: 16 }}>💰</span>
@@ -927,76 +748,63 @@ export default function EarnScreen() {
                   </div>
                 </div>
               </div>
-              {totalMined > 0 && (
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: 8, fontWeight: 900, color: 'rgba(255,255,255,0.35)', letterSpacing: 0.8 }}>PENDING</div>
-                  <div style={{ fontSize: 13, fontWeight: 950, color: '#A3FF12' }}>+{totalMined.toFixed(4)}</div>
-                  <div style={{ fontSize: 8, color: '#4FC3F7', fontWeight: 700 }}>$AIP unclaimed</div>
-                </div>
-              )}
-            </div>
-
-            {/* Energy Bar Indicator */}
-            <div className="tma-energy-hud">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <span style={{ fontSize: 13 }}>⚡</span>
-                  <span style={{ fontSize: 11, fontWeight: 900, color: '#fff' }}>
-                    {energy} <span style={{ color: 'rgba(255,255,255,0.4)', fontWeight: 700 }}>/ {maxEnergy}</span>
-                  </span>
-                </div>
-                <span style={{ fontSize: 9, fontWeight: 900, color: 'var(--neon-lime)', letterSpacing: 0.5 }}>
-                  {hasNode ? '3X BOOST ACTIVE' : `SPEED: ${effectiveRate} $AIP/HR`}
+              <div style={{ textAlign: 'right' }}>
+                <span style={{ fontSize: 8, fontWeight: 900, color: 'rgba(255,255,255,0.35)', letterSpacing: 0.8, display: 'block' }}>MINING POWER</span>
+                <span style={{ fontSize: 13, fontWeight: 950, color: '#A3FF12' }}>+{effectiveRate} AIP/HR</span>
+                <span style={{ fontSize: 8, color: '#4FC3F7', fontWeight: 700 }}>
+                  {hasNode ? `Tier ${displayTier}` : 'Free Trial'}
                 </span>
               </div>
-              <div className="tma-energy-bar">
-                <div 
-                  className="tma-energy-fill" 
-                  style={{ width: `${(energy / maxEnergy) * 100}%` }}
-                />
-              </div>
             </div>
 
-            {/* Free users: Action Boost & Claim Buttons */}
-            {!hasNode && (
-              <div style={{ display: 'flex', gap: 10, marginTop: 14, alignItems: 'stretch' }}>
-                <button
-                  onClick={() => setActiveTab('mine')}
-                  style={{
-                    flex: 0.65,
-                    background: 'var(--neon-lime)',
-                    border: 'none', borderRadius: 16, padding: '12px 10px', cursor: 'pointer',
-                    boxShadow: '0 0 20px rgba(163, 255, 18, 0.3)',
-                  }}
-                >
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
-                    <span style={{ fontSize: 13, fontWeight: 950, color: '#000', letterSpacing: 0.5 }}>⚡ ACTIVATE NODE</span>
-                    <span style={{ fontSize: 9, fontWeight: 900, color: 'rgba(0,0,0,0.6)' }}>UNLOCK 10X SPEED & PASSIVE YIELD</span>
-                  </div>
-                </button>
+            {/* Unified Claim/Collect Button */}
+            <motion.button 
+              whileTap={{ scale: 0.96 }}
+              disabled={isClaiming || totalMined <= 0 || isExpired}
+              onClick={onClaim}
+              style={{
+                width: '100%',
+                background: (totalMined > 0 && !isExpired) ? 'linear-gradient(135deg, var(--neon-lime), #7BFF00)' : 'rgba(255,255,255,0.03)',
+                color: (totalMined > 0 && !isExpired) ? '#000' : 'rgba(255,255,255,0.15)',
+                border: 'none',
+                borderRadius: 18,
+                padding: '16px',
+                fontSize: '14px',
+                fontWeight: 950,
+                cursor: (totalMined > 0 && !isExpired) ? 'pointer' : 'not-allowed',
+                boxShadow: (totalMined > 0 && !isExpired) ? '0 8px 25px rgba(163,255,18,0.35)' : 'none',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                marginBottom: 8
+              }}
+            >
+              {isClaiming ? '⏳ SYNCING REWARDS...' : `⚙️ COLLECT ACCRUED YIELD (+${totalMined.toFixed(4)} AIP)`}
+            </motion.button>
 
-                <button
-                  onClick={onClaim}
-                  disabled={isClaiming || isExpired || totalMined <= 0}
-                  style={{
-                    flex: 0.35,
-                    background: (totalMined > 0 && !isExpired) ? '#4FC3F7' : 'rgba(255,255,255,0.03)',
-                    border: 'none', borderRadius: 16, padding: '12px 5px',
-                    cursor: (totalMined > 0 && !isExpired) ? 'pointer' : 'not-allowed',
-                    opacity: isClaiming ? 0.6 : 1,
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
-                    <span style={{ fontSize: 13, fontWeight: 950, color: (totalMined > 0 && !isExpired) ? '#000' : 'rgba(255,255,255,0.15)' }}>
-                      {isClaiming ? '⏳' : 'CLAIM'}
-                    </span>
-                    <span style={{ fontSize: 9, fontWeight: 900, color: (totalMined > 0 && !isExpired) ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.1)' }}>
-                      +{totalMined.toFixed(2)} $AIP
-                    </span>
-                  </div>
-                </button>
-              </div>
+            {/* Free users: Node Activation Promo Call to Action */}
+            {!hasNode && (
+              <button
+                onClick={() => setActiveTab('mine')}
+                style={{
+                  width: '100%',
+                  background: 'rgba(255,255,255,0.03)',
+                  border: '1.5px solid rgba(163,255,18,0.3)',
+                  borderRadius: 18,
+                  padding: '12px 10px',
+                  cursor: 'pointer',
+                  color: 'var(--neon-lime)',
+                  transition: 'all 0.2s',
+                  marginTop: 6
+                }}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                  <span style={{ fontSize: 12, fontWeight: 950, letterSpacing: 0.5 }}>⚡ ACTIVATE MASTER NODE</span>
+                  <span style={{ fontSize: 8, fontWeight: 900, color: 'rgba(255,255,255,0.5)' }}>UPGRADE TO UNLOCK 10X PASSIVE SPEED (100+ AIP/HR) & REAL BNB</span>
+                </div>
+              </button>
             )}
           </div>
         </div>
