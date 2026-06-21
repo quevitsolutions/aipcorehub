@@ -1,31 +1,37 @@
-import React from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import './index.css';
 
-// RainbowKit + Wagmi Imports
-import '@rainbow-me/rainbowkit/styles.css';
-import { RainbowKitProvider, darkTheme } from '@rainbow-me/rainbowkit';
-import { WagmiProvider } from 'wagmi';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { config } from './config/wagmi';
+const LazyWeb3Provider = React.lazy(() => import('./components/Web3Provider.jsx'));
 
-const queryClient = new QueryClient();
+function AppWrapper() {
+  const [loadWeb3, setLoadWeb3] = useState(false);
+
+  useEffect(() => {
+    // Delay loading the heavy Web3/Consensus bundle (Wagmi/Viem/RainbowKit) by 1.5s
+    // to let the guest dashboard render and respond instantly.
+    const timer = setTimeout(() => {
+      setLoadWeb3(true);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (!loadWeb3) {
+    return <App />;
+  }
+
+  return (
+    <Suspense fallback={<App />}>
+      <LazyWeb3Provider>
+        <App />
+      </LazyWeb3Provider>
+    </Suspense>
+  );
+}
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <WagmiProvider config={config}>
-      <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider theme={darkTheme({
-          accentColor: '#A3FF12',
-          accentColorForeground: 'black',
-          borderRadius: 'large',
-          fontStack: 'system',
-          overlayBlur: 'small',
-        })}>
-          <App />
-        </RainbowKitProvider>
-      </QueryClientProvider>
-    </WagmiProvider>
+    <AppWrapper />
   </React.StrictMode>
 );

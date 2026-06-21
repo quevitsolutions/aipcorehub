@@ -4,6 +4,7 @@ import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { blockchain } from '../services/blockchain.js';
 import { useGameStore } from "../store/gameStore.js";
 import toast from "react-hot-toast";
+import { loadNodeData, fetchBnbBalance } from '../services/nodeService.js';
 
 /**
  * AIPCore Contract Hook (Clean Wrapper)
@@ -18,60 +19,7 @@ export const useContract = () => {
   const { disconnect } = useDisconnect();
   const isWeb3Connected = useGameStore(s => s.isWeb3Connected);
 
-  const loadNodeData = async (address, retries = 2) => {
-    if (!address) return;
-    try {
-      const data = await blockchain.getFullDashboardData(address);
-      if (data.hasNode) {
-        // ANTI-FLICKER: Only skip setNodeData if DB already has BOTH hasNode AND nodeId.
-        // If nodeId is null (DB has tier but no node_id yet), we still need blockchain data.
-        const storeState = useGameStore.getState();
-        const dbFullyLoaded = storeState.hasNode && storeState.nodeId && Number(storeState.nodeId) > 0;
-        if (!dbFullyLoaded) {
-          setNodeData({ nodeId: data.nodeId, tier: data.tier, active: data.nodeActive });
-        }
 
-        // Always update chain-specific data — additive, not overwriting node identity
-        updateChainData({
-          totalEarned:      parseFloat(data.totalEarned    || 0),
-          teamSize:         data.teamSize,
-          directRefs:       data.directRefs,
-          pendingReward:    parseFloat(data.pendingReward  || 0),
-          poolClaimable:    parseFloat(data.poolClaimable  || 0),
-          poolName:         data.poolName        || 'None',
-          totalDeposited:   parseFloat(data.totalDeposited || 0),
-          isPoolQualified:  Boolean(data.isPoolQualified),
-          totalPoolEarned:  parseFloat(data.totalPoolEarned  || 0),
-          totalPoolClaimed: parseFloat(data.totalPoolClaimed || 0),
-          remainingCap:     parseFloat(data.remainingCap    || 0),
-          lifetimeCap:      parseFloat(data.lifetimeCap     || 0),
-          missingDirects:   data.missingDirects  || 0,
-          missingTier:      data.missingTier     || 0,
-          missingTeam:      data.missingTeam     || 0,
-        });
-        return data.nodeId;
-      } else {
-        // STABILITY: Never downgrade if DB already shows the user has a node.
-        const currentTier = useGameStore.getState().nodeTier || 0;
-        if (currentTier === 0) {
-          setNodeData({ nodeId: 0, tier: 0, active: false });
-        }
-        return 0;
-      }
-    } catch (err) {
-      if (retries > 0) {
-        await new Promise(r => setTimeout(r, 1000));
-        return loadNodeData(address, retries - 1);
-      }
-    }
-  };
-
-  const fetchBnbBalance = async (address) => {
-    if (!address) return;
-    const bal = await blockchain.getBnbBalance(address);
-    setBnbBalance(parseFloat(bal).toFixed(4));
-    return bal;
-  };
 
   return useMemo(() => ({
     loadNodeData, fetchBnbBalance, 
@@ -238,13 +186,12 @@ export const useContract = () => {
     fetchMatrixCounts: (nid) => blockchain.getMatrixLevelCounts(nid),
     fetchTeamLevelMembers: (nid, layer) => blockchain.getMatrixMembers(nid, layer),
     fetchDirectMembers: (nid) => blockchain.getDirectReferrals(nid)
-  }), [setNodeData, updateChainData, setBnbBalance, openConnectModal, disconnect]);
+  }), [openConnectModal, disconnect]);
 };
 
 export const useWalletLifecycle = () => {
   const { address, isConnected, status } = useAccount();
   const { setWallet, disconnectWallet, fetchUserData, fetchAdminStatus, fetchUserConversions, fetchTeamHistory } = useGameStore();
-  const { loadNodeData, fetchBnbBalance } = useContract();
 
   useEffect(() => {
     // STABILITY FIX: Accept both 'connected' AND 'reconnecting' status.

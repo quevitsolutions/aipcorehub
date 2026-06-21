@@ -12,8 +12,7 @@ const MULTICALL_ABI = [
   "function tryAggregate(bool requireSuccess, tuple(address target, bytes callData)[] calls) view returns (tuple(bool success, bytes returnData)[] returnData)"
 ];
 const MULTICALL_ADDRESS = "0xcA11bde05977b3631167028862bE2a173976CA11";
-import { config } from "../config/wagmi.js";
-import { getEthersProvider, getEthersSigner } from "../utils/ethers-adapter.js";
+
 
 /**
  * AIPCore Blockchain Service (Ethers v6) - 4-source Tier Waterfall
@@ -50,8 +49,12 @@ class BlockchainService {
     );
   }
 
-  _getProvider() {
-    return getEthersProvider(config) || this.staticProvider;
+  async _getSigner() {
+    const { config } = await import("../config/wagmi.js");
+    const { getEthersSigner } = await import("../utils/ethers-adapter.js");
+    const signer = await getEthersSigner(config);
+    if (!signer) throw new Error("Wallet not connected");
+    return signer;
   }
 
   async getOwner() {
@@ -170,8 +173,7 @@ class BlockchainService {
   }
 
   async getBnbBalance(address) {
-    const p = this._getProvider();
-    const bal = await p.getBalance(address);
+    const bal = await this.staticProvider.getBalance(address);
     return ethers.formatEther(bal);
   }
 
@@ -268,7 +270,7 @@ class BlockchainService {
   // ── WRITE ACTIONS ─────────────────────────────────────────────────────────
 
   async createNode(sponsorId = 1) {
-    const signer = await getEthersSigner(config);
+    const signer = await this._getSigner();
     if (!signer) throw new Error("Wallet not connected");
     const walletAddress = await signer.getAddress();
     const core = new ethers.Contract(CONTRACTS.AIPCORE, AIPCORE_ABI, signer);
@@ -329,7 +331,7 @@ class BlockchainService {
   }
 
   async claimRewards() {
-    const signer = await getEthersSigner(config);
+    const signer = await this._getSigner();
     if (!signer) throw new Error("Wallet not connected");
     return (
       await new ethers.Contract(
@@ -341,7 +343,7 @@ class BlockchainService {
   }
 
   async claimPool(nodeId) {
-    const signer = await getEthersSigner(config);
+    const signer = await this._getSigner();
     if (!signer) throw new Error("Wallet not connected");
     return (
       await new ethers.Contract(
@@ -353,7 +355,7 @@ class BlockchainService {
   }
 
   async registerPool(nodeId) {
-    const signer = await getEthersSigner(config);
+    const signer = await this._getSigner();
     if (!signer) throw new Error("Wallet not connected");
     return (
       await new ethers.Contract(
@@ -365,7 +367,7 @@ class BlockchainService {
   }
 
   async unlockTier(nodeId, toTier) {
-    const signer = await getEthersSigner(config);
+    const signer = await this._getSigner();
     if (!signer) throw new Error("Wallet not connected");
     const walletAddress = await signer.getAddress();
     const core = new ethers.Contract(CONTRACTS.AIPCORE, AIPCORE_ABI, signer);

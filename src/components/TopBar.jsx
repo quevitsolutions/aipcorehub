@@ -1,11 +1,11 @@
 import { useGameStore } from '../store/gameStore.js';
-import { useContract } from '../hooks/useContract.js';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { loadNodeData } from '../services/nodeService.js';
+import React, { Suspense } from 'react';
+const LazyConnectButton = React.lazy(() => import('./LazyConnectButton.jsx'));
 import { useBnbPrice } from '../hooks/useBnbPrice.js';
 
 export default function TopBar() {
   const { walletAddress, isConnected, isWeb3Connected, nodeId, nodeTier, nodeActive, bnbBalance, setActiveTab, hasNode } = useGameStore();
-  const { loadNodeData } = useContract();
   const bnbPrice = useBnbPrice();
   const bnbUsd = bnbPrice > 0 ? `≈ $${(parseFloat(bnbBalance || 0) * bnbPrice).toFixed(2)}` : null;
 
@@ -105,8 +105,18 @@ export default function TopBar() {
           </button>
         )}
         <div style={{ transform: 'scale(0.85)', transformOrigin: 'right center' }}>
-          <ConnectButton chainStatus="none" showBalance={false}
-            accountStatus={{ smallScreen: 'avatar', largeScreen: 'full' }} />
+          <Suspense fallback={
+            <button style={{
+              background: 'var(--neon-lime)', border: 'none', borderRadius: '10px',
+              padding: '6px 14px', fontSize: '11px', fontWeight: 900, color: '#000',
+              cursor: 'pointer', boxShadow: '0 0 10px rgba(163,255,18,0.2)'
+            }}>
+              CONNECT WALLET
+            </button>
+          }>
+            <LazyConnectButton chainStatus="none" showBalance={false}
+              accountStatus={{ smallScreen: 'avatar', largeScreen: 'full' }} />
+          </Suspense>
         </div>
       </div>
     </div>

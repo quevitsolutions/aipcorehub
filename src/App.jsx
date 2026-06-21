@@ -1,26 +1,25 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, lazy, Suspense } from 'react';
 import { Toaster } from 'react-hot-toast';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from './store/gameStore.js';
 import { shortAddr } from './utils/format.js';
-import { useContract, useWalletLifecycle } from './hooks/useContract.js';
-import { useChainEvents } from './hooks/useChainEvents.js';
-import LoginScreen from './components/LoginScreen.jsx';
 import TopBar from './components/TopBar.jsx';
 import TabBar from './components/TabBar.jsx';
-import EarnScreen from './pages/EarnScreen.jsx';
-import UpgradeScreen from './pages/UpgradeScreen.jsx';
-import TaskScreen from './pages/TaskScreen.jsx';
-import MarketingScreen from './pages/MarketingScreen.jsx';
-import ReferralScreen from './pages/ReferralScreen.jsx';
-import DashboardScreen from './pages/DashboardScreen.jsx';
-import ContractsScreen from './pages/ContractsScreen.jsx';
-import TeamScreen from './pages/TeamScreen.jsx';
-import AdminScreen from './pages/AdminScreen.jsx';
-import NodePopup from './components/NodePopup.jsx';
+const NodePopup = lazy(() => import('./components/NodePopup.jsx'));
 import DailyPopup from './components/DailyPopup.jsx';
 import DynamicPortal from './components/DynamicPortal.jsx';
+
+// Lazy-loaded page components for progressive loading
+const EarnScreen = lazy(() => import('./pages/EarnScreen.jsx'));
+const UpgradeScreen = lazy(() => import('./pages/UpgradeScreen.jsx'));
+const TaskScreen = lazy(() => import('./pages/TaskScreen.jsx'));
+const MarketingScreen = lazy(() => import('./pages/MarketingScreen.jsx'));
+const ReferralScreen = lazy(() => import('./pages/ReferralScreen.jsx'));
+const DashboardScreen = lazy(() => import('./pages/DashboardScreen.jsx'));
+const ContractsScreen = lazy(() => import('./pages/ContractsScreen.jsx'));
+const TeamScreen = lazy(() => import('./pages/TeamScreen.jsx'));
+const AdminScreen = lazy(() => import('./pages/AdminScreen.jsx'));
 
 // Sidebar nav definition (desktop)
 const NAV_ITEMS = [
@@ -77,15 +76,11 @@ export default function App() {
     showNodePopup, showDailyPopup, lastClaimDate,
     setShowDailyPopup, setReferrerId,
     nodeId, nodeTier, isAdmin,
-    sponsorWallet, isNewUser
+    sponsorWallet, isNewUser,
+    web3Loaded
   } = useGameStore();
 
-  const { connectWallet, disconnectWallet } = useContract();
-  const { setupListeners, removeListeners } = useWalletLifecycle();
   const welcomeShown = useRef(false);
-
-  // Real-time chain event listener — pushes DB updates + toast notifications
-  useChainEvents();
 
   // Initialize and expand Telegram WebApp if available
   useEffect(() => {
@@ -207,7 +202,7 @@ export default function App() {
       />
 
       {/* TopBar — fixed on mobile/tablet, grid on desktop */}
-      <TopBar onConnect={connectWallet} onDisconnect={disconnectWallet} />
+      <TopBar />
 
       {/* Main content area */}
       <main className="page" style={{
@@ -229,15 +224,21 @@ export default function App() {
             transition={{ duration: 0.18, ease: 'easeOut' }}
             style={{ width: '100%', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 'min-content' }}
           >
-            {activeTab === 'earn'      && <EarnScreen />}
-            {activeTab === 'mine'      && <UpgradeScreen />}
-            {activeTab === 'tasks'     && <TaskScreen />}
-            {activeTab === 'friends'   && <ReferralScreen />}
-            {activeTab === 'team'      && <TeamScreen />}
-            {activeTab === 'dash'      && <DashboardScreen />}
-            {activeTab === 'contracts' && <ContractsScreen />}
-            {activeTab === 'marketing' && <MarketingScreen />}
-            {activeTab === 'admin'     && <AdminScreen />}
+            <Suspense fallback={
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'rgba(255,255,255,0.4)', fontSize: 13, fontWeight: 700 }}>
+                Loading screen...
+              </div>
+            }>
+              {activeTab === 'earn'      && <EarnScreen />}
+              {activeTab === 'mine'      && (web3Loaded ? <UpgradeScreen /> : <ScreenSkeleton />)}
+              {activeTab === 'tasks'     && <TaskScreen />}
+              {activeTab === 'friends'   && <ReferralScreen />}
+              {activeTab === 'team'      && (web3Loaded ? <TeamScreen /> : <ScreenSkeleton />)}
+              {activeTab === 'dash'      && (web3Loaded ? <DashboardScreen /> : <ScreenSkeleton />)}
+              {activeTab === 'contracts' && (web3Loaded ? <ContractsScreen /> : <ScreenSkeleton />)}
+              {activeTab === 'marketing' && <MarketingScreen />}
+              {activeTab === 'admin'     && <AdminScreen />}
+            </Suspense>
           </motion.div>
         </AnimatePresence>
       </main>
@@ -245,8 +246,21 @@ export default function App() {
       {/* Bottom tabs — hidden on desktop via CSS */}
       <TabBar />
 
-      {showNodePopup  && <NodePopup />}
+      {showNodePopup && web3Loaded && (
+        <Suspense fallback={null}>
+          <NodePopup />
+        </Suspense>
+      )}
       {showDailyPopup && <DailyPopup />}
+    </div>
+  );
+}
+
+function ScreenSkeleton() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 12, color: 'rgba(255,255,255,0.4)', flex: 1, minHeight: '300px' }}>
+      <div className="spinner" style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.1)', borderTopColor: 'var(--neon-lime)', animation: 'spin 1s linear infinite' }} />
+      <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase' }}>Synchronizing Protocol...</div>
     </div>
   );
 }
