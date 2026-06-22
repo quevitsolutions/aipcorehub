@@ -187,6 +187,9 @@ export default function App() {
       fetchLeaderboardData().catch(() => {});
     } else if (activeTab === 'tasks') {
       fetchTasksData().catch(() => {});
+      useGameStore.setState({ lastBackendSync: null });
+      fetchUserData().catch(() => {});
+      fetchReferralData().catch(() => {});
     } else if (activeTab === 'earn' || activeTab === 'dash' || activeTab === 'mine') {
       // Force latest user data on earn/stats/upgrade tabs
       useGameStore.setState({ lastBackendSync: null });

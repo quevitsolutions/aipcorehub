@@ -469,7 +469,12 @@ export const useGameStore = create(
         set({ loadingReferrals: true });
         try {
           const data = await api.fetchReferralList(walletAddress);
-          set({ referralList: Array.isArray(data) ? data : [] });
+          const list = Array.isArray(data) ? data : [];
+          const actRefs = list.filter(f => Number(f?.node_tier || 0) > 0).length;
+          set({ 
+            referralList: list,
+            activatedRefs: actRefs
+          });
         } catch (err) {
           console.warn("Referral List Fetch Failed:", err.message);
         } finally {

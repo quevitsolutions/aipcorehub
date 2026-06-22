@@ -5,7 +5,16 @@ import toast from 'react-hot-toast';
 import { openLink } from '../utils/openLink.js';
 
 export default function TaskScreen() {
-  const { tasks, claimTaskAction, setActiveTab, fetchTasksData, directRefs } = useGameStore();
+  const { 
+    tasks, 
+    claimTaskAction, 
+    setActiveTab, 
+    fetchTasksData, 
+    directRefs,
+    activatedRefs,
+    claimedMilestones,
+    claimMilestoneAction
+  } = useGameStore();
   const [claimingId, setClaimingId] = useState(null);
 
   // Refresh tasks whenever the screen is opened
@@ -73,9 +82,8 @@ export default function TaskScreen() {
           { threshold: 20, reward: 50000,  label: 'Whale Sponsor' },
           { threshold: 50, reward: 500000, label: 'Global Visionary' },
         ].map((m) => {
-          const { activatedRefs, claimedMilestones, claimMilestoneAction } = useGameStore.getState();
           const isClaimed = (claimedMilestones || []).includes(m.threshold);
-          const canClaim = activatedRefs >= m.threshold && !isClaimed;
+          const canClaim = (activatedRefs || 0) >= m.threshold && !isClaimed;
           const progress = Math.min((activatedRefs / m.threshold) * 100, 100);
 
           return (
@@ -108,7 +116,7 @@ export default function TaskScreen() {
                       }
                       try {
                         setClaimingId(`m-${m.threshold}`);
-                        await useGameStore.getState().claimMilestoneAction(m.threshold);
+                        await claimMilestoneAction(m.threshold);
                         toast.success(`Milestone Claimed! +${formatNumber(m.reward)} AIP`);
                         fetchTasksData(); // and refresh user data in store
                       } catch (err) {
