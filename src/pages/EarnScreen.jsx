@@ -663,7 +663,7 @@ export default function EarnScreen() {
                   width: '80%',
                   height: '80%',
                   borderRadius: '50%',
-                  background: 'radial-gradient(circle, rgba(9, 14, 24, 0.45) 0%, rgba(9, 14, 24, 0.95) 90%), url(/assets/aip_coin.png) center/cover no-repeat',
+                  background: 'rgba(9, 14, 24, 0.95)',
                   border: `3px solid ${isCapReached ? '#FF3B30' : 'var(--neon-lime)'}`,
                   display: 'flex',
                   flexDirection: 'column',
@@ -671,14 +671,35 @@ export default function EarnScreen() {
                   justifyContent: 'center',
                   textAlign: 'center',
                   padding: 10,
-                  zIndex: 2
+                  zIndex: 2,
+                  overflow: 'hidden'
                 }}
               >
-                <span style={{ fontSize: '9px', fontWeight: 900, color: 'rgba(255,255,255,0.75)', letterSpacing: '1.5px', textTransform: 'uppercase', textShadow: '0 1.5px 4px rgba(0,0,0,0.9)' }}>PENDING YIELD</span>
-                <span style={{ fontSize: '24px', fontWeight: 950, color: '#fff', margin: '4px 0', textShadow: '0 2px 8px rgba(0,0,0,0.9), 0 0 10px rgba(163,255,18,0.2)' }}>
-                  +{totalMined.toFixed(4)}
-                </span>
-                <span style={{ fontSize: '9px', fontWeight: 900, color: 'var(--neon-lime)', textShadow: '0 1.5px 4px rgba(0,0,0,0.9)' }}>$AIP</span>
+                {/* Guaranteed 1:1 round coin using object-fit: contain */}
+                <img 
+                  src="/assets/aip_coin.png" 
+                  alt="AIP" 
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'contain',
+                    opacity: 0.35,
+                    pointerEvents: 'none',
+                    zIndex: 0
+                  }}
+                />
+                
+                {/* Text overlay on top of background coin */}
+                <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ fontSize: '9px', fontWeight: 900, color: 'rgba(255,255,255,0.75)', letterSpacing: '1.5px', textTransform: 'uppercase', textShadow: '0 1.5px 4px rgba(0,0,0,0.9)' }}>PENDING YIELD</span>
+                  <span style={{ fontSize: '24px', fontWeight: 950, color: '#fff', margin: '4px 0', textShadow: '0 2px 8px rgba(0,0,0,0.9), 0 0 10px rgba(163,255,18,0.2)' }}>
+                    +{totalMined.toFixed(4)}
+                  </span>
+                  <span style={{ fontSize: '9px', fontWeight: 900, color: 'var(--neon-lime)', textShadow: '0 1.5px 4px rgba(0,0,0,0.9)' }}>$AIP</span>
+                </div>
               </motion.div>
 
               {/* Progress Indicator Arc (SVG representation) */}
