@@ -663,7 +663,7 @@ export default function EarnScreen() {
                   width: '80%',
                   height: '80%',
                   borderRadius: '50%',
-                  background: 'radial-gradient(circle, rgba(163,255,18,0.08) 0%, rgba(9,14,24,0.95) 80%)',
+                  background: 'radial-gradient(circle, rgba(9, 14, 24, 0.45) 0%, rgba(9, 14, 24, 0.95) 90%), url(/assets/aip_coin.png) center/cover no-repeat',
                   border: `3px solid ${isCapReached ? '#FF3B30' : 'var(--neon-lime)'}`,
                   display: 'flex',
                   flexDirection: 'column',
@@ -674,11 +674,11 @@ export default function EarnScreen() {
                   zIndex: 2
                 }}
               >
-                <span style={{ fontSize: '9px', fontWeight: 900, color: 'rgba(255,255,255,0.4)', letterSpacing: '1.5px', textTransform: 'uppercase' }}>PENDING YIELD</span>
-                <span style={{ fontSize: '24px', fontWeight: 950, color: '#fff', margin: '4px 0', textShadow: '0 0 10px rgba(255,255,255,0.2)' }}>
+                <span style={{ fontSize: '9px', fontWeight: 900, color: 'rgba(255,255,255,0.75)', letterSpacing: '1.5px', textTransform: 'uppercase', textShadow: '0 1.5px 4px rgba(0,0,0,0.9)' }}>PENDING YIELD</span>
+                <span style={{ fontSize: '24px', fontWeight: 950, color: '#fff', margin: '4px 0', textShadow: '0 2px 8px rgba(0,0,0,0.9), 0 0 10px rgba(163,255,18,0.2)' }}>
                   +{totalMined.toFixed(4)}
                 </span>
-                <span style={{ fontSize: '9px', fontWeight: 900, color: 'var(--neon-lime)' }}>$AIP</span>
+                <span style={{ fontSize: '9px', fontWeight: 900, color: 'var(--neon-lime)', textShadow: '0 1.5px 4px rgba(0,0,0,0.9)' }}>$AIP</span>
               </motion.div>
 
               {/* Progress Indicator Arc (SVG representation) */}
@@ -753,7 +753,7 @@ export default function EarnScreen() {
               boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 16 }}>💰</span>
+                <img src="/assets/aip_coin_mini.png" alt="AIP" style={{ width: '22px', height: '22px', objectFit: 'contain' }} />
                 <div>
                   <div style={{ fontSize: 8, fontWeight: 900, color: 'rgba(255,255,255,0.55)', letterSpacing: 1, textTransform: 'uppercase' }}>Total $AIP Balance</div>
                   <div style={{ fontSize: 18, fontWeight: 950, color: 'var(--neon-lime)', lineHeight: 1.1 }}>
