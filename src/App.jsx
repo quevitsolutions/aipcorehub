@@ -200,7 +200,7 @@ export default function App() {
       <div className="app-container">
         <DynamicPortal />
         <Suspense fallback={<LoginScreenSkeleton />}>
-          {web3Loaded ? <LoginScreen /> : <LoginScreenSkeleton />}
+          <LoginScreen />
         </Suspense>
         <Toaster position="top-center" toastOptions={{ style: TOAST_STYLE }} />
       </div>

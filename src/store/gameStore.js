@@ -42,6 +42,7 @@ export const useGameStore = create(
       loadWeb3: false,
       triggerConnect: false,
       web3Loaded: false,
+      openConnectModalFn: null,
       isAdmin: false,
       leaderboard: [],
       referralList: [],

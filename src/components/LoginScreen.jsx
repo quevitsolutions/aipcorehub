@@ -1,9 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { useConnect } from 'wagmi';
-import { injected } from 'wagmi/connectors';
 import { Rocket, Brain, Users, Trophy, Wallet } from 'lucide-react';
+import { useGameStore } from '../store/gameStore.js';
 
 // ── Animated perspective grid canvas ──────────────────────────────────────
 function GridCanvas() {
@@ -80,9 +78,20 @@ function GridCanvas() {
   );
 }
 
-export default function LoginScreen({ onConnect }) {
-  const { connect } = useConnect();
-  const hasInjectedProvider = typeof window !== 'undefined' && !!window.ethereum;
+export default function LoginScreen() {
+  const loadWeb3 = useGameStore(s => s.loadWeb3);
+  const web3Loaded = useGameStore(s => s.web3Loaded);
+  const openConnectModalFn = useGameStore(s => s.openConnectModalFn);
+
+  const handleConnect = () => {
+    if (web3Loaded && openConnectModalFn) {
+      openConnectModalFn();
+    } else {
+      useGameStore.setState({ loadWeb3: true, triggerConnect: true });
+    }
+  };
+
+  const isConnecting = loadWeb3 && !web3Loaded;
 
   return (
     <div style={{
@@ -195,43 +204,43 @@ export default function LoginScreen({ onConnect }) {
         </div>
 
         {/* ── CONNECT WALLET BUTTON — top priority, always visible ── */}
-        <ConnectButton.Custom>
-          {({ openConnectModal, mounted }) => {
-            const handleConnect = () => {
-              if (hasInjectedProvider) connect({ connector: injected() });
-              else openConnectModal();
-            };
-
-            return (
-              <div
-                style={{ width: '100%', maxWidth: 360, marginBottom: 6 }}
-                {...(!mounted && { 'aria-hidden': true, style: { opacity: 0, pointerEvents: 'none' } })}
-              >
-                <motion.button
-                  whileHover={{ scale: 1.02, boxShadow: '0 0 50px rgba(0,210,255,0.5)' }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={handleConnect}
-                  style={{
-                    width: '100%',
-                    background: 'linear-gradient(90deg, #00D2FF 0%, #7B2CBF 100%)',
-                    color: '#fff', border: 'none', borderRadius: 14,
-                    padding: '15px 24px', fontSize: 15, fontWeight: 900,
-                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                    letterSpacing: '1px',
-                    boxShadow: '0 0 30px rgba(0,210,255,0.35)',
-                    fontFamily: 'Outfit, sans-serif',
-                  }}
-                >
-                  <Wallet size={18} />
-                  CONNECT WALLET
-                </motion.button>
-                <div style={{ marginTop: 8, fontSize: 9, color: 'rgba(255,255,255,0.4)', fontWeight: 600, letterSpacing: 0.5 }}>
-                  TokenPocket • MetaMask • Trust Wallet • WalletConnect
-                </div>
-              </div>
-            );
-          }}
-        </ConnectButton.Custom>
+        <div style={{ width: '100%', maxWidth: 360, marginBottom: 6 }}>
+          <motion.button
+            whileHover={!isConnecting ? { scale: 1.02, boxShadow: '0 0 50px rgba(0,210,255,0.5)' } : {}}
+            whileTap={!isConnecting ? { scale: 0.97 } : {}}
+            onClick={!isConnecting ? handleConnect : undefined}
+            disabled={isConnecting}
+            style={{
+              width: '100%',
+              background: isConnecting 
+                ? 'rgba(255,255,255,0.1)' 
+                : 'linear-gradient(90deg, #00D2FF 0%, #7B2CBF 100%)',
+              color: '#fff', border: 'none', borderRadius: 14,
+              padding: '15px 24px', fontSize: 15, fontWeight: 900,
+              cursor: isConnecting ? 'default' : 'pointer', 
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+              letterSpacing: '1px',
+              boxShadow: isConnecting ? 'none' : '0 0 30px rgba(0,210,255,0.35)',
+              fontFamily: 'Outfit, sans-serif',
+              opacity: isConnecting ? 0.7 : 1,
+            }}
+          >
+            {isConnecting ? (
+              <div className="spinner" style={{
+                width: 18, height: 18, borderRadius: '50%',
+                border: '2px solid rgba(255,255,255,0.2)',
+                borderTopColor: '#00D2FF',
+                animation: 'spin 1s linear infinite'
+              }} />
+            ) : (
+              <Wallet size={18} />
+            )}
+            {isConnecting ? 'CONNECTING...' : 'CONNECT WALLET'}
+          </motion.button>
+          <div style={{ marginTop: 8, fontSize: 9, color: 'rgba(255,255,255,0.4)', fontWeight: 600, letterSpacing: 0.5 }}>
+            TokenPocket • MetaMask • Trust Wallet • WalletConnect
+          </div>
+        </div>
 
         {/* ── Divider ── */}
         <div style={{ width: '100%', height: 1, background: 'linear-gradient(90deg, transparent, rgba(0,210,255,0.3), rgba(155,81,255,0.3), transparent)', margin: '16px 0' }} />
