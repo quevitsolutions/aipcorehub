@@ -412,7 +412,8 @@ function NodeBadge({ nodeId }) {
   );
 }
 
-function MemberCard({ m, index, total }) {
+function MemberCard({ m = {}, index, total }) {
+  if (!m) return null;
   const rawJoin = m.joined_at || m.joinedAt || m.created_at;
   let dateStr = '—';
   if (rawJoin) {
@@ -550,13 +551,13 @@ export default function TeamScreen() {
 
           // 2. Fetch from DB config
           const dbData = await api.fetchReferralList(walletAddress).catch(() => []);
-          const dbList = Array.isArray(dbData) ? dbData : dbData.referrals || [];
+          const dbList = (dbData && Array.isArray(dbData)) ? dbData : (dbData?.referrals || []);
 
           // 3. Merge: Blockchain overrides DB stats for activated users
-          const merged = [...dbList];
+          const merged = [...dbList].filter(Boolean);
           
-          rpcDirects.forEach(rpcUser => {
-            const index = merged.findIndex(u => u.wallet_address?.toLowerCase() === rpcUser.wallet_address.toLowerCase());
+          (rpcDirects || []).filter(Boolean).forEach(rpcUser => {
+            const index = merged.findIndex(u => u?.wallet_address?.toLowerCase() === rpcUser?.wallet_address?.toLowerCase());
             if (index >= 0) {
               merged[index] = { ...merged[index], ...rpcUser, is_direct: true };
             } else {
@@ -589,11 +590,13 @@ export default function TeamScreen() {
         fetch('/api/network/force-repair', { method: 'POST' }).catch(() => {});
 
         const data = await api.fetchNetworkCounts(walletAddress);
-        const dc = {
-          referral: data.referralCounts || new Array(18).fill(0),
-          matrix: data.matrixCounts || new Array(18).fill(0)
-        };
-        setDualCounts(dc);
+        if (data) {
+          const dc = {
+            referral: data.referralCounts || new Array(18).fill(0),
+            matrix: data.matrixCounts || new Array(18).fill(0)
+          };
+          setDualCounts(dc);
+        }
 
         // Fetch referral conversion stats
         setLoadingStats(true);
@@ -671,15 +674,15 @@ export default function TeamScreen() {
           // IMPORTANT: merge DB result with RPC result — DB may not have node_id populated yet
           if (mappedMembers.length > 0) {
             api.syncNetworkMembers(mappedMembers, nodeId);
-            const dbMembers = await api.fetchNetworkLevelMembers(walletAddress, levelIndex + 1);
-            if (dbMembers && dbMembers.length > 0) {
+            const dbMembers = await api.fetchNetworkLevelMembers(walletAddress, levelIndex + 1).catch(() => []);
+            if (dbMembers && Array.isArray(dbMembers) && dbMembers.length > 0) {
               // Build a lookup by wallet address from the RPC data
               const rpcByWallet = {};
-              mappedMembers.forEach(m => {
+              mappedMembers.filter(Boolean).forEach(m => {
                 if (m.wallet_address) rpcByWallet[m.wallet_address.toLowerCase()] = m;
               });
               // Merge: DB fields take priority except for node_id / node_tier from chain
-              const merged = dbMembers.map(dbM => {
+              const merged = dbMembers.filter(Boolean).map(dbM => {
                 const rpcM = rpcByWallet[dbM.wallet_address?.toLowerCase()];
                 return {
                   ...dbM,
@@ -873,7 +876,7 @@ export default function TeamScreen() {
                           </div>
                         ) : (
                           <div>
-                            {levelMembers.map((m, i) => (
+                            {levelMembers.filter(Boolean).map((m, i) => (
                               <MemberCard key={i} m={m} index={i} total={levelMembers.length} />
                             ))}
                           </div>
@@ -917,10 +920,10 @@ export default function TeamScreen() {
             </div>
           ) : (
             <div>
-              {activatedDirects.map((m, i) => (
+              {activatedDirects.filter(Boolean).map((m, i) => (
                 <MemberCard 
                   key={i} 
-                  m={{ ...m, is_direct: true, joined_at: m.created_at || m.joined_at }} 
+                  m={{ ...m, is_direct: true, joined_at: m?.created_at || m?.joined_at }} 
                   index={i} 
                   total={activatedDirects.length} 
                 />
