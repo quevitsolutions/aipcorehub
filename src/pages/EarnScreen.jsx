@@ -637,7 +637,22 @@ export default function EarnScreen() {
           )}
 
           {/* ── CENTRAL REACTOR CORE VIEW ── */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', margin: '20px 0', gap: 20 }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', margin: '20px 0', gap: 14 }}>
+            {/* Pending Yield Figure (placed on upper) */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+              <span style={{ fontSize: '9px', fontWeight: 900, color: 'rgba(255,255,255,0.45)', letterSpacing: '1.5px', textTransform: 'uppercase' }}>
+                PENDING YIELD
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: '28px', fontWeight: 950, color: '#fff', textShadow: '0 0 15px rgba(255,255,255,0.2)' }}>
+                  +{totalMined.toFixed(4)}
+                </span>
+                <span style={{ fontSize: '11px', fontWeight: 900, color: 'var(--neon-lime)' }}>
+                  $AIP
+                </span>
+              </div>
+            </div>
+
             {/* Reactor Core Ring */}
             <div style={{ position: 'relative', width: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {/* Outer Glowing Circle */}
@@ -656,50 +671,33 @@ export default function EarnScreen() {
               />
               {/* Inner animated ring */}
               <motion.div 
-                animate={{ scale: [1, 1.04, 1], boxShadow: ['0 0 20px rgba(163,255,18,0.2)', '0 0 40px rgba(163,255,18,0.4)', '0 0 20px rgba(163,255,18,0.2)'] }}
+                animate={{ scale: [1, 1.04, 1], boxShadow: ['0 0 20px rgba(163,255,18,0.25)', '0 0 45px rgba(163,255,18,0.5)', '0 0 20px rgba(163,255,18,0.25)'] }}
                 transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
                 style={{
                   position: 'absolute',
-                  width: '80%',
-                  height: '80%',
+                  width: '82%',
+                  height: '82%',
                   borderRadius: '50%',
-                  background: 'rgba(9, 14, 24, 0.95)',
+                  background: '#0d131f',
                   border: `3px solid ${isCapReached ? '#FF3B30' : 'var(--neon-lime)'}`,
                   display: 'flex',
-                  flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  textAlign: 'center',
-                  padding: 10,
-                  zIndex: 2,
-                  overflow: 'hidden'
+                  overflow: 'hidden',
+                  zIndex: 2
                 }}
               >
-                {/* Guaranteed 1:1 round coin using object-fit: contain */}
+                {/* Guaranteed 1:1 round coin using object-fit: contain shown large and bright */}
                 <img 
                   src="/assets/aip_coin.png" 
                   alt="AIP" 
                   style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
                     width: '100%',
                     height: '100%',
                     objectFit: 'contain',
-                    opacity: 0.35,
-                    pointerEvents: 'none',
-                    zIndex: 0
+                    pointerEvents: 'none'
                   }}
                 />
-                
-                {/* Text overlay on top of background coin */}
-                <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                  <span style={{ fontSize: '9px', fontWeight: 900, color: 'rgba(255,255,255,0.75)', letterSpacing: '1.5px', textTransform: 'uppercase', textShadow: '0 1.5px 4px rgba(0,0,0,0.9)' }}>PENDING YIELD</span>
-                  <span style={{ fontSize: '24px', fontWeight: 950, color: '#fff', margin: '4px 0', textShadow: '0 2px 8px rgba(0,0,0,0.9), 0 0 10px rgba(163,255,18,0.2)' }}>
-                    +{totalMined.toFixed(4)}
-                  </span>
-                  <span style={{ fontSize: '9px', fontWeight: 900, color: 'var(--neon-lime)', textShadow: '0 1.5px 4px rgba(0,0,0,0.9)' }}>$AIP</span>
-                </div>
               </motion.div>
 
               {/* Progress Indicator Arc (SVG representation) */}
