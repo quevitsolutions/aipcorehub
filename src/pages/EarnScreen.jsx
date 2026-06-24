@@ -689,7 +689,7 @@ export default function EarnScreen() {
               >
                 {/* Guaranteed 1:1 round coin using object-fit: contain shown large and bright */}
                 <img 
-                  src="/assets/aip_coin.png" 
+                  src="/assets/aip_coin.png?v=3" 
                   alt="AIP" 
                   style={{
                     width: '100%',
@@ -772,7 +772,7 @@ export default function EarnScreen() {
               boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <img src="/assets/aip_coin_mini.png" alt="AIP" style={{ width: '22px', height: '22px', objectFit: 'contain' }} />
+                <img src="/assets/aip_coin_mini.png?v=3" alt="AIP" style={{ width: '22px', height: '22px', objectFit: 'contain' }} />
                 <div>
                   <div style={{ fontSize: 8, fontWeight: 900, color: 'rgba(255,255,255,0.55)', letterSpacing: 1, textTransform: 'uppercase' }}>Total $AIP Balance</div>
                   <div style={{ fontSize: 18, fontWeight: 950, color: 'var(--neon-lime)', lineHeight: 1.1 }}>
